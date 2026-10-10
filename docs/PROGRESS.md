@@ -1,0 +1,17 @@
+# Execution ledger — docs/superpowers/plans/2026-10-09-werewolf-lobby.md
+
+User authorized native continuous execution. Current branch `work` in managed task workspace; no main/master edits or external publication.
+Pre-flight: Store methods feed HTTP and socket public projections; UI consumes same contracts. No conflicting interfaces.
+Ruling: use current managed work branch, not a nested checkout, to keep deliverable in the user's workspace. Cost: changes reside in current work branch.
+Ruling: persist ledger in docs because skill helper files are cloud resources, not installed executable files. Cost: manual phase tracking.
+
+Task 1: complete — dependency installation, SQLite foundation test and typecheck passed. Sandbox disallowed local IPC; scripts use node --import tsx and network-granted test calls.
+Task 2: complete — six real SQLite tests passed (including 10,000-code exhaustion and persistence). Initial RED: missing storage implementation.
+Task 3: complete — two real HTTP/socket tests passed; full suite 9/9. Initial RED: missing server module. Typecheck exposed UUID inferred type; requestId is explicitly string to match validation contract.
+Task 4: implementation built successfully. Browser RED: no index/UI; first functional run exposed decorative plus in create button accessible name. Fixed aria-label without changing visible copy.
+Task 4: complete — three Chromium end-to-end cases passed: 3 independent UI contexts realtime synchronization, OTP deletion/paste and warning-once, 12 independent API contexts full capacity. Refresh and offline/reconnect included.
+Final review: independent reviewer review_lobby found one important issue: lost create response + reload forgets pending request key. Reproduced against real Chromium, fixed by persisting key and original payload, retaining on error and clearing only on confirmed success. Regression passed.
+Final review: corrected copy button to ≥44px per design; clarified L-03 temporary name input validation is not a confirmed product rule; expanded real service restart test to verify session cookie + websocket membership.
+Final: minor (deferred): plain HTTP LAN clipboard API may be unavailable; room number remains visible and manually copyable.
+Final: minor (deferred): no browser injection test for deliberately delayed older websocket snapshot; revision guard is implemented, service and browser state convergence verified.
+Task 5: complete — final suite 10/10, typecheck, production build, browser E2E 4/4 all passed. Production compiled-bundle browser smoke returned HTML 200 and successful create/seat with no page errors. Test evidence and explicit limitations saved in TEST_REPORT.md; screenshots inspected and retained. No publish/push/merge performed.
