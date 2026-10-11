@@ -2,7 +2,22 @@
 
 更新：2026-10-11（America/Los_Angeles）。本次用户明确选择免费版试用，并确认使用 Render 的 My Workspace。部署现有 app 的单服务版本，Sites 适配暂不实施；这不改变玩法范围。
 
-## 最新重新部署（2026-10-11）
+## 最新管理员初始化（2026-10-11）
+
+用户授权为试用站初始化管理员，仅通过 Render 环境变量保存 `WOLF_ADMIN_USERNAME` / `WOLF_ADMIN_PASSWORD`，凭据未写入源码、文档或本地文件，未上传本机数据库。
+
+- 环境更新自动触发部署 `dep-db5tkdt9fdbs73e32a20`；Render 返回 `live`，完成时间 2026-10-11 11:50:13（America/Los_Angeles）。
+- 当前运行源码：[b950e99066231ed6842a1821f3f7226c984fa8ad](https://github.com/yup005/note_wolf/commit/b950e99066231ed6842a1821f3f7226c984fa8ad)，相比上一版仅增加部署文档，无产品代码变化。
+- 公网独立验证：登录成功并返回管理员角色，受保护管理员接口 HTTP 200；仅检查状态和角色，未读取或输出用户列表正文。
+- 隔离回归：`node --import tsx --test --test-isolation=none tests/bootstrap.test.ts tests/auth.test.ts tests/takeover-server.test.ts`，7 pass / 0 fail / 0 skip；覆盖唯一管理员初始化、已有账号不覆盖、认证和会话接管。本批仅配置/文档，未重跑完整单元、typecheck/build或E2E。
+- 初始化仅在数据库没有管理员时创建，不覆盖已有管理员。临时数据库丢失后可通过启动配置重新初始化管理员；普通玩家数据仍无持久化保证。
+- 生产测试接口继续关闭。用户要求后续测试操作仅管理员可用；尚未调整代码，试用站开放范围待明确确认。
+
+后续文档提交与实际运行源码区分记录。
+
+<a id="最新重新部署2026-10-11"></a>
+
+## 上次重新部署（2026-10-11，历史）
 
 用户明确要求将今天 GitHub 更新重新部署，并确认沿用 My Workspace 的现有免费试用服务。本次仅重新部署，不修改产品代码、收费方案或自动部署设置。
 
@@ -24,7 +39,7 @@
 - 服务：`note-wolf-trial` / `srv-db5gd37lot8c73esepqg`，Node Web Service，Free，Oregon，单实例。
 - 仓库：`https://github.com/yup005/note_wolf`，分支 `main`。
 - 首次部署：`dep-db5gd3nlot8c73eseqo0`，Render 返回 `live`。部署源码：[fab5566d84ec2fb2b3572d105f3e1935a879911a](https://github.com/yup005/note_wolf/commit/fab5566d84ec2fb2b3572d105f3e1935a879911a)。该 SHA 是已上线源码，不是后续部署文档提交。
-- 当前运行源码：上述最新重新部署的 `e29b9d73e953d0a5b475bba81eacd94581402923`；首次部署保留作历史记录。
+- 当前运行源码：上述管理员初始化部署的 `b950e99066231ed6842a1821f3f7226c984fa8ad`；先前部署保留作历史记录。
 - 前端、API 和 Socket.IO 由同一个服务提供，不需要跨域会话或迁移规则引擎。
 - 历史：首次部署后另一开发批次交付 M1 配置功能（`b5954fe`，文档跟进`5a187d1`）；首次部署记录正常合并该批次，保留其全部实现和证据，当时未重新部署。2026-10-11 已按上方记录手动更新。
 
@@ -39,10 +54,11 @@
 | HTTPS cookie | `SECURE_COOKIE=1` |
 | Disable simulated-player helpers | `WOLF_TEST_PLAYERS=0` |
 | Trial database | `WOLF_DB_PATH=/tmp/note-wolf/lobby.db` |
+| Admin bootstrap | `WOLF_ADMIN_USERNAME` / `WOLF_ADMIN_PASSWORD`，仅在 Render 配置，不记录值 |
 | Auto deploy | Disabled；按已验证的完整交付批次手动部署 |
 | Health endpoint | `/api/health`；本次通过外部请求检查，服务控制台未设置自定义健康检查路径 |
 
-Render 提供 `PORT`，现有服务已经监听 `0.0.0.0`。显式安装 devDependencies 是因为生产启动依赖 `tsx`，构建依赖 TypeScript/Vite。没有上传本机 `.data/`、真实玩家数据库或环境密钥，没有设置管理员初始密码；普通游客和账号功能可用，管理员初始化另行使用已有安全流程。
+Render 提供 `PORT`，现有服务已经监听 `0.0.0.0`。显式安装 devDependencies 是因为生产启动依赖 `tsx`，构建依赖 TypeScript/Vite。没有上传本机 `.data/` 或真实玩家数据库；管理员启动配置已按上方记录保存在 Render，普通游客和账号功能可用。
 
 ## 免费试用边界
 

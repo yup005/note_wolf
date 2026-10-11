@@ -84,6 +84,10 @@ Append a short entry below when the owner confirms a new rule, scope change or p
 
 ### Decision log
 
+- **2026-10-11 — Owner confirmation / BETA-004:** Future simulated-player test tools must require an administrator account, with both UI entry and server authorization checks. Confirmed requirement, not yet implemented; current development tools still use the environment gate and host authorization. Access remains limited to simulated actors and must never expose real players' secrets. Production helpers remain disabled; opening isolated test rooms on the Render trial requires an explicit environment-scope decision, still pending.
+
+- **2026-10-11 — Owner authorization / ADMIN-001 / BETA-009:** Initialize the online trial administrator using existing unique-admin startup behavior and Render secret environment configuration. Login and protected administrator endpoint passed; no credentials or player database published. [Deployment evidence](RENDER_TRIAL.md#最新管理员初始化2026-10-11).
+
 - **2026-10-10 — Confirmed / BETA-009 trial hosting:** Owner chose Render Free trial and confirmed My Workspace. Deploy the existing single-service app rather than implementing Sites now. Render returned live for source `fab5566d84ec2fb2b3572d105f3e1935a879911a`; HTTPS/WSS and synthetic preparation/access checks passed. Temporary SQLite may be lost on sleep/restart/redeploy; persistent storage, backups and real-device full-game acceptance remain incomplete. No paid upgrade or live-database migration is authorized. Configuration and evidence: [Render trial](RENDER_TRIAL.md).
 
 - **2026-10-10 — Confirmed:** Exclude 九尾/白泽 board from current plan.

@@ -1,5 +1,13 @@
 # 笔记狼人杀：当前功能与下一步讨论材料
 
+## 最新：线上管理员初始化与测试权限要求（2026-10-11）
+
+ADMIN-001 / BETA-009：已按用户授权通过 Render 启动环境变量初始化线上唯一管理员，凭据不进入代码、文档或本地文件。部署 `dep-db5tkdt9fdbs73e32a20` 返回 live，当前运行源码为 [b950e99066231ed6842a1821f3f7226c984fa8ad](https://github.com/yup005/note_wolf/commit/b950e99066231ed6842a1821f3f7226c984fa8ad)，相比上一版仅部署文档增量。公网登录返回管理员角色、受保护后台接口 HTTP 200，未读取用户列表正文。
+
+隔离运行 bootstrap/auth/takeover-server 三个测试文件：**7 pass / 0 fail / 0 skip**；本批仅配置及文档，无产品代码/UI变化，未重跑完整单元、typecheck/build或E2E。检查50个本地文档链接/锚点及差异通过；保留历史确认、稳定ID和未完成边界，真实iPhone和公网整局仍未验收。详细记录见 [Render试用记录](RENDER_TRIAL.md#最新管理员初始化2026-10-11)。
+
+BETA-004 新确认：之后所有测试功能仅管理员账号可操作，页面入口及服务端均须校验，操作对象仍限模拟玩家，不扩大真实秘密访问权。**仅记录需求、尚未实现**；当前仍为开发测试开关加房主授权、生产关闭。试用站是否开放测试仍待确认。免费SQLite持久化及BETA-010备份恢复仍未完成。
+
 ## 最新：Render 试用站更新（2026-10-11）
 
 BETA-009 部分实现：按用户要求手动将现有 Free 服务更新到 [e29b9d73e953d0a5b475bba81eacd94581402923](https://github.com/yup005/note_wolf/commit/e29b9d73e953d0a5b475bba81eacd94581402923)；部署 `dep-db5tj64s728c7390hrrg` 返回 live。浏览器首页与新资源、独立合成游客创建房间及 Socket.IO 已连接通过；浏览器 error/warn 和部署后 Render error 日志未返回错误。Render 的锁文件安装及 npm run build 成功；本次未独立重跑单元/E2E、未完成公网整局或实机验收，独立健康接口请求受本环境限制，不能宣称 HTTP200。详细证据与边界见 [Render 试用记录](RENDER_TRIAL.md#最新重新部署2026-10-11)。
