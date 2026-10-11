@@ -2,7 +2,14 @@
 
 更新日期：2026-10-10（America/Los_Angeles）。本次初始化协作流程，已重新执行完整服务端测试、浏览器测试、类型检查及生产构建，并保存此前未提交的本地成果；没有开发新游戏功能。早期报告中的“尚未开放”为当时状态，不能直接当作当前待开发清单。
 
-## 本次协作流程初始化记录
+## 当前 GitHub 状态：PR #1 已合并
+
+- 2026-10-10（America/Los_Angeles），用户明确同意后，[PR #1](https://github.com/yup005/note_wolf/pull/1) 已正常合并，合并提交为 [`ac186c1c92e8cdbd45dc1d7bcc3762013745342c`](https://github.com/yup005/note_wolf/commit/ac186c1c92e8cdbd45dc1d7bcc3762013745342c)。本地已切到 `main` 并安全快进，现可直接从 GitHub `main` 读取最新代码、长期流程和项目文档。
+- 原功能分支保留；合并前 `main` 新增的机械狼讨论更新也已保留。没有开发新功能或改动游戏代码。机械狼讨论稿仍明确要求暂不实现整板子；旧决策记录的“第二夜起”由后来明确确认的“从第一夜起”补充，具体以该稿为准。
+- 验证：GitHub API 确认 merged，`git ls-remote` 核对本地与远程合并 SHA 一致；与已验证快照相比，代码、测试及构建配置无变化，仅机械狼讨论文档更新。因此本次没有重跑代码测试；156 服务端 / 34 Chromium 测试及类型检查、构建通过的证据来自上面的初始化任务。真实 iPhone Safari 等验收缺口保持不变。
+- 本次进度/来源文档更新仅执行链接与差异检查，随后按长期规则自动 commit/push；最终文档提交 SHA 在交付消息中报告。
+
+## 协作流程初始化历史记录
 
 - 分支：`codex/preparation-dealing`。原本本地 `main` 与当前分支均在 `70ecc7d`；远程 `main` 新增 `d0e9d27`、`fc21863` 两个文档提交。已快进接入这两个提交；没有覆盖、重置或丢弃原有开发成果。
 - 保存快照：[`a6332eeea7ce4fbcb92b4f87e0b370b6fc3fb915`](https://github.com/yup005/note_wolf/commit/a6332eeea7ce4fbcb92b4f87e0b370b6fc3fb915)。159 个变更文件涵盖既有代码、测试、需求总表、最新交接、设计/测试报告和测试截图。只清理 `DayPanel.tsx` / `NightPanel.tsx` 各一处空行尾部空格，没有改变行为。

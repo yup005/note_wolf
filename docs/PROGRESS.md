@@ -1,6 +1,10 @@
 # Project progress
 
-## Current: 2026-10-10 workflow initialization
+## Current: 2026-10-10 authorized integration
+
+Owner authorized merging [PR #1](https://github.com/yup005/note_wolf/pull/1). GitHub confirms it is merged at `ac186c1c92e8cdbd45dc1d7bcc3762013745342c`; local `main` was fast-forwarded and the remote SHA checked. The feature branch remains available. Incoming mechanical-wolf discussion updates were retained, with no game implementation. Code/tests/build configuration match the previously verified snapshot; this integration did not rerun code tests. Progress/provenance changes receive document/link/diff checks and normal commit/push. Physical-device acceptance remains outstanding.
+
+## Historical: 2026-10-10 workflow initialization
 
 Branch: `codex/preparation-dealing`. Safely integrated remote collaboration documents from `fc21863` while preserving local development. Saved the pre-existing code/docs in [`a6332eeea7ce4fbcb92b4f87e0b370b6fc3fb915`](https://github.com/yup005/note_wolf/commit/a6332eeea7ce4fbcb92b4f87e0b370b6fc3fb915). This task added no game feature or new rule; it only configured the standing workflow and maintained documentation, with two empty-line whitespace cleanups.
 
