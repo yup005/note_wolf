@@ -59,6 +59,8 @@ PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google 
 
 [AGENTS.md](AGENTS.md)保存长期任务规则：开始任务先获取并安全同步远程需求，保护未提交成果，对照代码避免重复开发；完成任务执行适用检查、更新进度、自动 commit 和非强制 push，并核对远程 SHA。功能分支按需创建 PR，合并须用户明确授权。测试失败、冲突或权限不足时报告具体阻塞。
 
+根目录保留简短入口，详细约束集中在 [Codex 工作流程](docs/CODEX_WORKFLOW.md)；查规则、决策、需求、验收及历史记录时使用 [文档导航](docs/DOCUMENTATION_MAP.md)，按任务阅读相应条目并保留完整细节。
+
 ChatGPT 通过 GitHub 连接将已确认决定写入 [PRODUCT_DECISIONS.md](docs/PRODUCT_DECISIONS.md)，需求索引为 [产品需求总表](docs/NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md)。Codex 维护 [项目交接与进度](docs/PROJECT_STATUS_FOR_CHATGPT.md)。功能分支尚未合并时，ChatGPT 需读取该分支，不能只依据旧 `main`。该流程在 Codex 执行任务时生效；不是关闭应用后的后台同步服务。
 
 ## 架构与配置
