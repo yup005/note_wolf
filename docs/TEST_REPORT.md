@@ -6,6 +6,8 @@
 
 退出回归先失败（活动 HMR 导致关闭超时），修复后通过；文字回归先失败（12px 字体仅10px 高），修复后5项准备/文字浏览器测试通过。完整 npm test **226 pass /0 fail /0 skip**（包括尚待单独交付的30项机械领域测试）；typecheck/build通过；全量E2E **36 pass /0 fail /0 skip**。电脑端 localhost 与当时实际 LAN IP 均HTTP200；未验证手机局域网、真实iPhone Safari/语音/弱网。
 
+实现提交：[a6b442bd8273b57cbbaf58adf34737a6a050510f](https://github.com/yup005/note_wolf/commit/a6b442bd8273b57cbbaf58adf34737a6a050510f)。此 SHA 记录为文档跟进，未重复代码测试；正常推送后另核对远程 SHA。
+
 ## M2 引擎框架（2026-10-10）
 
 新增11项回归：学习/嵌套复制、库存/lastTarget、锁定行动、显式阻断、伤害证据/死亡去重后判胜、持久化重启/版本/修订及HTTP/Socket秘密隔离。最终 npm test **195 pass / 0 fail / 0 skip**；typecheck/build通过；全量Chromium手机E2E **35 pass / 0 fail / 0 skip**（1.4分钟）。32项针对性测试和独立复核通过。审查三项P2与来源置空/缺失绕过均先失败再修复；早期严格刀权输入/复制时间参数接入失败及测试settings字段误用均已修正，未跳过检查。构建只有已有Zod PURE注释提示。
