@@ -1,3 +1,4 @@
+import {standardRoleCounts} from '../contracts/board.js';
 export type RuleDecision<T>={status:'confirmed';source:string;value:T}|{status:'unresolved';questionId:string};
 export interface BoardDefinition {
  id:string;seatCount:number;roles:Record<string,number>;
@@ -7,7 +8,7 @@ export interface BoardDefinition {
 }
 export const mvpBoard:BoardDefinition={
  id:'seer-witch-hunter-idiot-12',seatCount:12,
- roles:{wolf:4,seer:1,witch:1,hunter:1,idiot:1,villager:4},
+ roles:{...standardRoleCounts},
  victoryPolicy:{status:'confirmed',source:'B-001',value:'eliminate-all-wolves-or-all-gods-or-all-villagers'},
  nightOrder:{status:'confirmed',source:'N-001',value:['wolf','witch','seer','hunter-status']},
  policies:{reseating:{status:'confirmed',source:'2026-10-09 approved preparation design',value:'self-only-before-dealing'},activity:{status:'unresolved',questionId:'L-04'},

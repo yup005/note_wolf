@@ -3,6 +3,7 @@ import {LobbyError,type Role} from '../contracts/index.js';
 import type {DayCommand,DayPhase,DayPublic,DayPrivate,DayVoteResult,FirstDayRules,VotePurpose} from '../contracts/day.js';
 import type {GameEvent} from '../contracts/game.js';
 import type {NightState} from './night.js';
+import {evaluateVictory} from './victory.js';
 type DeathReason='knife'|'poison'|'shot'|'exile'|'explosion';
 type Task={seat:number;step:'skill'|'words'|'badge'};
 export interface DayState {
@@ -25,8 +26,8 @@ export function createDay(n:NightState,rules:FirstDayRules,now:number,previous?:
  return {day:n.night,nightDeaths:pendingDeaths.map(d=>d.seat),hunterSpent:previous?.hunterSpent??false,speechStart:null,phase:'awaiting_host',turnId:randomUUID(),deadline:null,players:n.players.map(p=>({...p,alive:previous?.players.find(old=>old.seat===p.seat)?.alive??p.alive??true})),rules:{...rules},pendingDeaths,deaths:previous?.deaths.map(d=>({...d}))??[],tasks:[],currentDeath:null,sheriff:previous?.sheriff??null,badge:previous?.badge??'available',signup:previous?.badge==='deferred'?{...previous.signup}:{},originalCandidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.originalCandidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],candidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.candidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],speakers:[],speaker:null,vote:null,result:null,announcement:null,revealed:previous?.revealed.map(p=>({...p}))??[],winner:null,reason:null,electionPurpose:previous?.badge==='deferred'?(previous.electionPurpose??(previous.vote?.purpose==='sheriff_pk'||previous.result?.purpose==='sheriff'&&previous.result.leaders.length>1?'sheriff_pk':'sheriff')):'sheriff',voteStarted:false,speechMode:null,direction:null,afterDeaths:'day',explosions:previous?.explosions??0,priorityWolf:null,events:[{type:'day_created',at:now}]};
 }
 function checkWin(s:DayState,now:number){
- const alive=s.players.filter(p=>p.alive);const wolves=alive.filter(p=>p.role==='wolf');const villagers=alive.filter(p=>p.role==='villager');const gods=alive.filter(p=>p.role!=='wolf'&&p.role!=='villager');
- const winner=!villagers.length||!gods.length?'wolves':!wolves.length?'good':null;
+ const result=evaluateVictory(s.players,'standard');
+ const winner=result.status==='ended'?result.winner:null;
  if(winner){s.winner=winner;s.revealed=s.players.map(({seat,role})=>({seat,role}));s.tasks=[];s.speaker=null;s.currentDeath=null;s.vote=null;phase(s,'ended',now);return true;}return false;
 }
 function reveal(s:DayState,seat:number,role:Role){if(!s.revealed.some(p=>p.seat===seat))s.revealed.push({seat,role});}

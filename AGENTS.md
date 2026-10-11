@@ -1,7 +1,7 @@
 # Codex project instructions — note_wolf
 
 ## Scope and safety
-- Mobile-first in-person Werewolf app; prioritize iPhone Safari and preserve existing architecture/UI. Released development scope: **12-player 预女猎白 only** (4 wolves, 4 villagers, one seer, witch, hunter, idiot). 九尾/白泽 and other boards require explicit owner authorization; discussion docs alone do not authorize implementation.
+- Mobile-first in-person Werewolf app; prioritize iPhone Safari and preserve existing architecture/UI. Released development scope: **12-player 预女猎白 only** (4 wolves, 4 villagers, one seer, witch, hunter, idiot). 九尾/白泽 and other boards require explicit owner authorization; discussion docs alone do not authorize implementation. The owner explicitly authorized starting the GitHub-updated mechanical/armor requirements on 2026-10-10; confirmed shared foundations may be developed, while unresolved interactions remain blocked and new boards are not yet playable.
 - Protect ongoing real-player identities, private skills/results and unpublished notes in every interface, log, speech cue and document. Hosts/admins gain no secret access; test-only access is limited to simulated players and disabled in production.
 - Preserve user edits and useful history. Never invent unresolved gameplay, force-push, discard conflicting work, bypass checks/hooks or publish credentials/live data. Physical iPhone acceptance is separate from browser simulation.
 
