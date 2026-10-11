@@ -1,5 +1,9 @@
 # Project progress
 
+## Current: duplicate favorites repair (2026-10-10)
+
+RECAP-006 maintenance: FavoritesPanel and MySharesPanel used the same sibling React key. Separate key prefixes prevent orphan favorites panels after account transitions. Regression reproduced before the fix and passed after it. Verified the exact delivery source in an isolated copy: npm test196/196, typecheck/build pass, full Chromium E2E37/37 (including three login/logout cycles). Other profile/retention/mechanical edits remain local and are excluded from this delivery. Physical iPhone Safari remains unverified. See [test evidence](TEST_REPORT.md).
+
 ## Current: local development and seat text repair (2026-10-10)
 
 Fixed stale backend/frontend contract mismatch, source watch paths and graceful Vite/HMR shutdown before HTTP shutdown. Local test console remains available through dev:test; production remains disabled. Seat names/tags no longer shrink vertically. Full unit226 (including30 pending separate mechanical-domain checks), typecheck/build and full browser36 passed; targeted5 passed. Localhost/LAN HTTP200 verified from this computer; physical phone/LAN acceptance pending. See [test evidence](TEST_REPORT.md). Original local database and sessions retained.
