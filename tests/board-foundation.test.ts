@@ -198,3 +198,8 @@ test('persisted mixer camp cannot contradict its model true role or follow the m
   {seat:3,role:'villager',alive:true},{seat:4,role:'guard',alive:true}
  ],'mechanical-seer'),/INVALID_VICTORY_STATE/);
 });
+
+test('a living mixer as the last civilian satisfies wolf elimination while retaining model victory',()=>{
+ const selected=selectMixerModel([{seat:1,role:'mixer',alive:true},{seat:2,role:'wolf',alive:true},{seat:3,role:'guard',alive:true}],1,2,1);
+ assert.deepEqual(evaluateVictory(selected,'mechanical-seer'),{status:'ended',winner:'wolves',reason:'mixer-last-civilian',personalResults:[{seat:1,won:true}]});
+});
