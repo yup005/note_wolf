@@ -1,6 +1,10 @@
 # Project progress
 
-## Current: 2026-10-10 authorized integration
+## Current: local development and seat text repair (2026-10-10)
+
+Fixed stale backend/frontend contract mismatch, source watch paths and graceful Vite/HMR shutdown before HTTP shutdown. Local test console remains available through dev:test; production remains disabled. Seat names/tags no longer shrink vertically. Full unit226 (including30 pending separate mechanical-domain checks), typecheck/build and full browser36 passed; targeted5 passed. Localhost/LAN HTTP200 verified from this computer; physical phone/LAN acceptance pending. See [test evidence](TEST_REPORT.md). Original local database and sessions retained.
+
+## Historical: 2026-10-10 authorized integration
 
 Owner authorized merging [PR #1](https://github.com/yup005/note_wolf/pull/1). GitHub confirms it is merged at `ac186c1c92e8cdbd45dc1d7bcc3762013745342c`; local `main` was fast-forwarded and the remote SHA checked. The feature branch remains available. Incoming mechanical-wolf discussion updates were retained, with no game implementation. Code/tests/build configuration match the previously verified snapshot; this integration did not rerun code tests. Progress/provenance changes receive document/link/diff checks and normal commit/push. Physical-device acceptance remains outstanding.
 

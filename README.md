@@ -11,6 +11,10 @@ npm ci
 npm run dev
 ```
 
+本地需要模拟玩家和测试控制台时运行 `npm run dev:test`；普通 `npm run dev` 不启用测试入口，生产环境强制关闭测试接口。
+
+macOS 的 `npm run dev` 会在服务端代码或契约更新后自动重启。其他不支持 Node `--watch-path` 的平台可运行 `npm run dev:once`，代码更新后手动重启。若此前已开着旧版开发服务，请在原终端停止后重新运行一次；保留 `.data/lobby.db`，无需清除浏览器或数据库。
+
 电脑访问 http://localhost:3000 。手机与电脑连接同一局域网，打开 `http://电脑局域网IP:3000`；服务监听 `0.0.0.0`。macOS 可用 `ipconfig getifaddr en0` 查询 Wi-Fi 地址，防火墙需允许 3000 端口。电脑需要保持服务运行。
 
 每部手机或独立浏览器配置有独立游客身份；同一浏览器的多个标签共享身份，不能作为两名玩家。普通 HTTP 局域网下剪贴板可能受浏览器限制，可手动复制显示的房间号。真实 iPhone Safari 尚未验收。
