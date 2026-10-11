@@ -3,7 +3,8 @@ import {dirname,resolve} from 'node:path';
 import {createServer} from './app.js';
 const dbPath=process.env.WOLF_DB_PATH??resolve('.data/lobby.db');
 if(dbPath!==':memory:')mkdirSync(dirname(dbPath),{recursive:true});
-const app=await createServer({dbPath,secureCookie:process.env.SECURE_COOKIE==='1'});
+const app=await createServer({dbPath,secureCookie:process.env.SECURE_COOKIE==='1',allowTestPlayers:process.env.NODE_ENV!=='production'&&process.env.WOLF_TEST_PLAYERS==='1'});
+if(process.env.WOLF_ADMIN_USERNAME&&process.env.WOLF_ADMIN_PASSWORD&&!app.store.auth.adminExists()){const {registerSchema}=await import('../../packages/contracts/auth.js');const credentials=registerSchema.parse({username:process.env.WOLF_ADMIN_USERNAME,password:process.env.WOLF_ADMIN_PASSWORD,nickname:'管理员'});await app.store.auth.createAccount(credentials.username,credentials.password,credentials.nickname,'admin');}
 if(process.env.NODE_ENV==='production'){
  const express=(await import('express')).default;
  app.web.use(express.static(resolve('dist/web')));

@@ -1,0 +1,85 @@
+import {voiceReplyState} from './publicVoiceTiming';
+import {createContext,useContext,useEffect,useRef,useState,type ReactNode} from 'react';
+import type {LobbyView} from '../../../packages/contracts/index';
+import type {VoiceCommand,VoiceResponse} from '../../../packages/contracts/voice';
+import {voiceFrame} from '../../../packages/domain/voice';
+import {canManageGame} from './gameAccess';
+import {errorText,requestId} from './api';
+interface VoiceUi {enabled:boolean;pending:boolean;supported:boolean;status:string;error:string;lastText:string;enable:()=>void;disable:()=>void;replay:()=>void}
+const VoiceContext=createContext<VoiceUi|null>(null);
+export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;connected:boolean;children:ReactNode}){
+ const supported=typeof speechSynthesis!=='undefined'&&typeof SpeechSynthesisUtterance!=='undefined';
+ const [enabled,setEnabled]=useState(false),[pending,setPending]=useState(false),[status,setStatus]=useState('未开启'),[error,setError]=useState(''),[lastText,setLastText]=useState('');
+ const clientId=useRef(requestId());const alive=useRef(true),on=useRef(false),generation=useRef(0),busy=useRef(false),audio=useRef(0),audioScope=useRef(''),expiry=useRef(0),watchdog=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),controller=useRef<AbortController|null>(null);
+ const latest=useRef({view,connected});latest.current={view,connected};
+ const automatic=view.room.preparation.settings.gameMode==='automatic'&&!view.room.manual;
+ const allowed=connected&&canManageGame(view)&&automatic;
+ const publicScope=voiceFrame(view.room,Date.now()).scope;
+ function cancel(){audio.current++;if(watchdog.current)clearTimeout(watchdog.current);if(supported)speechSynthesis.cancel();audioScope.current='';}
+ function release(id=clientId.current){void fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',credentials:'same-origin',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'release',clientId:id})}).catch(()=>{});}
+ function stop(note='已关闭'){
+  generation.current++;on.current=false;busy.current=false;controller.current?.abort();cancel();release();if(alive.current){setEnabled(false);setPending(false);setStatus(note);}
+ }
+ async function request(action:VoiceCommand['action'],id=clientId.current){
+  const started=Date.now(),abort=new AbortController();controller.current=abort;const timeout=setTimeout(()=>abort.abort(),5000);
+  try{
+   const res=await fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',signal:abort.signal,credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,clientId:id})});
+   const data=await res.json();if(!res.ok)throw Error(data.message??'播报连接失败');return {data:data as VoiceResponse,started};
+  }catch(e){if(abort.signal.aborted)throw Error('播报连接超时，请重新开启。');throw e;}finally{clearTimeout(timeout);if(controller.current===abort)controller.current=null;}
+ }
+ function eligible(){const l=latest.current;return alive.current&&l.connected&&canManageGame(l.view)&&l.view.room.preparation.settings.gameMode==='automatic'&&!l.view.room.manual&&document.visibilityState==='visible';}
+ function play(text:string,scope:string){
+  cancel();if(!eligible())return;const seq=audio.current;audioScope.current=scope;setLastText(text);
+  const utterance=new SpeechSynthesisUtterance(text);utterance.lang='zh-CN';utterance.rate=1;
+  const voice=speechSynthesis.getVoices().find(v=>/^zh[-_]CN$/i.test(v.lang))??speechSynthesis.getVoices().find(v=>/^zh/i.test(v.lang));if(voice)utterance.voice=voice;
+  const fail=()=>{if(seq!==audio.current||!alive.current)return;stop('播放失败');setError('浏览器未能播放语音，请检查音量后重新开启。');};
+  utterance.onstart=()=>{if(seq===audio.current&&alive.current){if(watchdog.current)clearTimeout(watchdog.current);setStatus('正在播报');}};
+  utterance.onend=()=>{if(seq===audio.current&&alive.current){if(watchdog.current)clearTimeout(watchdog.current);setStatus(on.current?'已开启':'未开启');}};
+  utterance.onerror=e=>{if(e.error!=='interrupted'&&e.error!=='canceled')fail();};
+  watchdog.current=setTimeout(fail,5000);try{speechSynthesis.speak(utterance);}catch{fail();}
+ }
+ function accept(data:VoiceResponse,started:number){
+  expiry.current=started+data.leaseUntil-data.serverNow;
+  const current=latest.current.view.room;const validity=voiceReplyState(data,started,Date.now(),voiceFrame(current,Date.now()).scope,current.revision);
+  if(validity==='expired'){stop('播报连接已过期');return;}
+  if(validity==='stale')return;
+  if(audioScope.current&&audioScope.current!==data.scope)cancel();
+  if(data.cues.length)play(data.cues.map(c=>c.text).join(' '),data.scope);
+ }
+ async function enable(){
+  if(!supported||!eligible()||busy.current||on.current)return;
+  const seq=++generation.current,id=requestId();clientId.current=id;setPending(true);setError('');
+  // The synchronous gesture starts the device speech service; it contains no game facts.
+  busy.current=true;
+  play('公共播报。',publicScope);
+  if(seq!==generation.current)return;
+  try{const {data,started}=await request('claim',id);if(seq!==generation.current||!eligible()){release(id);return;}on.current=true;setEnabled(true);setStatus('已开启');accept(data,started);}
+  catch(e){release(id);if(seq===generation.current&&alive.current){cancel();setError(errorText(e));setStatus('未开启');}}
+  finally{if(seq===generation.current){busy.current=false;if(alive.current)setPending(false);}}
+ }
+ async function poll(action:'poll'|'replay'='poll'){
+  if(!on.current||!eligible()||busy.current)return;busy.current=true;const seq=generation.current;
+  try{const {data,started}=await request(action);if(seq===generation.current&&on.current&&eligible()){setError('');accept(data,started);}}
+  catch(e){if(seq===generation.current&&alive.current){stop('连接已停止');setError(errorText(e));}}
+  finally{if(seq===generation.current)busy.current=false;}
+ }
+ useEffect(()=>{
+  alive.current=true;
+  const hide=()=>{if(document.visibilityState!=='visible')stop('已停止，请保持播报页面在前台');};const pageHide=()=>stop('已停止');
+  document.addEventListener('visibilitychange',hide);window.addEventListener('pagehide',pageHide);
+  return()=>{alive.current=false;document.removeEventListener('visibilitychange',hide);window.removeEventListener('pagehide',pageHide);stop();};
+ },[]);
+ useEffect(()=>{if(!allowed&&(on.current||busy.current))stop(automatic?'连接或管理权限已变化':'已切换纯手动');},[allowed,automatic]);
+ useEffect(()=>{if(audioScope.current&&audioScope.current!==publicScope)cancel();if(enabled)void poll();},[publicScope,enabled]);
+ useEffect(()=>{
+  if(!enabled)return;const pollTimer=setInterval(()=>void poll(),2000);
+  const expiryTimer=setInterval(()=>{if(on.current&&Date.now()>=expiry.current)stop('播报连接已过期');},250);
+  return()=>{clearInterval(pollTimer);clearInterval(expiryTimer);};
+ },[enabled]);
+ const value:VoiceUi={enabled,pending,supported,status,error,lastText,enable:()=>void enable(),disable:()=>stop(),replay:()=>void poll('replay')};
+ return <VoiceContext.Provider value={value}>{children}</VoiceContext.Provider>;
+}
+export function PublicVoiceControls(){
+ const voice=useContext(VoiceContext);if(!voice)return null;
+ return <section className="control-settings voice-controls" aria-label="公共语音播报"><h3>公共语音</h3><p role="status">{voice.supported?voice.status:'此浏览器不支持语音，请按页面提示主持。'}</p>{voice.error&&<p role="alert" className="night-error">{voice.error}</p>}<button className="secondary full" disabled={!voice.supported||voice.pending} onClick={voice.enabled?voice.disable:voice.enable}>{voice.pending?'正在开启…':voice.enabled?'关闭公共播报':'开启公共播报'}</button>{voice.enabled&&<button className="text-button full" onClick={voice.replay}>重播当前提示</button>}{voice.lastText&&<p className="voice-caption">{voice.lastText}</p>}<p className="helper">由本设备播报，请保持页面在前台。</p></section>;
+}

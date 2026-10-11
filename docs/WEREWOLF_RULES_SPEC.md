@@ -1,5 +1,7 @@
 # WEREWOLF_RULES_SPEC.md
 
+> 历史规格阅读说明（2026-10-10）：以下 v0.1 原文保留。最新已确认调整见 [PRODUCT_DECISIONS.md](PRODUCT_DECISIONS.md) 和 [OPEN_QUESTIONS.md](../OPEN_QUESTIONS.md)，当前实现证据见 [项目交接](PROJECT_STATUS_FOR_CHATGPT.md)。例如当前闭眼间隔为 5 秒，旧稿的 10 秒不能覆盖后来确认；其他冲突仍需逐项核实，不能凭代码自行裁决。
+
 > 狼人杀 Web App — 规则与产品行为规格（Single Source of Truth）  
 > 版本：v0.1 · 2026-10-09 · 状态：**规则整理稿，尚未全部封版**  
 > 适用范围：线下面杀，手机网页辅助；优先验证 **12 人「预女猎白」**，并为其他板子保留扩展能力。

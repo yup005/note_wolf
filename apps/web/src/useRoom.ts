@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react';
 import {io} from 'socket.io-client';
 import type {RoomSnapshot} from '../../../packages/contracts/index';
-export function useRoom(roomId:string|undefined,onSnapshot:(room:RoomSnapshot)=>void){
+export function useRoom(roomId:string|undefined,onSnapshot:(room:RoomSnapshot)=>void,sessionRevision=0){
  const [connected,setConnected]=useState(false);
  useEffect(()=>{
   if(!roomId){setConnected(false);return;}
@@ -13,6 +13,6 @@ export function useRoom(roomId:string|undefined,onSnapshot:(room:RoomSnapshot)=>
   const foreground=()=>{if(document.visibilityState==='visible'&&socket.connected)sync();};
   document.addEventListener('visibilitychange',foreground);socket.connect();
   return ()=>{document.removeEventListener('visibilitychange',foreground);socket.disconnect();};
- },[roomId,onSnapshot]);
+ },[roomId,onSnapshot,sessionRevision]);
  return connected;
 }

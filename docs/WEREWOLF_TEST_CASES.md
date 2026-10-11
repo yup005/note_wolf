@@ -1,5 +1,7 @@
 # WEREWOLF_TEST_CASES.md
 
+> 历史用例阅读说明（2026-10-10）：保留以下验收场景原文，它们不等于已执行自动测试。请结合 [最新产品决定](PRODUCT_DECISIONS.md)、[规则调整记录](../OPEN_QUESTIONS.md) 和 [当前验证汇总](TEST_REPORT.md) 使用；旧计时/未决标注不能覆盖后续明确确认，模拟测试不能替代真实 iPhone Safari 验收。
+
 > 狼人杀 Web App — 规则验收与回归测试清单  
 > 版本：v0.1 · 2026-10-09  
 > 唯一规则来源：[`WEREWOLF_RULES_SPEC.md`](./WEREWOLF_RULES_SPEC.md)。本文件只描述测试情境及期望，不重新定义规则。
