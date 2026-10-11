@@ -53,6 +53,14 @@ PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google 
 
 当前证据与限制见 [完整自动对局测试报告](docs/COMPLETE_GAME_TEST_REPORT.md)及 [准备与发牌测试报告](docs/PREPARATION_TEST_REPORT.md)。自动测试使用独立 cookie / 浏览器上下文，不能代替实际手机联机测试。
 
+2026-10-10 协作初始化重新执行：156 项服务端测试、34 项 Chromium 手机视口测试通过，类型检查与生产构建通过。当前结果与历史报告的边界见 [最新验证汇总](docs/TEST_REPORT.md)；真实 iPhone Safari、真实语音和多手机整局仍待验收。
+
+## ChatGPT / Codex / GitHub 协作
+
+[AGENTS.md](AGENTS.md)保存长期任务规则：开始任务先获取并安全同步远程需求，保护未提交成果，对照代码避免重复开发；完成任务执行适用检查、更新进度、自动 commit 和非强制 push，并核对远程 SHA。功能分支按需创建 PR，合并须用户明确授权。测试失败、冲突或权限不足时报告具体阻塞。
+
+ChatGPT 通过 GitHub 连接将已确认决定写入 [PRODUCT_DECISIONS.md](docs/PRODUCT_DECISIONS.md)，需求索引为 [产品需求总表](docs/NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md)。Codex 维护 [项目交接与进度](docs/PROJECT_STATUS_FOR_CHATGPT.md)。功能分支尚未合并时，ChatGPT 需读取该分支，不能只依据旧 `main`。该流程在 Codex 执行任务时生效；不是关闭应用后的后台同步服务。
+
 ## 架构与配置
 
 - `apps/web`：React 手机界面、OTP、准备、私人身份与实时订阅。

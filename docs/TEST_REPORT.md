@@ -1,6 +1,24 @@
 # 阶段验证记录
 
-最新本轮交付见 [准备与发牌验证报告](PREPARATION_TEST_REPORT.md)：26 项后端测试、8 项 Chrome 浏览器测试通过；准备与两种发牌已实现，自动对局仍未开放。下文为此前大厅复测的历史记录。
+## 当前验证：2026-10-10 协作流程初始化
+
+本次保存此前未提交的完整自动对局、账号、暂停、记录及分享成果，没有开发新功能。代码快照：[`a6332eeea7ce4fbcb92b4f87e0b370b6fc3fb915`](https://github.com/yup005/note_wolf/commit/a6332eeea7ce4fbcb92b4f87e0b370b6fc3fb915)，分支 `codex/preparation-dealing`。
+
+| 命令 | 本次实际结果 |
+|---|---|
+| `npm test` | 156 通过，0 失败，0 跳过；使用本机监听权限 |
+| `npm run typecheck` | 通过；空行格式清理后再次通过 |
+| `npm run build` | 通过；184 模块，空行格式清理后再次通过 |
+| `PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:e2e` | 34 通过，0 失败，0 跳过；单 worker，约 1.6 分钟 |
+| `git diff --cached --check` | 清理两处原有空行尾部空格后通过 |
+
+构建仅有依赖 Zod 的 PURE 注释提示，浏览器测试有颜色环境提示，均未导致失败。没有以跳过检查、修改游戏规则或屏蔽测试换取通过。
+
+测试使用独立内存数据库、cookie/浏览器上下文和开发模拟玩家；它们不证明真实 iPhone Safari、实际语音、12 部手机、后台/锁屏、弱网或公网验收。代码状态与未解决需求见 [最新交接](PROJECT_STATUS_FOR_CHATGPT.md)、[差距审计](GAP_ANALYSIS.md)。以下各阶段旧数字和“未开放”只描述当时，不作为当前实现结论。
+
+## 历史：准备与发牌阶段
+
+[准备与发牌验证报告](PREPARATION_TEST_REPORT.md)当时为 26 项后端测试、8 项 Chrome 浏览器测试通过；自动对局当时尚未开放。下文保留此前大厅复测历史。
 
 
 ## 本机复测：2026-10-09

@@ -27,7 +27,7 @@ Implemented according to the handoff:
 
 Handoff's latest reported verification: **156 server tests**, **34 Chromium mobile-viewport browser tests**, TypeScript checks and production build passed **at the time of its report**. This record does not assert that we re-ran them. Physical iPhone Safari, 12 real devices, real voice/audio, lock-screen/weak-network and public Internet deployment **remain unaccepted/unverified**.
 
-**Important version discrepancy:** the current GitHub `main` README and `docs/TEST_REPORT.md` still describe an **earlier lobby-only stage** (10 server tests and 4 Chromium browser tests). Do not infer that the user's later local changes were pushed or that `main` already contains them. Compare actual branches, commits, source and tests before writing implementation status.
+**Version provenance:** at the start of initialization, GitHub `main` (`fc21863`) still contained the earlier lobby code and reports (10 server tests / 4 browser tests), plus the two collaboration documents. The later local snapshot was saved as `a6332eeea7ce4fbcb92b4f87e0b370b6fc3fb915` on `codex/preparation-dealing`. Initialization freshly ran 156 server tests and 34 Chromium mobile-viewport tests (zero failures/skips), typecheck and production build successfully. This verifies automated behavior on that branch; it does not certify every historical rule case or physical-device acceptance. `main` does not gain the snapshot until the owner authorizes merging its PR. Compare actual refs before assuming a branch contains it.
 
 ## Current rules and boundaries to preserve
 
@@ -88,3 +88,4 @@ Append a short entry below when the owner confirms a new rule, scope change or p
 - **2026-10-10 — Confirmed:** Keep a structured, versioned product requirement matrix; distinguish implemented, proposed, unverified and unresolved.
 - **2026-10-10 — Workflow preference:** After each completed Codex task, run applicable verification, commit scoped changes and push automatically where permissions permit.
 - **2026-10-10 — Workflow preference:** Document future confirmed ChatGPT product decisions here via the connected GitHub workflow; it is an action taken during conversation, **not** continuous background syncing.
+- **2026-10-10 — Workflow initialization (no new gameplay decision):** Safely integrated the two remote docs, preserved the latest local project snapshot, expanded `AGENTS.md` with requirement preflight, automatic tested commit/push, progress/SHA records and remote verification. Full evidence and remaining gaps are in `PROJECT_STATUS_FOR_CHATGPT.md` and the current section of `TEST_REPORT.md`; no unresolved rule or matrix item was promoted to implemented by this task.

@@ -4,3 +4,7 @@ dist/
 playwright-report/
 test-results/
 .superpowers/
+.DS_Store
+.env
+.env.*
+!.env.example

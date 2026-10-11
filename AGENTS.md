@@ -2,6 +2,7 @@
 
 ## Project context
 - This is a mobile-first, in-person Werewolf assistant ("笔记狼人杀"), optimized for iPhone Safari.
+- Current development scope is **12-player 预女猎白 only**: 4 wolves, 4 villagers, one seer, witch, hunter and idiot. Preserve the existing architecture and UI style; other boards are out of scope unless the owner explicitly authorizes them.
 - Read `docs/PRODUCT_DECISIONS.md` before making product-rule decisions.
 - Read `docs/NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md` if present; it is the product requirement index, not proof of implementation.
 - The older `README.md`, `docs/WEREWOLF_RULES_SPEC.md`, `docs/WEREWOLF_TEST_CASES.md`, `docs/PROGRESS.md`, and `docs/TEST_REPORT.md` may describe earlier revisions. Resolve discrepancies using later explicitly confirmed product decisions, and verify actual implementation against the current checked-out code and tests.
@@ -9,15 +10,22 @@
 - Never invent gameplay rules. Mark unresolved rules and ask for a decision before implementing that behavior.
 - Do not mistake Chromium/mobile viewport simulation for physical iPhone Safari acceptance.
 
+## Before every new task: safely sync requirements
+1. Inspect `git status --short --branch`, local/remote branches, upstream and `git remote -v`; record pre-existing edits. Confirm `origin` is `https://github.com/yup005/note_wolf.git`.
+2. Run `git fetch origin` and compare the current branch with its upstream and `origin/main`. Check remote commits touching `AGENTS.md`, `docs/PRODUCT_DECISIONS.md`, the requirements matrix and relevant rules/status docs. A cached remote-tracking ref is not proof of current GitHub state.
+3. Integrate safely: use a fast-forward when compatible with the working tree. If histories diverge, review the incoming diff and merge normally only when local work is protected. If uncommitted edits overlap, keep them intact and report the conflicting paths; do not overwrite files from `origin/main`, auto-stash, reset or discard work to make a pull succeed. A document-only import must preserve its source commit and be reviewed against local versions.
+4. Read current product decisions and the task-relevant matrix entries, `OPEN_QUESTIONS.md`, requirements and rules. Newer **explicitly confirmed** decisions supersede older text; newer proposals or code behavior alone do not settle a rule. Explain unresolved contradictions before asking the owner and implementing dependent behavior.
+5. Inspect existing code and test evidence against those requirements; develop only the missing parts. Do not rebuild completed modules or infer requirements from unsynced ChatGPT chats. If remote access fails, report the failure and do not claim requirements are synchronized.
+
 ## Standing Git workflow preference (authorized by project owner)
 After **each completed user-requested development or documentation task**:
 1. Inspect the current branch, remote, `git status`, and scoped diff. Preserve all unrelated or pre-existing user edits.
-2. Run relevant verification before publication. For code changes use `npm test`, `npm run typecheck`, `npm run build`, and relevant `npm run test:e2e` when available/applicable. If any step cannot run, say so explicitly; do not claim it passed.
+2. Run relevant verification before publication. For development/bugfix tasks run `npm test`, `npm run typecheck`, `npm run build`, and applicable browser tests for UI changes. Use full E2E for a broad UI snapshot; a purely documentation-only follow-up needs document/link/diff checks and an explicit statement that code checks were not rerun. If any required check fails or cannot run, stop publication and report why; do not skip it or claim it passed.
 3. Stage **only files belonging to the completed task**, review the staged diff, and do not include credentials, .env files, tokens, local database, generated output, or other secrets.
-4. If task changes and checks are in a publishable state, create a descriptive git commit **and push to `origin` on the current branch as part of the task**. The owner does not need to repeat "commit and push" each time.
+4. Update relevant project documentation and the progress record below, review `git diff --check` and the staged diff, then create a descriptive git commit **and push to `origin` on the current branch as part of the task**. The owner does not need to repeat "commit and push" each time.
 5. When on `main`, use a normal non-force push. On a task/feature branch, push that branch and create/update a PR to `main` when appropriate; **do not merge a PR without specific authorization**.
 6. Never force-push, silently reset, overwrite divergent remote history, bypass hooks, or resolve conflicting unrelated edits by discarding data. On conflict, unclear upstream, failing checks, or permission denial, stop the affected publication step and report the exact blocker. Ask for platform approval only when required.
-7. Report branch, commit SHA, tests actually run, and GitHub link at the end.
+7. Before pushing, fetch again and inspect incoming commits. On `main`, publish only when remote history is safely integrated. On a feature branch, use its upstream or `git push -u origin <current-branch>`; create/update a PR to `main` when appropriate. Verify `git ls-remote origin refs/heads/<current-branch>` matches `git rev-parse HEAD`; check the final status and report branch, full commit SHA, tests actually run, and GitHub commit/PR links. A successful local commit is not a verified push.
 
 This preference applies when Codex is actually running a task; it does **not** create a file watcher, background agent, or autonomous push when Codex is closed. Platform/network permission prompts can still appear.
 
@@ -26,3 +34,18 @@ This preference applies when Codex is actually running a task; it does **not** c
 - If a user task changes a confirmed rule or feature, update the matching docs and relevant tests in the **same task**. Do not mark an item "implemented" until code and test evidence support it.
 - Keep "confirmed", "proposed", and "unresolved" explicitly separate.
 - This is a public repository. Never copy private conversations, personal details, passwords, tokens, private player notes, or live secret game information into its docs.
+
+## Maintain progress after each completed task
+- Update `docs/PROJECT_STATUS_FOR_CHATGPT.md` with date (America/Los_Angeles), completed features/fixes or documentation scope, matching requirement IDs (or "workflow only / no feature ID"), verification commands and actual pass/fail/skip counts, remaining issues, and physical iPhone Safari acceptance still required.
+- Maintain `docs/NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md` when requirements/status change; keep unimplemented, partially verified, proposed and unresolved items accurate. Update README and the current section of `docs/TEST_REPORT.md` when they no longer match code; retain clearly labeled historical reports without treating their old numbers as current.
+- Record the full implementation commit SHA and GitHub link. Since a commit cannot contain its own final SHA, add a small documentation-only follow-up commit recording the implementation SHA after it exists. Do not amend repeatedly to chase a self-referential hash; report the final documentation SHA in the delivery message. Verify publication before recording it as successful.
+- Browser viewport simulation, mocked speech APIs and test clocks are automated evidence only. Real iPhone Safari, actual voice, background/lock-screen behavior, weak networks and real multiplayer require separate device acceptance. Never claim those passed from build or E2E results.
+
+## Verification environment and privacy
+- Node.js 24+; existing scripts are defined in `package.json`. On this Mac, browser verification is `PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:e2e`. Elsewhere use an available Chromium executable. Tests use an isolated in-memory database and port 3100; do not run against live player data.
+- For sandbox `listen EPERM`, request the platform's local listener permission and retry the required tests; distinguish environment blockage from product failures. Never bypass approval or repository hooks.
+- Keep secret identities, private skill inputs/results and unpublished notes out of public HTTP/Socket projections, logs, public speech, screenshots and docs. Test-only role access must remain limited to simulated players and disabled in production; administrators and temporary hosts cannot access real players' secrets.
+- Do not publish `.env` secrets, `.data/`, credentials, local databases, `.DS_Store`, dependencies, build output or browser traces. Only reviewed screenshots from synthetic test data belong in version control.
+- Git, GitHub CLI and the connected GitHub tools have separate authentication states. Use working Git credentials for fetch/push and the authorized GitHub connector for PRs if CLI auth is unavailable; do not assume an invalid `gh` token means Git push is denied. Never ask for passwords or tokens in chat; use a browser/device login if authentication is actually required.
+
+The 2026-10-10 initialization explicitly authorizes preserving and publishing the verified pre-existing local project snapshot. This is a one-time scope exception to staging only newly made edits; future tasks must preserve unrelated work without bundling it into their commits.

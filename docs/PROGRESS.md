@@ -1,4 +1,12 @@
-# Execution ledger — docs/superpowers/plans/2026-10-09-werewolf-lobby.md
+# Project progress
+
+## Current: 2026-10-10 workflow initialization
+
+Branch: `codex/preparation-dealing`. Safely integrated remote collaboration documents from `fc21863` while preserving local development. Saved the pre-existing code/docs in [`a6332eeea7ce4fbcb92b4f87e0b370b6fc3fb915`](https://github.com/yup005/note_wolf/commit/a6332eeea7ce4fbcb92b4f87e0b370b6fc3fb915). This task added no game feature or new rule; it only configured the standing workflow and maintained documentation, with two empty-line whitespace cleanups.
+
+Fresh verification: 156 server tests and 34 Chromium mobile-viewport tests passed (zero failures/skips), typecheck and production build passed. Physical iPhone Safari, real voice/multiplayer, background/lock-screen, weak networks and public deployment remain unverified. Full current status, requirement references and remaining issues: [PROJECT_STATUS_FOR_CHATGPT.md](PROJECT_STATUS_FOR_CHATGPT.md). Future completed tasks update that record; the following ledger is historical.
+
+## Historical lobby ledger — docs/superpowers/plans/2026-10-09-werewolf-lobby.md
 
 User authorized native continuous execution. Current branch `work` in managed task workspace; no main/master edits or external publication.
 Pre-flight: Store methods feed HTTP and socket public projections; UI consumes same contracts. No conflicting interfaces.
