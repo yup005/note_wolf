@@ -49,3 +49,7 @@ This preference applies when Codex is actually running a task; it does **not** c
 - Git, GitHub CLI and the connected GitHub tools have separate authentication states. Use working Git credentials for fetch/push and the authorized GitHub connector for PRs if CLI auth is unavailable; do not assume an invalid `gh` token means Git push is denied. Never ask for passwords or tokens in chat; use a browser/device login if authentication is actually required.
 
 The 2026-10-10 initialization explicitly authorizes preserving and publishing the verified pre-existing local project snapshot. This is a one-time scope exception to staging only newly made edits; future tasks must preserve unrelated work without bundling it into their commits.
+
+## Authorized routine cleanup
+- The owner authorizes removing verified useless duplicates and obsolete artifacts without asking again. Before deletion, confirm their provenance and lack of references; for untracked duplicate copies, compare bytes with the retained original and verify the original is tracked. Preserve unique edits, live data, necessary assets and useful historical evidence. Do not classify something as obsolete from its filename or age alone.
+- For local duplicate-only cleanup, verify retained file hashes and Git status; no game test rerun is needed when tracked code/configuration is unchanged. If tracked code/assets are removed, run the applicable task checks and use the normal scoped commit/push workflow. Record meaningful cleanup in the project progress document.
