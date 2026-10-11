@@ -1,3 +1,4 @@
+import {boardRoleLabels,type RoomBoardSnapshot,type BoardRole} from '../../../packages/contracts/board';
 import {useState} from 'react';
 import {ManualPanel} from './ManualPanel';
 import {PreparationPanel} from './PreparationPanel';
@@ -24,11 +25,11 @@ export function RoomLobby({view,connected,busy,onSeat,onHome,onAction,onPublicRe
    <button className="room-copy subtle" aria-label="复制房间号" onClick={copy}><span>房间</span><strong data-testid="room-code">{room.code}</strong><span>{copied?'已复制':'复制'}</span></button>
    <span className="live" role="status"><i className={connected?'dot':'dot amber'}/>{connected?'已连接':'重连中'}</span>
   </nav>
-  <div className="room-overview"><span>12 人 · 预女猎白</span><strong>{own?`你在 ${own} 号`:'等待入座'}{me.isHost?' · 房主':''}</strong></div>
+  <div className="room-overview"><span>{room.board.name}</span><strong>{own?`你在 ${own} 号`:'等待入座'}{me.isHost?' · 房主':''}</strong></div>
   {room.testRoom&&<p className="test-room-label">测试房间 · 模拟玩家</p>}
   <div className="room-workspace">
    <section className="card seats-card" aria-label="本局座位">
-    <div className="section-head"><h1>{phase==='lobby'?'选择你的座位':'本局座位'}</h1><span className="count" data-testid="seated-count">{seated} / 12</span></div>
+    <div className="section-head"><h1>{phase==='lobby'?'选择你的座位':'本局座位'}</h1><span className="count" data-testid="seated-count">{seated} / {room.board.composition.seatCount}</span></div>
     <div className="legend"><span><i className="legend-dot"/>空位</span><span><i className="legend-dot occupied"/>已入座</span><span><i className="legend-dot yours"/>你的座位</span></div>
     <div className="seat-grid">
      {room.seats.map(s=>{
@@ -39,7 +40,7 @@ export function RoomLobby({view,connected,busy,onSeat,onHome,onAction,onPublicRe
       </button>;
      })}
     </div>
-    {!own&&seated===12&&<p className="helper">座位已满</p>}
+    {!own&&seated===room.board.composition.seatCount&&<p className="helper">座位已满</p>}
    </section>
    <section className="card room-focus" aria-label="当前阶段">
     {phase!=='lobby'&&own&&<IdentityPanel roomId={room.id} phase={phase} dealMethod={room.preparation.settings.dealMethod} connected={connected} onPublicRefresh={onPublicRefresh}/>}
@@ -47,11 +48,11 @@ export function RoomLobby({view,connected,busy,onSeat,onHome,onAction,onPublicRe
    </section>
   </div>
   <details className="card room-details"><summary>房间详情<span>{phase==='lobby'?'板子与说明':'板子与本局设置'}</span></summary>
-   <BoardCard/>
+   <BoardCard board={room.board}/>
    <p className="helper">{room.preparation.settings.dealMethod==='online'?'线上随机发牌':'实体牌录入'} · {room.preparation.settings.gameMode==='automatic'?'自动法官':'纯手动记录'}</p>
    <p className="helper">{me.nickname}{me.isHost?' · 房主':''} · {phase==='lobby'?'发牌前可改选空位，房主须参赛。':phase==='started'?'座位与身份已锁定。':'座位已锁定，请各自确认身份。'}</p>
   </details>
   {view.testPlayersEnabled&&me.isHost&&room.testRoom&&<details className="card test-console" onToggle={e=>setTesting(e.currentTarget.open)}><summary>测试控制台<span>切换模拟玩家</span></summary>{testing&&<TestPlayerPanel view={view} busy={busy} connected={connected} onAction={onAction} onPublicRefresh={onPublicRefresh}/>}</details>}
  </div>;
 }
-export function BoardCard(){return <section className="card board-card"><div className="eyebrow">本局板子</div><h2>12 人 · 预女猎白</h2><div className="role-chips"><span>狼人 ×4</span><span>预言家 ×1</span><span>女巫 ×1</span><span>猎人 ×1</span><span>白痴 ×1</span><span>村民 ×4</span></div><div className="board-foot"><span>屠边</span><span>线下面杀</span></div></section>;}
+export function BoardCard({board}:{board?:RoomBoardSnapshot}){if(board)return <section className="card board-card"><div className="eyebrow">本局板子</div><h2>{board.name}</h2><div className="role-chips">{Object.entries(board.composition.roleCounts).map(([role,count])=><span key={role}>{boardRoleLabels[role as BoardRole]} ×{count}</span>)}</div><div className="board-foot"><span>{board.composition.seatCount} 人</span><span>线下面杀</span></div></section>;return <section className="card board-card"><div className="eyebrow">本局板子</div><h2>12 人 · 预女猎白</h2><div className="role-chips"><span>狼人 ×4</span><span>预言家 ×1</span><span>女巫 ×1</span><span>猎人 ×1</span><span>白痴 ×1</span><span>村民 ×4</span></div><div className="board-foot"><span>屠边</span><span>线下面杀</span></div></section>;}

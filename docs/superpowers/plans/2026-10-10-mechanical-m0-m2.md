@@ -36,11 +36,11 @@
 
 Files: contracts/board.ts, domain/boardConfig.ts, storage/boards.ts, storage/lobby.ts, storage/preparation.ts, storage/auth.ts, contracts/index.ts, server/app.ts, web/BoardConfigurationPanel.tsx, PreparationPanel.tsx, RoomLobby.tsx; tests/board-store.test.ts, board-server.test.ts, e2e/boards.spec.ts.
 
-- [ ] Write red regressions for preset immutability, private saved configurations, guest/account linkage, restart, room snapshot independence, dynamic seats, invalid/duplicate role counts, stale/locked/unauthorized updates and unsupported start gate.
-- [ ] Implement BoardTemplate and RoomBoardSnapshot with explicit ruleVersion and configuration, a revisioned SQLite owner library, public room composition snapshots and safe legacy seat migration.
-- [ ] Expose authenticated library APIs and host-only board selection; reset preparation on valid configuration changes without evicting players.
-- [ ] Add collapsed mobile editor for template preview, derive/edit/save/reload and selection; preserve standard-board one-screen preparation controls.
-- [ ] Red→green browser coverage for 13/15/zero wolf configurations, reload, fixed template isolation and new-board gate; full tests/typecheck/build/E2E, docs and milestone commit/push.
+- [x] Write red regressions for preset immutability, private saved configurations, guest/account linkage, restart, room snapshot independence, dynamic seats, invalid/duplicate role counts, stale/locked/unauthorized updates and unsupported start gate.
+- [x] Implement BoardTemplate and RoomBoardSnapshot with explicit ruleVersion and configuration, a revisioned SQLite owner library, public room composition snapshots and safe legacy seat migration.
+- [x] Expose authenticated library APIs and host-only board selection; reset preparation on valid configuration changes without evicting players.
+- [x] Add collapsed mobile editor for template preview, derive/edit/save/reload and selection; preserve standard-board one-screen preparation controls.
+- [x] Red→green browser coverage for 13/15/zero wolf configurations, reload, fixed template isolation and new-board gate; full tests/typecheck/build/E2E, docs and milestone commit/push.
 
 ### M2: Durable engine framework
 
@@ -57,3 +57,5 @@ Files: contracts/engine.ts, domain/engine.ts, storage/engine.ts, domain/skills.t
 - Ruling: use the owner-authorized current branch workflow instead of creating another worktree; preserve committed local foundations.
 - Ruling: M1 exposes board preparation/storage, not unfinished gameplay. M3–M5 implement dealing/night/day for new boards; the server gate prevents accidental legacy runtime use.
 - blocked-by-product-decision: simultaneous armor victory remains contradictory (unified §4 versus detailed armor record); no gameplay selection in M0–M2. Extra knife inheritance/target choice is confirmed in this chat and supersedes unified §7 item 2 for that subset.
+
+- M1 verification complete:6 new unit/integration and1 new browser test; full184 +35, typecheck/build pass. Review P2 readiness fixed; old DOM selector ID preserved. SQLite snapshot initialization/backfill red→green. Publication follows owner workflow.

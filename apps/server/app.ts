@@ -1,4 +1,5 @@
 import {voiceCommandSchema} from '../../packages/contracts/voice.js';
+import {boardSaveSchema,boardConfigureSchema} from '../../packages/contracts/board.js';
 import {shareCommandSchema} from '../../packages/contracts/sharing.js';
 import express from 'express';
 import {registerSchema,credentialsSchema,userStatusSchema,vipSchema} from '../../packages/contracts/auth.js';
@@ -51,6 +52,9 @@ export async function createServer(options:ServerOptions){
  });
  web.use(express.json({limit:'64kb'}));
  web.get('/api/health',(_req,res)=>res.json({status:'ok'}));
+ web.get('/api/boards',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.boardLibrary(authenticated(req)));});
+ web.post('/api/boards',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.saveBoard(authenticated(req),parse(boardSaveSchema,req.body)));});
+ web.post('/api/rooms/:id/board',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const result=store.configureBoard(authenticated(req),req.params.id,parse(boardConfigureSchema,req.body));publish(req.params.id);res.json(result);});
  web.get('/api/shared-records/:token',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.sharedRecord(req.params.token));});
  web.get('/api/shares',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json({items:store.ownShares(authenticated(req))});});
  web.get('/api/records/:id/share',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.shareStatus(authenticated(req),req.params.id));});

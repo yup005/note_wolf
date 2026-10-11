@@ -79,3 +79,10 @@
 .my-shares-panel{margin-top:16px;padding:20px}.my-shares-panel h2{font-size:18px}
 .owned-share{padding-top:16px;min-width:0}
 .owned-share+.owned-share{border-top:1px solid var(--border);margin-top:16px}
+
+.board-configuration { min-width:0; }
+.custom-board-editor { margin-top:8px; }
+.custom-board-editor summary { cursor:pointer; padding:8px 0; }
+.custom-board-editor label { display:grid; gap:4px; margin-bottom:8px; }
+.board-role-editor { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.custom-board-editor input { width:100%; min-width:0; box-sizing:border-box; font-size:16px; min-height:44px; }

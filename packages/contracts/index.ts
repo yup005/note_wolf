@@ -4,9 +4,9 @@ export const codeSchema=z.string().regex(/^\d{4}$/);
 export const seatSchema=z.number().int().min(1).max(12);
 export const createSchema=z.object({nickname:nameSchema,requestId:z.string().uuid()});
 export const joinSchema=z.object({nickname:nameSchema,code:codeSchema});
-export const selectSchema=z.object({seat:seatSchema}).strict();
+export const selectSchema=z.object({seat:z.number().int().positive().max(256)}).strict();
 export interface PublicSeat { number:number; memberId:string|null; nickname:string|null; isHost:boolean; isTestPlayer:boolean; ready:boolean }
-export interface RoomSnapshot { manual?:import('./records.js').ManualPublic|null; control?:import('./control.js').GameControl; testRoom:boolean; id:string; code:string; boardId:'seer-witch-hunter-idiot-12'; revision:number; seats:PublicSeat[]; preparation:PreparationState; night?:import('./night.js').NightPublic|null; day?:import('./day.js').DayPublic|null }
+export interface RoomSnapshot { board:import('./board.js').RoomBoardSnapshot; manual?:import('./records.js').ManualPublic|null; control?:import('./control.js').GameControl; testRoom:boolean; id:string; code:string; boardId:string; revision:number; seats:PublicSeat[]; preparation:PreparationState; night?:import('./night.js').NightPublic|null; day?:import('./day.js').DayPublic|null }
 export interface MyMembership { id:string; nickname:string; isHost:boolean; seat:number|null }
 export interface LobbyView { testPlayersEnabled:boolean; room:RoomSnapshot; me:MyMembership }
 export interface ApiFailure { error:string; message:string }
@@ -21,6 +21,7 @@ export const messages:Record<string,string>={
  UNAUTHORIZED:'设备会话已失效，请返回首页重新加入',FORBIDDEN:'此请求来源不受支持',RATE_LIMITED:'操作太频繁，请稍后再试',
  PARTICIPANT_ONLY:'只有本局参赛玩家可以查看完整记录',PRIORITY_WOLF_ONLY:'本夜需由优先指刀的狼人确认',INTERNAL_ERROR:'服务器暂时无法处理，请稍后重试'
 };
+Object.assign(messages,{INVALID_BOARD_CONFIGURATION:'角色总数须与人数一致，特殊角色只能有一位',BOARD_NOT_IMPLEMENTED:'此板子配置可保存；完整玩法开发中，暂不能发牌',BOARD_NOT_FOUND:'未找到你的自定义板子',STALE_BOARD:'板子已更新，请重新载入',BOARD_VERSION_UNSUPPORTED:'此板子的规则版本暂不受支持',OCCUPIED_SEATS_OUTSIDE_BOARD:'缩减人数前，请超出范围的玩家自行取消入座'});
 
 export const roleSchema=z.enum(['wolf','villager','seer','witch','hunter','idiot']);
 export type Role=z.infer<typeof roleSchema>;

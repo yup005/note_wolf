@@ -1,10 +1,12 @@
 import type Database from 'better-sqlite3';
 import {LobbyError,type RoomSettings,type PreparationState,type PrivateIdentity,type PublicSeat,type Role,settingsSchema,roleSchema} from '../contracts/index.js';
 import {assertCanDeal,createDeck,rolesMatchBoard} from '../domain/preparation.js';
+import {boardPreset,assertPlayableBoard} from '../domain/boardConfig.js';
+import type {BoardConfiguration} from '../contracts/board.js';
 export interface MemberRow {id:string;room_id:string;nickname:string;is_host:number;is_manager?:boolean;seat:number|null;ready:number}
 interface PreparationRow {settings_revision:number;phase:PreparationState['phase'];deal_method:RoomSettings['dealMethod'];game_mode:RoomSettings['gameMode']}
 export class PreparationStore{
- constructor(private db:Database.Database,private member:(token:string,id:string)=>MemberRow,private seats:(id:string)=>PublicSeat[]){}
+ constructor(private db:Database.Database,private member:(token:string,id:string)=>MemberRow,private seats:(id:string)=>PublicSeat[],private board:(id:string)=>BoardConfiguration=()=>boardPreset('standard-12')){}
  private row(id:string):PreparationRow{
   const row=this.db.prepare('SELECT * FROM preparations WHERE room_id=?').get(id) as PreparationRow|undefined;
   if(!row)throw new LobbyError('ROOM_NOT_FOUND',404);return row;
@@ -31,10 +33,10 @@ export class PreparationStore{
  }
  deal(token:string,id:string){
   this.db.transaction(()=>{this.host(token,id);if(this.row(id).phase!=='lobby')return;
-   const seats=this.seats(id);assertCanDeal(seats);const r=this.row(id);
+   const config=assertPlayableBoard(this.board(id));const seats=this.seats(id);assertCanDeal(seats,config);const r=this.row(id);
    this.db.prepare("UPDATE preparations SET phase='identity_collection' WHERE room_id=?").run(id);
    if(r.deal_method==='online'){
-    const deck=createDeck();const insert=this.db.prepare('INSERT INTO identities(room_id,member_id,role,confirmed) VALUES (?,?,?,0)');
+    const deck=createDeck(config);const insert=this.db.prepare('INSERT INTO identities(room_id,member_id,role,confirmed) VALUES (?,?,?,0)');
     seats.forEach((s,i)=>insert.run(id,s.memberId,deck[i]));
    }
    this.bump(id);
@@ -67,7 +69,7 @@ export class PreparationStore{
  start(token:string,id:string){
   this.db.transaction(()=>{this.host(token,id);const r=this.row(id);if(r.phase==='started')return;
    if(r.phase!=='identity_collection')throw new LobbyError('PHASE_LOCKED',409);
-   const p=this.snapshot(id);if(p.confirmedCount!==12)throw new LobbyError('IDENTITY_INCOMPLETE',409);
+   const config=assertPlayableBoard(this.board(id));const p=this.snapshot(id);if(p.confirmedCount!==config.seatCount)throw new LobbyError('IDENTITY_INCOMPLETE',409);
    if(p.validation!=='valid')throw new LobbyError('ROLE_MISMATCH',409);
    this.db.prepare("UPDATE preparations SET phase='started' WHERE room_id=?").run(id);this.bump(id);
   }).immediate();
@@ -75,6 +77,6 @@ export class PreparationStore{
  snapshot(id:string):PreparationState{
   const r=this.row(id);const cards=this.db.prepare('SELECT role,confirmed FROM identities WHERE room_id=?').all(id) as {role:Role;confirmed:number}[];
   return {settingsRevision:r.settings_revision,phase:r.phase,settings:{dealMethod:r.deal_method,gameMode:r.game_mode},submittedCount:cards.length,confirmedCount:cards.filter(c=>c.confirmed).length,
-   validation:cards.length!==12?'waiting':rolesMatchBoard(cards.map(c=>c.role))?'valid':'mismatch'};
+   validation:cards.length!==this.board(id).seatCount?'waiting':rolesMatchBoard(cards.map(c=>c.role),this.board(id))?'valid':'mismatch'};
  }
 }

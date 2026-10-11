@@ -1,5 +1,9 @@
 # 阶段验证记录
 
+## M1 配置工作流（2026-10-10）
+
+新增6项存储/API回归及1项浏览器工作流；最终 npm test184 pass / 0 fail / 0 skip、typecheck/build通过、全量E2E35 pass / 0 fail / 0 skip。先观察缺失保存/选择流程失败，再实现；独立审查发现测试玩家准备回归并RED→GREEN修复，首轮全E2E34 pass / 1 fail发现旧select值兼容问题，产品恢复旧值后完整35通过。未改旧auth断言。保存重启/归属/快照、动态13/15/零狼配置、迁移外键、标准在线/实体×法官方式及320/390/430px已覆盖；未验证实机或完整新板玩法。详见 [实施进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md)。
+
 ## M0 新鲜回归（2026-10-10）
 
 同步统一 M0–M6 规格后：npm test 178 pass / 0 fail / 0 skip；typecheck/build 成功；全套 Chromium 手机视口 E2E 34 pass / 0 fail / 0 skip。保留标准预女猎白完整自动/手动功能；新板子仅领域基础，未开放。阶段差异与后续证据见 [实施进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md)。真实 iPhone Safari/声音/弱网/多机仍未验收。

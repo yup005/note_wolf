@@ -64,6 +64,7 @@ export class AuthStore {
     this.db.prepare('INSERT OR IGNORE INTO record_favorites SELECT ?,record_id,saved_at FROM record_favorites WHERE owner=?').run(owner,old);this.db.prepare('DELETE FROM record_favorites WHERE owner=?').run(old);
    }
    this.db.prepare('UPDATE members SET session_hash=? WHERE session_hash=?').run(owner,old);
+   if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='board_templates'").get())this.db.prepare('UPDATE board_templates SET owner=? WHERE owner=?').run(owner,old);
    this.db.prepare('INSERT OR IGNORE INTO create_requests SELECT ?,request_id,room_id FROM create_requests WHERE session_hash=?').run(owner,old);this.db.prepare('DELETE FROM create_requests WHERE session_hash=?').run(old);
    this.db.prepare('INSERT OR IGNORE INTO saved_replays SELECT ?,room_id,code,winner,saved_at,record FROM saved_replays WHERE owner_hash=?').run(owner,old);this.db.prepare('DELETE FROM saved_replays WHERE owner_hash=?').run(old);
   }
