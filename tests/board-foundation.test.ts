@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import {boardPreset,createBoardConfiguration,assertPlayableBoard} from '../packages/domain/boardConfig.js';
 import {copySkills,useSkill,type SkillSnapshot} from '../packages/domain/skills.js';
 import {evaluateVictory} from '../packages/domain/victory.js';
+import {knifeAuthorityAtNightStart} from '../packages/domain/knifeAuthority.js';
+import {selectMixerModel} from '../packages/domain/mixer.js';
 import {createDeck,rolesMatchBoard,assertCanDeal} from '../packages/domain/preparation.js';
 import {manualOutcome} from '../packages/domain/manual.js';
 
 test('presets support 12, 13 and 15 players without enabling incomplete boards',()=>{
- for(const [id,size] of [['standard-12',12],['mechanical-12',12],['mechanical-mixer-13',13],['mechanical-expanded-15',15]] as const){
+ for(const [id,size] of [['standard-12',12],['mechanical-12',12],['mechanical-armor-12',12],['mechanical-mixer-13',13],['mechanical-expanded-15',15]] as const){
   const config=boardPreset(id);assert.equal(config.seatCount,size);
   assert.equal(Object.values(config.roles).reduce((a,b)=>a+b,0),size);
   assert.equal(config.playable,id==='standard-12');
@@ -15,6 +17,7 @@ test('presets support 12, 13 and 15 players without enabling incomplete boards',
  }
  const expanded=boardPreset('mechanical-expanded-15');
  assert.equal(expanded.roles.wolf,4);assert.equal(expanded.roles.villager,5);assert.equal(expanded.roles.idiot,1);
+ const armor=boardPreset('mechanical-armor-12');assert.equal(armor.roles.wolf,2);assert.equal(armor.roles.armoredWolf,1);
 });
 
 test('custom composition derives armor rules from positive armor count',()=>{
@@ -23,8 +26,14 @@ test('custom composition derives armor rules from positive armor count',()=>{
  assert.equal(armor.ruleset,'mechanical-armor');assert.equal(armor.playable,false);
  const noArmor=createBoardConfiguration({seatCount:12,roles:{...base.roles,armoredWolf:0}});
  assert.equal(noArmor.ruleset,'mechanical-seer');assert.equal(Object.hasOwn(noArmor.roles,'armoredWolf'),false);
- const larger=createBoardConfiguration({seatCount:24,roles:{wolf:8,villager:8,spiritSeer:2,witch:2,hunter:2,guard:1,mechanicalWolf:1}});
+ const larger=createBoardConfiguration({seatCount:24,roles:{wolf:11,villager:9,spiritSeer:1,witch:1,hunter:1,guard:1}});
  assert.equal(larger.seatCount,24);assert.equal(larger.ruleset,'mechanical-seer');
+});
+
+test('custom compositions permit zero ordinary wolves but forbid repeated special roles',()=>{
+ assert.equal(createBoardConfiguration({seatCount:3,roles:{mechanicalWolf:1,armoredWolf:1,villager:1}}).ruleset,'mechanical-armor');
+ for(const roles of [{witch:2,villager:1},{mechanicalWolf:2,wolf:1},{armoredWolf:2,wolf:1},{mixer:2,wolf:1}])
+  assert.throws(()=>createBoardConfiguration({seatCount:3,roles}),/INVALID_BOARD_CONFIGURATION/);
 });
 
 test('composition refuses count mismatch, fractions, unknown roles and injected rulesets',()=>{
@@ -144,4 +153,48 @@ test('standard auto and manual victory share elimination and simultaneous priori
   const result=evaluateVictory(roles.map(p=>({...p,alive:!dead.some(s=>s===p.seat)})),'standard');
   assert.equal(result.status==='ended'?result.winner:null,want);
  }
+});
+
+test('a faction absent from the initial custom composition cannot trigger elimination',()=>{
+ const noGods=[{seat:1,role:'wolf',alive:true},{seat:2,role:'villager',alive:true}] as const;
+ assert.deepEqual(evaluateVictory(noGods,'mechanical-seer'),{status:'playing'});
+ assert.deepEqual(evaluateVictory(noGods.map(p=>({...p,alive:p.seat!==2})),'mechanical-seer'),{status:'ended',winner:'wolves',reason:'all-villagers-dead'});
+ const noVillagers=[{seat:1,role:'mechanicalWolf',alive:true},{seat:2,role:'guard',alive:true}] as const;
+ assert.deepEqual(evaluateVictory(noVillagers,'mechanical-seer'),{status:'playing'});
+ assert.deepEqual(evaluateVictory(noVillagers.map(p=>({...p,alive:p.seat!==2})),'mechanical-seer'),{status:'ended',winner:'wolves',reason:'all-gods-dead'});
+});
+
+test('knife inheritance uses shared action membership, supports night one and freezes a night snapshot',()=>{
+ const players=[{seat:1,alive:true,knifeGroup:'shared'},{seat:2,alive:true,knifeGroup:'mechanical'},{seat:3,alive:true,knifeGroup:'armor'}] as const;
+ assert.deepEqual(knifeAuthorityAtNightStart(players),{sharedKnifeSeats:[1],inheritedKnifeSeat:null});
+ const next=players.map(p=>({...p,alive:p.seat!==1}));
+ const night=knifeAuthorityAtNightStart(next);assert.deepEqual(night,{sharedKnifeSeats:[],inheritedKnifeSeat:2});
+ next[1].alive=false;assert.equal(night.inheritedKnifeSeat,2);
+ assert.deepEqual(knifeAuthorityAtNightStart(next),{sharedKnifeSeats:[],inheritedKnifeSeat:3});
+ assert.deepEqual(knifeAuthorityAtNightStart([{seat:2,alive:true,knifeGroup:'mechanical'},{seat:3,alive:true,knifeGroup:'armor'}]),{sharedKnifeSeats:[],inheritedKnifeSeat:2});
+});
+
+test('mixer model is private, first-night only, immutable and follows original camp after model death',()=>{
+ const players=[{seat:1,role:'mixer',alive:true},{seat:2,role:'mechanicalWolf',learnedRole:'villager',alive:true},{seat:3,role:'villager',alive:true},{seat:4,role:'guard',alive:true}] as const;
+ assert.throws(()=>selectMixerModel(players,1,1,1),/INVALID_MODEL/);
+ assert.throws(()=>selectMixerModel(players,1,2,2),/NOT_YOUR_TURN/);
+ const selected=selectMixerModel(players,1,2,1);assert.equal(selected[0].modelCamp,'wolves');assert.equal(selected[0].role,'mixer');
+ assert.equal(Object.hasOwn(players[0],'modelCamp'),false);
+ assert.throws(()=>selectMixerModel(selected,1,3,1),/ALREADY_COMMITTED/);
+ assert.deepEqual(evaluateVictory(selected.map(p=>({...p,alive:p.seat!==2})),'mechanical-seer'),{status:'ended',winner:'good',reason:'all-wolves-dead',personalResults:[{seat:1,won:false}]});
+});
+
+test('mixer death of any cause activates the one-villager threshold without changing true camp',()=>{
+ const players=[{seat:1,role:'mixer',alive:true},{seat:2,role:'wolf',alive:true},{seat:3,role:'villager',alive:true},{seat:4,role:'guard',alive:true}] as const;
+ const selected=selectMixerModel(players,1,4,1);
+ assert.deepEqual(evaluateVictory(selected,'mechanical-seer'),{status:'playing'});
+ assert.deepEqual(evaluateVictory(selected.map(p=>({...p,alive:p.seat!==1})),'mechanical-seer'),{status:'ended',winner:'wolves',reason:'mixer-dead-one-villager',personalResults:[{seat:1,won:false}]});
+});
+
+test('persisted mixer camp cannot contradict its model true role or follow the model mimicry',()=>{
+ assert.throws(()=>evaluateVictory([
+  {seat:1,role:'mixer',alive:true,modelSeat:2,modelCamp:'good'},
+  {seat:2,role:'mechanicalWolf',learnedRole:'villager',alive:false},
+  {seat:3,role:'villager',alive:true},{seat:4,role:'guard',alive:true}
+ ],'mechanical-seer'),/INVALID_VICTORY_STATE/);
 });

@@ -5,6 +5,7 @@ const mechanicalRoles={wolf:3,villager:4,spiritSeer:1,witch:1,hunter:1,guard:1,m
 const presets={
  'standard-12':{seatCount:12,roles:standardRoleCounts},
  'mechanical-12':{seatCount:12,roles:mechanicalRoles},
+ 'mechanical-armor-12':{seatCount:12,roles:{...mechanicalRoles,wolf:2,armoredWolf:1}},
  'mechanical-mixer-13':{seatCount:13,roles:{...mechanicalRoles,mixer:1}},
  'mechanical-expanded-15':{seatCount:15,roles:{...mechanicalRoles,wolf:4,villager:5,idiot:1}}
 } satisfies Record<string,BoardComposition>;
