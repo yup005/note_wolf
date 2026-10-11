@@ -1,6 +1,6 @@
 # Mechanical board implementation progress
 
-Date: 2026-10-10 (America/Los_Angeles). Entry point: [M0–M6 specification](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md). Confirmation, implementation and executed verification are separate.
+Date: 2026-10-11 (America/Los_Angeles). Entry point: [M0–M6 specification](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md). Confirmation, implementation and executed verification are separate.
 
 ## M0 module/test differences
 
@@ -21,14 +21,14 @@ Date: 2026-10-10 (America/Los_Angeles). Entry point: [M0–M6 specification](COD
 | M0 | Complete | Fresh npm test 178 pass / 0 fail / 0 skip, typecheck/build pass; full Chromium mobile E2E 34 pass / 0 fail / 0 skip. Physical-device acceptance remains pending. |
 | M1 | Complete; published | Three selectable immutable presets, saved owner templates, composition preview/edit, 13/15/zero wolf configs, public room snapshots and dynamic seats. New gameplay gate remains until M3–M5. |
 | M2 | Complete | Versioned role/ability/copy/action/effect/resolution/victory framework and internal durable store; concrete new-board runtime remains M3–M5. |
-| M3 | Pending | Learning, spiritual seer, guard/poison/shot/knife and private runtime not connected |
-| M4 | Pending / blocked branches | Armor runtime pending; timing/identity/guard defaults confirmed by base inheritance |
-| M5 | Pending / blocked branches | Idiot state/victory priority and mixer private selection details unresolved |
+| M3 | Partial internal domain delivery; runtime pending | Native/copy profiles, learning, frozen inspection and confirmed settlement; fixed phases/private runtime still not connected |
+| M4 | Partial domain; runtime pending | Armor frozen nested copy, invincible guard/stacked knife algorithms; unresolved branches explicitly blocked |
+| M5 | Confirmed decisions recorded; implementation pending | Mixed-blood timeout/private feedback, idiot classification and dual-variant speech confirmed; state machine/UI not connected |
 | M6 | Pending | Automation and physical acceptance must be reported separately |
 
 ## Product decision blockers
 
-All unresolved items from unified specification §7 and the two detailed rule documents are **blocked-by-product-decision** for dependent gameplay, not blanket blockers for M1/M2. The later explicit inheritance confirmations ced569a / fab5566d resolve armor ordinary simultaneous victory to wolves priority and common timing/guard/identity rules; these are no longer product blockers. Armor extra knife only after inherited normal knife and targets may match/differ is already owner-confirmed in this chat. New-board witch self-save after night one is undecided; standard board continues rejecting all self-save. Mechanical idiot flip/extra-night public behavior is confirmed but alive/victory categorization still requires a decision. Template storage does not resolve no-wolf/no-god-and-civilian validity or add undefined king skills.
+Current blockers are [unified specification §7](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md#7-未决项--codex-禁止擅自决定). Later explicit owner confirmations resolve never-self-save, milk-through for ordinary/mechanical/armor guards, mixed-blood exact inspection/privacy/random timeout, and idiot categories/dual-only speech restriction. They are implementation work, not unresolved decisions. Armor source inheritance ced569a/fab5566d and extra knife only after inherited normal knife remain authoritative. Complex reflection, undefined damage/copy combinations and unconfirmed camp inspection/custom configuration boundaries remain blocked. Existing standard12 stays unchanged; owner-authorized3-villager+1-mixed-blood variant is confirmed but not yet playable.
 
 ## Foundation implementation provenance
 
@@ -52,3 +52,14 @@ M1 implementation: [`b5954febee60c8fe88e361545bbd5d81f3a22fc7`](https://github.c
 - Latest GitHub fetched during M2: main/remote c11846d includes separate Render deployment documentation; source and evidence preserved. This task does not redeploy that service. Confirmed source ced569a / fab5566d overrides obsolete armor unresolved summaries; remaining mixer/idiot/custom damage and new-board witch questions stay blocked.
 
 Architecture and limits: [M2 framework design](superpowers/specs/2026-10-10-engine-framework-design.md). Final npm test **195 pass / 0 fail / 0 skip**, typecheck/build pass; full Chromium mobile E2E **35 pass / 0 fail / 0 skip** (1.4m). This includes11 new M2 tests;32 targeted foundation/engine/store tests also passed. Scoped121 local documentation links/anchors and diff reviewed; confirmed rule/source history retained. Implementation SHA: [8707b0da9d508e5728003f72fca513d5ff181d49](https://github.com/yup005/note_wolf/commit/8707b0da9d508e5728003f72fca513d5ff181d49). This SHA record is documentation-only; code checks were not rerun because executable code did not change. Publication uses normal push and final remote SHA verification at this delivery boundary. Physical iPhone Safari, real sound/background/weak network and full multiplayer new boards remain unverified.
+
+
+## M3/M4 internal increment (2026-10-11; milestones remain incomplete)
+
+- Confirmed native/copy ability profiles, full independent inventory, guard target rules, once-only learning from another living player, next-night availability (hunter immediate), immutable nested armor copies and private exact inspection. Idiot copying has no fabricated night action; special flip state remains M5.
+- Concrete per-source ordinary/piercing/stacked attacks, ordinary/mechanical guard, independent antidote, all confirmed奶穿, poison reflection to caster and armor invincible shield. Death evidence deduplicates victims; undefined complex reflection, camp inspection and damage/copy branches explicitly block.
+- Canonical source/camp/knife validation, frozen inspection and versioned persistence reject spoofed inventory/actions. No public host/admin role-read route added. 44 new domain tests (15 ability /10 engine /19 resolution), extended persisted-secret public HTTP/Socket regression.
+- Owner steering delivered profile and runtime retention first; this boundary publishes the tested internal increment for review. Fixed night phases, authorized private player routes/UI, integration with existing night/day/control/voice/replay, M5 mixed-blood/idiot/interjection and M6 complete new-board runs remain pending. Standard12 behavior remains intact; new boards cannot deal.
+- Full final source checks: npm test271 pass /0 fail /0 skip, typecheck/build pass, full Chromium mobile E2E42 pass /0 fail /0 skip. Independent scope review found no concrete domain/privacy defect. Browser automation does not establish physical iPhone acceptance. Implementation SHA in batch follow-up.
+
+内部增量实现：[5a95561bce2db24f5da46db51faf3c4d8ee7309e](https://github.com/yup005/note_wolf/commit/5a95561bce2db24f5da46db51faf3c4d8ee7309e)。文档跟进仅验证引用/差异；不重复代码测试。

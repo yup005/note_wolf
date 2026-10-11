@@ -1,5 +1,13 @@
 # Project progress
 
+## Current: profile, runtime retention and internal mechanical domain (2026-10-11)
+
+ACCOUNT-001/010: own nickname/avatar editing, ordinary1MiB/activeVIP2MiB, JPEG/PNG/WebP normalization and preview/replace/delete, retained room/session/private identity. G-003/FUTURE-001/RECAP-008: startup/minute cleanup after24h successful-user inactivity including playing/paused; either favorites or unrevoked renewable shares protect rooms. Runtime-only deletion preserves independent drafts/history/authorization and completed unpublished-record publication after restart. Offline resubscription distinguishes deleted rooms from existing nonmembership. Both review defects reproduced before fixes; independent follow-up confirmed resolution.
+
+COPY-001/WIN-001: 44 internal M3/M4 domain tests for concrete profiles/copy/inspection/settlement; runtime phases/private player UI, M5 and M6 remain pending and new-board dealing gated. Final full unit271/271, typecheck/build pass, full Chromium E2E42/42; synthetic phone screenshot reviewed. Physical iPhone Safari/actual sound/multiplayer/weak network unverified. Reviewed documentation consistency, retained stable IDs and confirmation history, superseded old avatar quotas/paused-room exemption and marked resolved early questions historical. Implementation SHAs recorded in batch follow-up; no PR merge or Render redeploy.
+
+资料/清理实现：[完整提交 7387f6fa7aed0bda4d8a860466ae490a8be4d7e9](https://github.com/yup005/note_wolf/commit/7387f6fa7aed0bda4d8a860466ae490a8be4d7e9)；机械内部增量：[完整提交 5a95561bce2db24f5da46db51faf3c4d8ee7309e](https://github.com/yup005/note_wolf/commit/5a95561bce2db24f5da46db51faf3c4d8ee7309e)。本SHA跟进仅文档，检查112个本地链接/锚点及差异，未重复运行代码测试；发布后另核对远程SHA。
+
 ## Current: duplicate favorites repair (2026-10-10)
 
 RECAP-006 maintenance: FavoritesPanel and MySharesPanel used the same sibling React key. Separate key prefixes prevent orphan favorites panels after account transitions. Regression reproduced before the fix and passed after it. Verified the exact delivery source in an isolated copy: npm test196/196, typecheck/build pass, full Chromium E2E37/37 (including three login/logout cycles). Other profile/retention/mechanical edits remain local and are excluded from this delivery. Physical iPhone Safari remains unverified. See [test evidence](TEST_REPORT.md).
