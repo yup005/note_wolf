@@ -6,6 +6,8 @@ RECAP-006 维护：收藏与分享组件曾使用相同 sibling key；登录/退
 
 以 HEAD 加此次两行修复及新测试的隔离源码（不含正在开发的昵称头像、清理、机械代码）验证：npm test **196 pass /0 fail /0 skip**，typecheck/build通过，完整 Chromium 手机视口 E2E **37 pass /0 fail /0 skip**（1.5分钟）。真实 iPhone Safari 未验收；现有页面遗留 DOM 可刷新清除。
 
+实现提交：[34a2b7dcdbf02aca8c447b6747d5f0edb42943c5](https://github.com/yup005/note_wolf/commit/34a2b7dcdbf02aca8c447b6747d5f0edb42943c5)。此 SHA 跟进仅文档，已检查链接与差异，未重跑代码测试。
+
 ## 本地开发与座位文字修复（2026-10-10）
 
 服务端旧进程与新前端契约不同步导致 board.name 空白错误；开发启动现改为限定源目录自动重启，并先关闭 Vite/HMR 再关闭 Socket/HTTP，避免重启卡住导致局域网端口消失。测试入口未取消，`npm run dev:test` 显式开启模拟玩家，生产仍强制关闭。E2E 使用独立非 watch 服务，避免源目录修改重启测试服务器。座位改为最小高度，名称/标签不被 flex 压缩。

@@ -6,6 +6,8 @@ RECAP-006 维护：收藏/分享组件改用不同 key 前缀，避免账户切�
 
 更新日期：2026-10-10（America/Los_Angeles）。当前状态依据代码和已记录的验证证据；历史报告不能直接当作待开发清单。
 
+实现提交：[34a2b7dcdbf02aca8c447b6747d5f0edb42943c5](https://github.com/yup005/note_wolf/commit/34a2b7dcdbf02aca8c447b6747d5f0edb42943c5)。此 SHA 跟进仅文档，已检查链接与差异，未重跑代码测试。
+
 ## 最新：本地开发与布局修复（2026-10-10）
 
 Workflow only / no feature ID：修复旧服务契约不同步与开发自动重启关闭卡住；原数据库/会话保留。测试功能保留，使用 `npm run dev:test`；普通 dev 无测试入口，生产强制禁止。座位名称/标签完整显示，覆盖1440/1040/430/390/320px；E2E改为独立非watch服务。npm test226通过（含30项另批待交付的机械领域测试）、typecheck/build通过，全E2E36通过；活动HMR退出与文字裁切均先失败再修复。电脑 localhost/LAN HTTP200，手机局域网及实机验收仍待验证。M3–M6继续执行，尚未开放新板完整对局；确认规则与实现/验收分开记录。
