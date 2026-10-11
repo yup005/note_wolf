@@ -46,16 +46,18 @@ Files: contracts/board.ts, domain/boardConfig.ts, storage/boards.ts, storage/lob
 
 Files: contracts/engine.ts, domain/engine.ts, storage/engine.ts, domain/skills.ts; tests/engine.test.ts, engine-store.test.ts.
 
-- [ ] Red tests for role/camp/mimic separation, independent copy inventory and nested parameters, locked event provenance, no death at submission, unresolved settlement, duplicate-death prevention and restart/stale-write/version validation.
-- [ ] Implement strict versioned Role/Ability/NightEvent/RuleSet/Resolution/Victory state schemas with source/time/public-state provenance. Add explicit strategy interface that cannot settle unimplemented rules by default.
-- [ ] Implement internal SQLite snapshot store with optimistic revision and fail-closed validation, no HTTP/admin/public secret access.
-- [ ] Verify restart restores independent charges/lastTarget/copy history, full npm/type/build checks and public-leak regression; update milestone matrix, docs, implementation SHA and push.
+- [x] Red tests for role/camp/mimic separation, independent copy inventory and nested parameters, locked event provenance, no death at submission, unresolved settlement, duplicate-death prevention and restart/stale-write/version validation.
+- [x] Implement strict versioned Role/Ability/NightEvent/RuleSet/Resolution/Victory state schemas with source/time/public-state provenance. Add explicit strategy interface that cannot settle unimplemented rules by default.
+- [x] Implement internal SQLite snapshot store with optimistic revision and fail-closed validation, no HTTP/admin/public secret access.
+- [x] Verify restart restores independent charges/lastTarget/copy history, full npm/type/build checks and public-leak regression; update milestone matrix, docs, implementation SHA and push.
 
 ## Execution ledger
 
 - Preflight: clean main at 3d9d3b7 ahead 5; fetched 5bba4d1 (three new documentation commits). Normal merge 4874f83 preserves both histories; document index conflict resolved retaining both spec and existing design, correcting the remote literal newline.
 - Ruling: use the owner-authorized current branch workflow instead of creating another worktree; preserve committed local foundations.
 - Ruling: M1 exposes board preparation/storage, not unfinished gameplay. M3–M5 implement dealing/night/day for new boards; the server gate prevents accidental legacy runtime use.
-- blocked-by-product-decision: simultaneous armor victory remains contradictory (unified §4 versus detailed armor record); no gameplay selection in M0–M2. Extra knife inheritance/target choice is confirmed in this chat and supersedes unified §7 item 2 for that subset.
+- Superseded blocker: ced569a / fab5566d explicitly confirm base-rule inheritance for armor, resolving ordinary simultaneous victory to wolves priority. Extra knife inheritance/target choice is confirmed in this chat; copied skill timing and guard/identity defaults inherit the base. Genuine mixer/idiot/custom damage decisions remain blocked.
 
-- M1 verification complete:6 new unit/integration and1 new browser test; full184 +35, typecheck/build pass. Review P2 readiness fixed; old DOM selector ID preserved. SQLite snapshot initialization/backfill red→green. Publication follows owner workflow.
+- M1 verification complete:6 new unit/integration and1 new browser test; full184 +35, typecheck/build pass. Review P2 readiness fixed; old DOM selector ID preserved. SQLite snapshot initialization/backfill red→green. Published and remote-verified at5a187d1d8f97528248bf8ec3ad9ef7c04ca0987a.
+
+- M2 complete:11 new tests, full195 pass /0 fail /0 skip; typecheck/build pass; full35 E2E pass. Three review P2s plus null/removal provenance bypass reproduced RED→GREEN; independent final32-test review passes with no remaining findings. Source ced569a/fab5566 inheritance reconciled; Render records67f9607/c11846d preserved. Publish current main per owner workflow, then stop atM2 as owner clarified.

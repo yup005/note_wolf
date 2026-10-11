@@ -2,6 +2,14 @@
 
 更新日期：2026-10-10（America/Los_Angeles）。当前状态依据代码和已记录的验证证据；历史报告不能直接当作待开发清单。
 
+## M0–M2 本轮完成（CFG-001 / COPY-001 / WIN-001，2026-10-10）
+
+M0基线核对、M1固定模板/自由配牌与M2统一持久化引擎框架已完成。保留原预女猎白模块；M2只增加内部契约、复制/行动/效果/结算策略和SQLite适配器，不开放新板完整玩法。源/时间/独立库存/lastTarget、幂等锁定、多来源死亡去重后判胜和重启恢复均有回归；未实现或待产品决定的结算显式blocked，无秘密HTTP/管理员入口。
+
+最终 npm test **195 pass / 0 fail / 0 skip**、typecheck/build成功、全量 Chromium手机视口E2E **35 pass / 0 fail / 0 skip**。独立审查三项P2及来源置空/删除绕过均RED→GREEN修复并复核无剩余发现；范围内文档/链接/差异已检查。已再次fetch并保留c11846d的Render记录；本轮不重新部署。装甲继承已确认基础规则，真实未决项保留。完整实现SHA和发布证据集中在[阶段进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md)。
+
+按用户本轮范围止于M2；M3–M6待后续开发。新板仍不能发牌，实机iPhone Safari、声音/锁屏/弱网和多手机整局仍未验证。
+
 ## Render 免费试用入口（BETA-009 部分实现）
 
 - 用户选择免费版并确认工作区，已部署 [试用站](https://note-wolf-trial.onrender.com)，Render 首次部署返回 live，源码 SHA 为 [fab5566d84ec2fb2b3572d105f3e1935a879911a](https://github.com/yup005/note_wolf/commit/fab5566d84ec2fb2b3572d105f3e1935a879911a)。配置、服务/部署 ID 和证据集中在 [Render 试用记录](RENDER_TRIAL.md)。无产品代码/UI修改；保留本机正在开发的配置功能，部署使用已提交版本。
@@ -13,7 +21,7 @@
 
 已安全同步最新规格来源 `5bba4d1`，与本地基础正常合并为 `4874f83`，保留两边历史及规则全文。用户本轮要求 M0–M2 优先，并授权阶段验证/提交/推送后自动继续。已有/缺失/冲突与规则阻塞见 [阶段进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md) 和 [执行计划](superpowers/plans/2026-10-10-mechanical-m0-m2.md)，不重建现有模块。
 
-M0 新鲜执行：npm test **178 pass / 0 fail / 0 skip**；typecheck/build 成功；全量 E2E **34 pass / 0 fail / 0 skip**。M0 已推送并核对远端 SHA 为 e39dacf42489102384ee501621afc93df2cf65ae。完整基础实施 SHA 已记录于阶段进度；真实 iPhone、实际声音和多人完整新板仍未验证。文档复查保留详细规则及未决项，修正远端导航换行；装甲同步终局冲突保持待产品决定。M1 已补上三模板选择、自定义板子保存与载入、动态席位和独立房间快照；服务端保护模板归属/版本、拒绝越权和超出当前座位范围的缩减。新板开局继续受未完成流程限制。M1最终 npm test184 pass / 0 fail / 0 skip、typecheck/build成功、完整E2E35 pass / 0 fail / 0 skip；独立审查P2已RED→GREEN修复并复核，旧标准板选择兼容值已恢复。实施SHA由小型文档跟进记录，远端推送后核验；细节集中记录于阶段进度。
+M0 新鲜执行：npm test **178 pass / 0 fail / 0 skip**；typecheck/build 成功；全量 E2E **34 pass / 0 fail / 0 skip**。M0 已推送并核对远端 SHA 为 e39dacf42489102384ee501621afc93df2cf65ae。完整基础实施 SHA 已记录于阶段进度；真实 iPhone、实际声音和多人完整新板仍未验证。文档复查保留详细规则及未决项，修正远端导航换行；装甲一般同步终局的旧阻塞已被后续默认继承确认覆盖，M2采用狼优先；特殊白痴额外夜交互仍待决。M1 已补上三模板选择、自定义板子保存与载入、动态席位和独立房间快照；服务端保护模板归属/版本、拒绝越权和超出当前座位范围的缩减。新板开局继续受未完成流程限制。M1最终 npm test184 pass / 0 fail / 0 skip、typecheck/build成功、完整E2E35 pass / 0 fail / 0 skip；独立审查P2已RED→GREEN修复并复核，旧标准板选择兼容值已恢复。M1实施SHA b5954febee60c8fe88e361545bbd5d81f3a22fc7，文档跟进后已推送并核对远端5a187d1d8f97528248bf8ec3ad9ef7c04ca0987a；细节集中记录于阶段进度。
 
 ## 前批实现：新板子共享基础（CFG-001 / COPY-001 / WIN-001）
 

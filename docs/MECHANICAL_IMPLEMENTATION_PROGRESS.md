@@ -10,7 +10,7 @@ Date: 2026-10-10 (America/Los_Angeles). Entry point: [M0–M6 specification](COD
 | Board domain | Immutable returned templates standard12/mechanical12/armor12 and 13/15 examples; validated custom composition, unique special roles, zero wolves; armor selection | Configuration storage/room selection; new boards still cannot deal |
 | Role/copy domain | True role distinct from mimicked role, independent full-capacity snapshot, provenance, timing, idempotent consumption | Rich event/effect/protection evidence and durable engine snapshots (M2); role-specific skill generation (M3/M4) |
 | Night/day | Complete standard-board night/day, sheriff, votes, suicide, death chains, automatic/manual win | New roles/private UI, fixed phases, learning, attacks/protection/reflect and special extra night (M3–M5) |
-| Victory domain | Standard runtime consumes shared strategy; mechanical/armor true camp, empty-set guards, mixer model and special civilian threshold | Mechanical idiot final-night state machine; armor simultaneous conflict; new runtime integration |
+| Victory domain | Standard runtime consumes shared strategy; mechanical/armor true camp, empty-set guards, mixer model and special civilian threshold | Mechanical idiot final-night state machine; new runtime integration (armor ordinary simultaneous priority resolved by later confirmed inheritance) |
 | Auth/control/records/voice | Session takeover, pause/resume, reconnect, private drafts, VIP/replay/share permissions, public-only voice | Extend new runtime via existing boundaries; no rewrite required |
 | Device acceptance | Chromium mobile regressions available | Physical iPhone, real sound, background/weak network and multiplayer (M6) |
 
@@ -19,16 +19,16 @@ Date: 2026-10-10 (America/Los_Angeles). Entry point: [M0–M6 specification](COD
 | Milestone | Status | Evidence / limits |
 |---|---|---|
 | M0 | Complete | Fresh npm test 178 pass / 0 fail / 0 skip, typecheck/build pass; full Chromium mobile E2E 34 pass / 0 fail / 0 skip. Physical-device acceptance remains pending. |
-| M1 | Complete; publication at this boundary | Three selectable immutable presets, saved owner templates, composition preview/edit, 13/15/zero wolf configs, public room snapshots and dynamic seats. New gameplay gate remains until M3–M5. |
-| M2 | In progress | Copy/victory foundation exists; event/resolution model and durability missing |
+| M1 | Complete; published | Three selectable immutable presets, saved owner templates, composition preview/edit, 13/15/zero wolf configs, public room snapshots and dynamic seats. New gameplay gate remains until M3–M5. |
+| M2 | Complete; publication at this boundary | Versioned role/ability/copy/action/effect/resolution/victory framework and internal durable store; concrete new-board runtime remains M3–M5. |
 | M3 | Pending | Learning, spiritual seer, guard/poison/shot/knife and private runtime not connected |
-| M4 | Pending / blocked branches | Armor activation timing/identity/guard limits unresolved |
+| M4 | Pending / blocked branches | Armor runtime pending; timing/identity/guard defaults confirmed by base inheritance |
 | M5 | Pending / blocked branches | Idiot state/victory priority and mixer private selection details unresolved |
 | M6 | Pending | Automation and physical acceptance must be reported separately |
 
 ## Product decision blockers
 
-All unresolved items from unified specification §7 and the two detailed rule documents are **blocked-by-product-decision** for dependent gameplay, not blanket blockers for M1/M2. Armor simultaneous victory is contradictory between unified §4 and the detailed armor implementation boundary; no assumed priority. Armor extra knife only after inherited normal knife and targets may match/differ is already owner-confirmed in this chat. New-board witch self-save after night one is undecided; standard board continues rejecting all self-save. Mechanical idiot flip/extra-night public behavior is confirmed but alive/victory categorization still requires a decision. Template storage does not resolve no-wolf/no-god-and-civilian validity or add undefined king skills.
+All unresolved items from unified specification §7 and the two detailed rule documents are **blocked-by-product-decision** for dependent gameplay, not blanket blockers for M1/M2. The later explicit inheritance confirmations ced569a / fab5566d resolve armor ordinary simultaneous victory to wolves priority and common timing/guard/identity rules; these are no longer product blockers. Armor extra knife only after inherited normal knife and targets may match/differ is already owner-confirmed in this chat. New-board witch self-save after night one is undecided; standard board continues rejecting all self-save. Mechanical idiot flip/extra-night public behavior is confirmed but alive/victory categorization still requires a decision. Template storage does not resolve no-wolf/no-god-and-civilian validity or add undefined king skills.
 
 ## Foundation implementation provenance
 
@@ -41,4 +41,14 @@ Existing shared domain foundation tip: [`3d9d3b7196f287349a0599320e75592ff6d9384
 - New boards may be configured/saved, but full dealing/night/day is not available. Server rejects unfinished boards; test-player filling remains standard-only. Shared wolf-group semantics are domain-tested, not new king skills or runtime roles.
 - Independent review P2 test-player readiness regression fixed with failing then passing test. Existing auth E2E caught the legacy standard selector value; product restored its prior value without weakening the test. Targeted browser5/5 and storage5/5 pass; final npm test **184 pass / 0 fail / 0 skip**, typecheck/build pass, full E2E **35 pass / 0 fail / 0 skip**. Independent followup review confirms the fix and default-snapshot backfill; no remaining findings. Scoped75 links/anchors and diff checked; later additions are references to existing files. Physical devices remain unverified.
 
-M1 implementation: [`b5954febee60c8fe88e361545bbd5d81f3a22fc7`](https://github.com/yup005/note_wolf/commit/b5954febee60c8fe88e361545bbd5d81f3a22fc7). SHA followup is documentation-only; code checks were not repeated because no code changed. Publication pending the normal push/remote check at this boundary.
+M1 implementation: [`b5954febee60c8fe88e361545bbd5d81f3a22fc7`](https://github.com/yup005/note_wolf/commit/b5954febee60c8fe88e361545bbd5d81f3a22fc7). SHA followup is documentation-only; code checks were not repeated because no code changed. Published and remote SHA verified at5a187d1d8f97528248bf8ec3ad9ef7c04ca0987a.
+
+## M2 delivery evidence
+
+- COPY-001 / CPY-03: shared ability contract, nested JSON parameter snapshots, true role/camp separate from mimic, learning source/time, independent full charges, availability/lastTarget and use history. Source copies persist even after night-end death. Role-specific profiles, phase limits and private player routes remain M3–M5.
+- WIN-001: strict versioned internal player/action/effect/resolution/victory contracts and explicit ruleset strategy interface. Collection never marks deaths; independent source outcomes deduplicate deaths before victory. Missing implementation or unresolved product decision returns blocked; synthetic strategies do not claim real DMG-01–07 protection algorithms.
+- Durable SQLite store restores learning, independent inventory, actions and settled evidence across restart; rejects stale writes, malformed/versioned/config/camp/provenance/inventory/death/verdict/revision inconsistencies and overflow. SEC-01 synthetic persisted secrets are absent from host/player HTTP and socket subscription/broadcast; no engine HTTP/admin access exists. Existing standard runtime retained.
+- Review found three P2 persistence validation gaps; each reproduced RED then fixed. Followup caught null provenance/removal bypass, also RED→GREEN fixed. Independent final review32 pass /0 fail, no remaining findings in M2 scope. Early integration failures were strict knife projection and optional timestamp handling, corrected without relaxing schemas.
+- Latest GitHub fetched during M2: main/remote c11846d includes separate Render deployment documentation; source and evidence preserved. This task does not redeploy that service. Confirmed source ced569a / fab5566d overrides obsolete armor unresolved summaries; remaining mixer/idiot/custom damage and new-board witch questions stay blocked.
+
+Architecture and limits: [M2 framework design](superpowers/specs/2026-10-10-engine-framework-design.md). Final npm test **195 pass / 0 fail / 0 skip**, typecheck/build pass; full Chromium mobile E2E **35 pass / 0 fail / 0 skip** (1.4m). This includes11 new M2 tests;32 targeted foundation/engine/store tests also passed. Scoped121 local documentation links/anchors and diff reviewed; confirmed rule/source history retained. Implementation SHA follows in a documentation-only record before normal push. Physical iPhone Safari, real sound/background/weak network and full multiplayer new boards remain unverified.

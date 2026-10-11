@@ -139,9 +139,9 @@ test('unresolved mixer and mechanical idiot victory cannot silently apply ordina
  assert.deepEqual(evaluateVictory([{seat:1,role:'mechanicalWolf',learnedRole:'idiot',alive:false},{seat:2,role:'villager',alive:true},{seat:3,role:'hunter',alive:true}],'mechanical-seer'),{status:'unresolved',questionId:'MA-VICTORY-MECHANICAL-IDIOT'});
 });
 
-test('armor simultaneous ending requires its own priority and incompatible role/ruleset input is rejected',()=>{
+test('armor inherits confirmed simultaneous priority and incompatible role/ruleset input is rejected',()=>{
  const players=[{seat:1,role:'armoredWolf',alive:false},{seat:2,role:'villager',alive:false},{seat:3,role:'guard',alive:true}] as const;
- assert.deepEqual(evaluateVictory(players,'mechanical-armor'),{status:'unresolved',questionId:'MA-VICTORY-SIMULTANEOUS'});
+ assert.deepEqual(evaluateVictory(players,'mechanical-armor'),{status:'ended',winner:'wolves',reason:'all-villagers-dead'});
  assert.throws(()=>evaluateVictory(players,'mechanical-seer'),/INVALID_VICTORY_STATE/);
  assert.throws(()=>evaluateVictory([{seat:1,role:'mechanicalWolf',alive:true}],'standard'),/INVALID_VICTORY_STATE/);
 });

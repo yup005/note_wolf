@@ -5,7 +5,6 @@ export interface VictoryPlayer {seat:number;role:BoardRole;alive:boolean;learned
 export type VictoryResult={status:'playing'}|{status:'ended';winner:'wolves'|'good';reason:'all-villagers-dead'|'all-gods-dead'|'all-wolves-dead'|'mixer-dead-one-villager'|'mixer-last-civilian';personalResults?:{seat:number;won:boolean}[]}|{status:'unresolved';questionId:string};
 const wolves=new Set<BoardRole>(['wolf','mechanicalWolf','armoredWolf']);
 const gods=new Set<BoardRole>(['seer','witch','hunter','idiot','spiritSeer','guard']);
-const simultaneousPolicy:Record<Ruleset,'wolves'|'unresolved'>={standard:'wolves','mechanical-seer':'wolves','mechanical-armor':'unresolved'};
 export function playerCamp(role:BoardRole):'wolves'|'good'|null{
  return wolves.has(role)?'wolves':gods.has(role)||role==='villager'?'good':null;
 }
@@ -31,7 +30,7 @@ export function evaluateVictory(players:readonly VictoryPlayer[],ruleset:Ruleset
  const noWolves=players.some(p=>wolves.has(p.role))&&!alive.some(p=>wolves.has(p.role));
  const mixerThreshold=!!mixer&&!mixer.alive&&players.some(p=>p.role==='villager')&&alive.filter(p=>p.role==='villager').length===1;
  const mixerLastCivilian=!!mixer&&mixer.alive&&!alive.some(p=>p.role==='villager');
- if(noWolves&&(noVillagers||noGods||mixerThreshold||mixerLastCivilian)&&simultaneousPolicy[ruleset]==='unresolved')return {status:'unresolved',questionId:'MA-VICTORY-SIMULTANEOUS'};
+ // All confirmed rulesets give wolves priority when both sides finish in the same batch.
  const ended=(winner:'wolves'|'good',reason:Extract<VictoryResult,{status:'ended'}>['reason']):VictoryResult=>({status:'ended',winner,reason,
   ...(mixer?{personalResults:[{seat:mixer.seat,won:mixer.modelCamp===winner}]}:{})});
  if(noVillagers)return ended('wolves','all-villagers-dead');

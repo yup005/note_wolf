@@ -11,7 +11,7 @@
 | 需求优先级、是否已实现 | [需求总表](NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md)、[当前项目进度](PROJECT_STATUS_FOR_CHATGPT.md) | 实际代码/测试与[差距审计](GAP_ANALYSIS.md)，不能把索引状态当作验收证据 |
 | 规则验收/回归 | [验收场景与期望](WEREWOLF_TEST_CASES.md)的相关用例 | 当前确认规则、实际自动测试，以及[验证报告](TEST_REPORT.md)中的结果与限制 |
 | 机械狼与装甲狼 Codex 开发需求/验收索引 | [统一实施规格](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md) | [机械狼通灵师规则](MECHANICAL_WOLF_SEER.md)、[机械装甲规则](MECHANICAL_ARMOR.md)，以明确的确认/待决标记为准；新需求不等于已实现；[M0–M6进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md) |
-| 机械狼／机械装甲开发 | [机械狼需求](MECHANICAL_WOLF_SEER.md)、[装甲规则](MECHANICAL_ARMOR.md) | 已授权实现确认部分；[基础层设计](superpowers/specs/2026-10-10-board-foundation-design.md)、当前代码/测试和未决交互，不能把基础模块等同完整板子 |
+| 机械狼／机械装甲开发 | [机械狼需求](MECHANICAL_WOLF_SEER.md)、[装甲规则](MECHANICAL_ARMOR.md) | 已授权实现确认部分；[基础层设计](superpowers/specs/2026-10-10-board-foundation-design.md)、[M2引擎设计](superpowers/specs/2026-10-10-engine-framework-design.md)、当前代码/测试和未决交互，不能把基础模块等同完整板子 |
 | 旧操作、提交和测试来源 | [协作历史记录](history/2026-10-10-collaboration-log.md)、相应阶段报告 | 记录的日期/来源提交，历史“本次/当前/未开放”不代表现在 |
 
 ## 保留细节，减少重复
