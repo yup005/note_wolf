@@ -1,5 +1,8 @@
 import {VoiceStore} from './voice.js';
 import {SharingStore} from './sharing.js';
+import {BoardsStore,migrateBoardSeats} from './boards.js';
+import {assertPlayableBoard} from '../domain/boardConfig.js';
+import type {BoardSave,BoardConfigure} from '../contracts/board.js';
 import type {ShareCommand} from '../contracts/sharing.js';
 import type {VoiceCommand} from '../contracts/voice.js';
 import Database from 'better-sqlite3';
@@ -29,6 +32,7 @@ export class LobbyStore {
  private records:RecordsStore;
  private voice:VoiceStore;
  private sharing:SharingStore;
+ private boards:BoardsStore;
  constructor(path:string,private codeStart:()=>number=()=>randomInt(10000),private allowTestPlayers=false,private now:()=>number=Date.now,private dayRules:FirstDayRules=firstDayRules){
   this.db=new Database(path);this.db.pragma('journal_mode = WAL');this.db.pragma('foreign_keys = ON');this.db.pragma('busy_timeout = 5000');
   this.db.exec(`
@@ -57,7 +61,9 @@ export class LobbyStore {
    const preparationColumns=this.db.prepare('PRAGMA table_info(preparations)').all() as {name:string}[];
    if(!preparationColumns.some(c=>c.name==='settings_revision'))this.db.exec('ALTER TABLE preparations ADD COLUMN settings_revision INTEGER NOT NULL DEFAULT 0');
   }).immediate();
+  migrateBoardSeats(this.db);
   this.auth=new AuthStore(this.db);
+  this.boards=new BoardsStore(this.db,token=>this.auth.owner(token));
   this.control=new ControlStore(this.db,this.now);
   this.testPlayers=new TestPlayersStore(this.db,this.allowTestPlayers,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats);
   this.night=new NightStore(this.db,(token,id)=>this.member(token,id),this.now,this.control);
@@ -65,7 +71,7 @@ export class LobbyStore {
   this.records=new RecordsStore(this.db,this.auth,this.now,id=>this.readReplay(id));
   this.voice=new VoiceStore(this.db,this.now,(id,memberId)=>{const m=this.db.prepare('SELECT * FROM members WHERE room_id=? AND id=?').get(id,memberId) as MemberRow|undefined;return !!m&&this.control.canManage(id,m);});
   this.sharing=new SharingStore(this.db,this.auth,this.now);
-  this.preparation=new PreparationStore(this.db,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats);
+  this.preparation=new PreparationStore(this.db,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats,id=>this.boards.configuration(id));
  }
  publicVoice(token:string,id:string,command:VoiceCommand){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);const m=this.member(token,id);return this.voice.command(token,m.id,this.snapshot(id),command);}
  private nickname(value:string){const p=nameSchema.safeParse(value);if(!p.success)throw new LobbyError('INVALID_NAME');return p.data;}
@@ -87,6 +93,7 @@ export class LobbyStore {
    if(code===undefined)throw new LobbyError('ROOM_CODES_FULL',503);
    const roomId=randomUUID();
    this.db.prepare('INSERT INTO rooms(id,code,created_at) VALUES (?,?,?)').run(roomId,code,Date.now());
+   this.boards.initialize(roomId);
    this.db.prepare('INSERT INTO preparations(room_id) VALUES (?)').run(roomId);
    this.db.prepare('INSERT INTO members(id,room_id,session_hash,nickname,is_host) VALUES (?,?,?,?,1)').run(randomUUID(),roomId,this.auth.owner(token),name);
    this.db.prepare('INSERT INTO create_requests VALUES (?,?,?)').run(this.auth.owner(token),requestId,roomId);
@@ -106,7 +113,7 @@ export class LobbyStore {
   }).immediate();
  }
  select(token:string,roomId:string,seat:number):LobbyView{
-  if(!seatSchema.safeParse(seat).success)throw new LobbyError('INVALID_SEAT');
+  if(!Number.isSafeInteger(seat)||seat<1||seat>this.boards.configuration(roomId).seatCount)throw new LobbyError('INVALID_SEAT');
   return this.db.transaction(()=>{
    const m=this.member(token,roomId);
    this.preparation.assertLobby(roomId);
@@ -125,7 +132,8 @@ export class LobbyStore {
   const r=this.db.prepare('SELECT * FROM rooms WHERE id=?').get(roomId) as RoomRow|undefined;
   if(!r)throw new LobbyError('ROOM_NOT_FOUND',404);
   const members=this.db.prepare('SELECT id,nickname,is_host,seat,ready FROM members WHERE room_id=? AND seat IS NOT NULL').all(roomId) as MemberRow[];
-  return {manual:this.records.public(roomId),...(this.night.snapshot(roomId)&&!this.records.public(roomId)?{control:this.control.snapshot(roomId)}:{}),testRoom:this.testPlayers.isTestRoom(roomId),id:r.id,code:r.code,boardId:'seer-witch-hunter-idiot-12',revision:r.revision,night:this.night.snapshot(roomId),day:this.day.snapshot(roomId),preparation:this.preparation.snapshot(roomId),seats:Array.from({length:12},(_,i)=>{
+  const board=this.boards.snapshot(roomId);
+  return {board,manual:this.records.public(roomId),...(this.night.snapshot(roomId)&&!this.records.public(roomId)?{control:this.control.snapshot(roomId)}:{}),testRoom:this.testPlayers.isTestRoom(roomId),id:r.id,code:r.code,boardId:board.id==='standard-12'?'seer-witch-hunter-idiot-12':board.id,revision:r.revision,night:this.night.snapshot(roomId),day:this.day.snapshot(roomId),preparation:this.preparation.snapshot(roomId),seats:Array.from({length:board.composition.seatCount},(_,i)=>{
    const m=members.find(m=>m.seat===i+1);return {number:i+1,memberId:m?.id??null,nickname:m?.nickname??null,isHost:m?.is_host===1,isTestPlayer:m?this.testPlayers.isActor(m.id):false,ready:!!m?.ready};
   })};
  }
@@ -136,13 +144,16 @@ export class LobbyStore {
   }).immediate();
  }
  configure(token:string,id:string,settings:RoomSettings){return this.db.transaction(()=>{this.member(token,id);if(this.testPlayers.isTestRoom(id)&&settings.dealMethod!=='online')throw new LobbyError('TEST_ONLINE_ONLY',409);const oldRevision=this.preparation.snapshot(id).settingsRevision;this.preparation.configure(token,id,settings);if(this.preparation.snapshot(id).settingsRevision!==oldRevision)this.testPlayers.prepareActors(id);return this.view(token,id);}).immediate();}
+ boardLibrary(token:string){return this.boards.library(token);}
+ saveBoard(token:string,input:BoardSave){return this.boards.save(token,input);}
+ configureBoard(token:string,id:string,input:BoardConfigure){return this.db.transaction(()=>{const previous=this.preparation.snapshot(id).settingsRevision;this.boards.configure(token,id,input);if(this.preparation.snapshot(id).settingsRevision!==previous)this.testPlayers.prepareActors(id);return this.view(token,id);}).immediate();}
  setReady(token:string,id:string,ready:boolean,settingsRevision:number){this.preparation.setReady(token,id,ready,settingsRevision);return this.view(token,id);}
  deal(token:string,id:string){return this.db.transaction(()=>{this.preparation.deal(token,id);this.testPlayers.confirmActors(id);return this.view(token,id);}).immediate();}
  start(token:string,id:string){return this.db.transaction(()=>{this.preparation.start(token,id);this.records.start(id);return this.view(token,id);}).immediate();}
  identity(token:string,id:string){return this.preparation.identity(token,id);}
  submitIdentity(token:string,id:string,role:Role){return this.preparation.submitIdentity(token,id,role);}
  confirmIdentity(token:string,id:string){return this.preparation.confirmIdentity(token,id);}
- fillTestPlayers(token:string,id:string){this.testPlayers.fill(token,id);return this.view(token,id);}
+ fillTestPlayers(token:string,id:string){this.member(token,id);assertPlayableBoard(this.boards.configuration(id));this.testPlayers.fill(token,id);return this.view(token,id);}
  testPlayerIdentity(token:string,id:string,actorId:string){return this.testPlayers.identity(token,id,actorId);}
  testPlayerReady(token:string,id:string,actorId:string,ready:boolean,settingsRevision:number){this.testPlayers.ready(token,id,actorId,ready,settingsRevision);return this.view(token,id);}
  testPlayerConfirm(token:string,id:string,actorId:string){return this.testPlayers.confirm(token,id,actorId);}

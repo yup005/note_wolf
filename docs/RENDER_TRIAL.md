@@ -10,6 +10,7 @@
 - 仓库：`https://github.com/yup005/note_wolf`，分支 `main`。
 - 首次部署：`dep-db5gd3nlot8c73eseqo0`，Render 返回 `live`。部署源码：[fab5566d84ec2fb2b3572d105f3e1935a879911a](https://github.com/yup005/note_wolf/commit/fab5566d84ec2fb2b3572d105f3e1935a879911a)。该 SHA 是已上线源码，不是后续部署文档提交。
 - 前端、API 和 Socket.IO 由同一个服务提供，不需要跨域会话或迁移规则引擎。
+- 部署后另一开发批次交付 M1 配置功能（`b5954fe`，文档跟进`5a187d1`）；本次部署记录正常合并该批次，保留其全部实现和证据。Render仍运行上面的首次部署SHA，未因合并文档自动升级。
 
 ## 可重现配置
 
