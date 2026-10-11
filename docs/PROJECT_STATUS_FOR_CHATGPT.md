@@ -6,7 +6,7 @@
 
 M0基线核对、M1固定模板/自由配牌与M2统一持久化引擎框架已完成。保留原预女猎白模块；M2只增加内部契约、复制/行动/效果/结算策略和SQLite适配器，不开放新板完整玩法。源/时间/独立库存/lastTarget、幂等锁定、多来源死亡去重后判胜和重启恢复均有回归；未实现或待产品决定的结算显式blocked，无秘密HTTP/管理员入口。
 
-最终 npm test **195 pass / 0 fail / 0 skip**、typecheck/build成功、全量 Chromium手机视口E2E **35 pass / 0 fail / 0 skip**。独立审查三项P2及来源置空/删除绕过均RED→GREEN修复并复核无剩余发现；范围内文档/链接/差异已检查。已再次fetch并保留c11846d的Render记录；本轮不重新部署。装甲继承已确认基础规则，真实未决项保留。完整实现SHA和发布证据集中在[阶段进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md)。
+最终 npm test **195 pass / 0 fail / 0 skip**、typecheck/build成功、全量 Chromium手机视口E2E **35 pass / 0 fail / 0 skip**。独立审查三项P2及来源置空/删除绕过均RED→GREEN修复并复核无剩余发现；范围内文档/链接/差异已检查。已再次fetch并保留c11846d的Render记录；本轮不重新部署。装甲继承已确认基础规则，真实未决项保留。M2完整实现SHA：[8707b0da9d508e5728003f72fca513d5ff181d49](https://github.com/yup005/note_wolf/commit/8707b0da9d508e5728003f72fca513d5ff181d49)；此SHA跟进仅文档，代码检查未重复运行，发布后核对最终远端SHA。详细证据集中在[阶段进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md)。
 
 按用户本轮范围止于M2；M3–M6待后续开发。新板仍不能发牌，实机iPhone Safari、声音/锁屏/弱网和多手机整局仍未验证。
 

@@ -4,7 +4,7 @@
 
 新增11项回归：学习/嵌套复制、库存/lastTarget、锁定行动、显式阻断、伤害证据/死亡去重后判胜、持久化重启/版本/修订及HTTP/Socket秘密隔离。最终 npm test **195 pass / 0 fail / 0 skip**；typecheck/build通过；全量Chromium手机E2E **35 pass / 0 fail / 0 skip**（1.4分钟）。32项针对性测试和独立复核通过。审查三项P2与来源置空/缺失绕过均先失败再修复；早期严格刀权输入/复制时间参数接入失败及测试settings字段误用均已修正，未跳过检查。构建只有已有Zod PURE注释提示。
 
-装甲一般同步终局按最新确认继承狼优先；M3–M5角色生成、实际保护/弹毒策略和私密接口未接入，新板子未可玩。M2内部存储适配器通过文件数据库重启，不等于完整新板服务流程重启验收。物理iPhone Safari/实际声音/后台/弱网/多手机整局仍未验证。详细设计/来源和发布SHA见[阶段进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md)。
+装甲一般同步终局按最新确认继承狼优先；M3–M5角色生成、实际保护/弹毒策略和私密接口未接入，新板子未可玩。M2内部存储适配器通过文件数据库重启，不等于完整新板服务流程重启验收。物理iPhone Safari/实际声音/后台/弱网/多手机整局仍未验证。M2实施SHA：[8707b0da9d508e5728003f72fca513d5ff181d49](https://github.com/yup005/note_wolf/commit/8707b0da9d508e5728003f72fca513d5ff181d49)。此小型SHA跟进仅文档，已检查引用/差异，未重跑代码测试；详细设计/来源见[阶段进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md)。
 
 ## Render 免费试用部署验证（2026-10-10）
 
