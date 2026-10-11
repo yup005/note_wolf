@@ -2,7 +2,7 @@
 
 These are binding project instructions, organized by task. The root [AGENTS.md](../AGENTS.md) is the short entry point; it does not replace the constraints below. All code/document paths in backticks are relative to the repository root.
 
-Preservation source: root AGENTS.md at [cd6a8ae](https://github.com/yup005/note_wolf/blob/cd6a8ae14751399acfbe27456fbf116064659a6e/AGENTS.md). Its complete instruction body is retained verbatim below. Read the task-relevant sections; use [DOCUMENTATION_MAP.md](DOCUMENTATION_MAP.md) for rule/document sources.
+Original detailed instructions were moved here from root AGENTS.md at [cd6a8ae](https://github.com/yup005/note_wolf/blob/cd6a8ae14751399acfbe27456fbf116064659a6e/AGENTS.md). That source preserves the prior wording; subsequent explicitly confirmed workflow changes are reflected below and recorded in [PRODUCT_DECISIONS.md](PRODUCT_DECISIONS.md#decision-log). Read the task-relevant sections; use [DOCUMENTATION_MAP.md](DOCUMENTATION_MAP.md) for rule/document sources.
 
 ## Project context
 - This is a mobile-first, in-person Werewolf assistant ("笔记狼人杀"), optimized for iPhone Safari.
@@ -22,11 +22,16 @@ Preservation source: root AGENTS.md at [cd6a8ae](https://github.com/yup005/note_
 5. Inspect existing code and test evidence against those requirements; develop only the missing parts. Do not rebuild completed modules or infer requirements from unsynced ChatGPT chats. If remote access fails, report the failure and do not claim requirements are synchronized.
 
 ## Standing Git workflow preference (authorized by project owner)
-After **each completed user-requested development or documentation task**:
+Publish by **completed feature, bug fix or documentation batch**, rather than by conversation turn or individual file edit (owner-confirmed clarification, 2026-10-10):
+- Treat a feature with its required checks/docs, a verified bug fix (or related fixes delivered together), or a coherent requirements/documentation update as one delivery unit. Establish that boundary from the requested scope and communicate it when useful; completing the unit triggers automatic commit/push without another reminder.
+- During implementation or multi-round requirements discussion, save intermediate work locally; scoped local checkpoint commits are optional. Accumulate related confirmed documentation changes until the discussion phase or document batch is complete, or until sharing through GitHub/ChatGPT is needed. Do not push merely because another message or small edit occurred.
+- An explicit request to push/share now establishes a publication boundary, subject to the same required checks. Explicit save-only or hold-publication instructions take precedence. Report pending local work honestly; do not claim it is on GitHub before verification.
+
+At each delivery boundary:
 1. Inspect the current branch, remote, `git status`, and scoped diff. Preserve all unrelated or pre-existing user edits.
 2. Run relevant verification before publication. For development/bugfix tasks run `npm test`, `npm run typecheck`, `npm run build`, and applicable browser tests for UI changes. Use full E2E for a broad UI snapshot; a purely documentation-only follow-up needs document/link/diff checks and an explicit statement that code checks were not rerun. If any required check fails or cannot run, stop publication and report why; do not skip it or claim it passed.
-3. Stage **only files belonging to the completed task**, review the staged diff, and do not include credentials, .env files, tokens, local database, generated output, or other secrets.
-4. Update relevant project documentation and the progress record below, review `git diff --check` and the staged diff, then create a descriptive git commit **and push to `origin` on the current branch as part of the task**. The owner does not need to repeat "commit and push" each time.
+3. Stage **only files belonging to the completed delivery unit**, review the staged diff, and do not include credentials, .env files, tokens, local database, generated output, or other secrets.
+4. Update relevant project documentation and the progress record below, review `git diff --check` and the staged diff, then create descriptive git commits **and push the completed batch to `origin` on the current branch**. Include any needed progress/SHA follow-up in the same publication batch when possible. The owner does not need to repeat "commit and push" each time.
 5. When on `main`, use a normal non-force push. On a task/feature branch, push that branch and create/update a PR to `main` when appropriate; **do not merge a PR without specific authorization**.
 6. Never force-push, silently reset, overwrite divergent remote history, bypass hooks, or resolve conflicting unrelated edits by discarding data. On conflict, unclear upstream, failing checks, or permission denial, stop the affected publication step and report the exact blocker. Ask for platform approval only when required.
 7. Before pushing, fetch again and inspect incoming commits. On `main`, publish only when remote history is safely integrated. On a feature branch, use its upstream or `git push -u origin <current-branch>`; create/update a PR to `main` when appropriate. Verify `git ls-remote origin refs/heads/<current-branch>` matches `git rev-parse HEAD`; check the final status and report branch, full commit SHA, tests actually run, and GitHub commit/PR links. A successful local commit is not a verified push.
@@ -47,9 +52,10 @@ This preference applies when Codex is actually running a task; it does **not** c
 - Keep proposals and unresolved conflicts labeled and ask the owner only where a decision is missing. This maintenance authorization does not authorize deciding ambiguous gameplay, developing a discussed board, or automatically implementing every newly documented requirement.
 
 ## Maintain progress after each completed task
+- A completed task here means the feature, bug fix or documentation delivery unit defined above; intermediate discussion messages do not require separate progress entries or pushes.
 - Update `docs/PROJECT_STATUS_FOR_CHATGPT.md` with date (America/Los_Angeles), completed features/fixes or documentation scope, matching requirement IDs (or "workflow only / no feature ID"), verification commands and actual pass/fail/skip counts, remaining issues, and physical iPhone Safari acceptance still required.
 - Maintain `docs/NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md` when requirements/status change; keep unimplemented, partially verified, proposed and unresolved items accurate. Update README and the current section of `docs/TEST_REPORT.md` when they no longer match code; retain clearly labeled historical reports without treating their old numbers as current.
-- Record the full implementation commit SHA and GitHub link. Since a commit cannot contain its own final SHA, add a small documentation-only follow-up commit recording the implementation SHA after it exists. Do not amend repeatedly to chase a self-referential hash; report the final documentation SHA in the delivery message. Verify publication before recording it as successful.
+- Record the full implementation commit SHA and GitHub link. Since a commit cannot contain its own final SHA, add a small documentation-only follow-up commit recording the implementation SHA after it exists, preferably before pushing the same delivery batch. Do not amend repeatedly or create recursive follow-ups to chase a self-referential hash; report the final documentation SHA in the delivery message. Verify publication before recording it as successful.
 - Browser viewport simulation, mocked speech APIs and test clocks are automated evidence only. Real iPhone Safari, actual voice, background/lock-screen behavior, weak networks and real multiplayer require separate device acceptance. Never claim those passed from build or E2E results.
 
 ## Verification environment and privacy

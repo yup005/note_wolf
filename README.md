@@ -57,7 +57,7 @@ PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google 
 
 ## ChatGPT / Codex / GitHub 协作
 
-[AGENTS.md](AGENTS.md)保存长期任务规则：开始任务先获取并安全同步远程需求，保护未提交成果，对照代码避免重复开发；完成任务执行适用检查、更新进度、自动 commit 和非强制 push，并核对远程 SHA。功能分支按需创建 PR，合并须用户明确授权。测试失败、冲突或权限不足时报告具体阻塞。
+[AGENTS.md](AGENTS.md)保存长期任务规则：开始任务先获取并安全同步远程需求，保护未提交成果，对照代码避免重复开发；按完整功能、Bug 修复或一批文档更新交付，执行适用检查、更新进度、自动 commit 和非强制 push，并核对远程 SHA。讨论和中间修改先保存在本地，阶段完成或需要通过 GitHub 与 ChatGPT 共享时统一推送，不按每条消息或小修改推送。功能分支按需创建 PR，合并须用户明确授权。测试失败、冲突或权限不足时报告具体阻塞。
 
 根目录保留简短入口，详细约束集中在 [Codex 工作流程](docs/CODEX_WORKFLOW.md)；查规则、决策、需求、验收及历史记录时使用 [文档导航](docs/DOCUMENTATION_MAP.md)，按任务阅读相应条目并保留完整细节。
 
