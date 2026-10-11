@@ -16,6 +16,6 @@ The linked [CODEX_WORKFLOW.md](docs/CODEX_WORKFLOW.md) is mandatory project guid
 - Product/rule updates: **Product documentation sync**, **Standing rule-document maintenance**.
 - Testing, authentication or private data: **Verification environment and privacy**.
 - Deleting obsolete/duplicate artifacts: **Authorized routine cleanup**.
-- Simplifying or reorganizing docs: **Authorized documentation optimization**.
+- Large documentation updates, simplification or reorganization: **Authorized documentation optimization**.
 
 Maintain confirmed rules and acceptance details, versions/IDs and source history; keep confirmation, implementation and verification separate. Codex cannot read unsynced ChatGPT chats. This workflow applies during task execution, not as a background watcher.
