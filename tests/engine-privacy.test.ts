@@ -8,7 +8,7 @@ import Database from 'better-sqlite3';
 import {io,type Socket} from 'socket.io-client';
 import {createServer} from '../apps/server/app.js';
 import {EngineStore} from '../packages/storage/engine.js';
-import {createEngineState,copyEngineAbilities} from '../packages/domain/engine.js';
+import {createEngineState,copyEngineAbilities,appendNightAction} from '../packages/domain/engine.js';
 
 test('durable engine secrets stay outside host/player HTTP, sockets and unimplemented engine endpoints',{timeout:15000},async()=>{
  const dir=mkdtempSync(join(tmpdir(),'wolf-engine-privacy-'));const file=join(dir,'db.sqlite');
@@ -25,8 +25,11 @@ test('durable engine secrets stay outside host/player HTTP, sockets and unimplem
   const initial=createEngineState(board,roles.map((role,i)=>({seat:i+1,role,knifeGroup:role==='wolf'?'shared':role==='mechanicalWolf'?'mechanical':role==='armoredWolf'?'armor':'none'})));
   initial.players[9].abilities.skills=[{id:'synthetic-private-poison',kind:'poison',capacity:1,remaining:1,availableFromNight:1,parameters:{secret:'synthetic-private-parameter'},copiedFrom:null,uses:[]}];
   const learned=copyEngineAbilities(initial,3,10,{copyId:'synthetic-private-learning',availableFromNight:2,at:100});
-  db=new Database(file);new EngineStore(db,()=>board).save(view.room.id,learned,0);
-  function noSecrets(value:unknown){const serialized=JSON.stringify(value);for(const secret of ['synthetic-private','sourceSnapshot','mimickedRole','copiedFrom','abilities'])assert.equal(serialized.includes(secret),false);}
+  learned.players[8].abilities.skills=[{id:'synthetic-private-inspect',kind:'inspect',capacity:null,remaining:null,availableFromNight:1,parameters:{inspection:'exact-role'},copiedFrom:null,uses:[]}];
+  const inspected=appendNightAction(learned,{id:'synthetic-private-result',requestId:'synthetic-private-result',casterId:9,targetId:3,abilityType:'inspect',abilityId:'synthetic-private-inspect',stage:'spirit-seer',at:101});
+  inspected.actions[0].privateInspection={status:'visible',role:'witch'};
+  db=new Database(file);new EngineStore(db,()=>board).save(view.room.id,inspected,0);
+  function noSecrets(value:unknown){const serialized=JSON.stringify(value);for(const secret of ['synthetic-private','sourceSnapshot','copyProfileSnapshot','privateInspection','mimickedRole','copiedFrom','abilities'])assert.equal(serialized.includes(secret),false);}
   noSecrets(await (await request(host,path)).json());noSecrets(await (await request(guest,path)).json());
   socket=io(base,{transports:['websocket'],extraHeaders:{Cookie:guest},reconnection:false});await new Promise<void>((resolve,reject)=>{socket!.once('connect',resolve);socket!.once('connect_error',reject);});
   const subscribed=await new Promise<unknown>(resolve=>socket!.emit('room:subscribe',{roomId:view.room.id},resolve));noSecrets(subscribed);

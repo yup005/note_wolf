@@ -5,6 +5,7 @@ import {createBoardConfiguration} from './boardConfig.js';
 import {playerCamp,evaluateVictory} from './victory.js';
 import {knifeAuthorityAtNightStart} from './knifeAuthority.js';
 import {copySkills,useSkill} from './skills.js';
+import {projectMechanicalCopyProfile} from './mechanicalAbilities.js';
 
 const attacks=new Set(['wolf-knife','extra-knife','poison','shot']);
 export interface ResolutionStrategy {ruleset:Ruleset;ruleVersion:typeof boardRuleVersion;resolve(context:Readonly<EngineState>):ResolutionDecision}
@@ -26,12 +27,19 @@ export function validateEngineState(input:unknown):EngineState{
   ['resolved','awaiting-decision','ended'].includes(state.stage)&&state.resolution?.status!=='settled'||
   state.stage==='ended'&&state.victory.status!=='ended'||state.stage==='awaiting-decision'&&state.victory.status!=='unresolved')throw new LobbyError('INVALID_ENGINE_STATE');
  for(const player of state.players){
+  let copySource=player.learning?.sourceSnapshot;
+  if(player.learning?.copyProfileSnapshot){
+   const projected=projectMechanicalCopyProfile(player.learning.sourceSnapshot,player.role,b.ruleset);
+   if('status' in projected||JSON.stringify(projected)!==JSON.stringify(player.learning.copyProfileSnapshot))throw new LobbyError('INVALID_ENGINE_STATE');
+   copySource=player.learning.copyProfileSnapshot;
+   if(player.abilities.skills.length!==copySource.skills.length)throw new LobbyError('INVALID_ENGINE_STATE');
+  }
   if(player.learning){
    const source=state.players.find(p=>p.seat===player.learning!.sourceSeat)!;
    if(player.learning.sourceSnapshot.ownerSeat!==source.seat||player.learning.sourceSnapshot.originalRole!==source.role||
     player.abilities.mimickedRole!==(player.learning.sourceSnapshot.mimickedRole??source.role))throw new LobbyError('INVALID_ENGINE_STATE');
   }
-  for(const snapshot of [player.abilities,...(player.learning?[player.learning.sourceSnapshot]:[])]){
+  for(const snapshot of [player.abilities,...(player.learning?[player.learning.sourceSnapshot,...(player.learning.copyProfileSnapshot?[player.learning.copyProfileSnapshot]:[])]:[])]){
    for(const skill of snapshot.skills){
     if(new Set(skill.uses.map(use=>use.requestId)).size!==skill.uses.length||
      skill.remaining!==null&&skill.capacity!==null&&skill.remaining+skill.uses.length>skill.capacity||
@@ -40,23 +48,25 @@ export function validateEngineState(input:unknown):EngineState{
    }
   }
   if(player.learning){
-   for(const source of player.learning.sourceSnapshot.skills){
+   for(const source of copySource!.skills){
     const copied=player.abilities.skills.find(skill=>skill.id===`${player.learning!.copyId}:${source.id}`);
     if(!copied?.copiedFrom)throw new LobbyError('INVALID_ENGINE_STATE');
    }
   }
   for(const skill of player.abilities.skills.filter(skill=>skill.copiedFrom!==null)){
    const learning=player.learning;
-   const source=learning?.sourceSnapshot.skills.find(s=>s.id===skill.copiedFrom!.skillId);
+   const source=copySource?.skills.find(s=>s.id===skill.copiedFrom!.skillId);
    if(!learning||!source||skill.copiedFrom!.seat!==learning.sourceSeat||skill.copiedFrom!.night!==learning.night||
     skill.id!==`${learning.copyId}:${source.id}`||skill.kind!==source.kind||skill.capacity!==source.capacity||
-    JSON.stringify(skill.parameters)!==JSON.stringify(source.parameters)||skill.availableFromNight<learning.night)throw new LobbyError('INVALID_ENGINE_STATE');
+    JSON.stringify(skill.parameters)!==JSON.stringify(source.parameters)||skill.availableFromNight<learning.night||
+    learning.copyProfileSnapshot&&skill.availableFromNight!==learning.night+(['shot','extra-knife'].includes(skill.kind)?0:1))throw new LobbyError('INVALID_ENGINE_STATE');
   }
  }
  for(const action of state.actions){
   if(action.abilityType==='wolf-knife'){if(action.abilityId!==null)throw new LobbyError('INVALID_ENGINE_STATE');continue;}
   const skill=state.players.find(p=>p.seat===action.casterId)!.abilities.skills.find(s=>s.id===action.abilityId);
-  if(!skill||skill.kind!==action.abilityType||!skill.uses.some(u=>u.requestId===action.requestId&&u.night===action.night&&u.target===action.targetId))throw new LobbyError('INVALID_ENGINE_STATE');
+  const consumablePass=action.targetId===null&&['poison','antidote','extra-knife','shot'].includes(action.abilityType);
+  if(!skill||skill.kind!==action.abilityType||!consumablePass&&!skill.uses.some(u=>u.requestId===action.requestId&&u.night===action.night&&u.target===action.targetId))throw new LobbyError('INVALID_ENGINE_STATE');
  }
  if(state.resolution?.status==='settled'){
   validateEffects(state,state.resolution.effects);
@@ -90,7 +100,7 @@ export function copyEngineAbilities(input:EngineState,ownerSeat:number,sourceSea
 export function appendNightAction(input:EngineState,command:NightActionCommand):EngineState{
  const state=validateEngineState(input);const parsed=nightActionCommandSchema.safeParse(command);if(!parsed.success)throw new LobbyError('INVALID_NIGHT_ACTION');const c=parsed.data;
  const previous=state.actions.find(a=>a.casterId===c.casterId&&a.requestId===c.requestId);
- if(previous){const {night,sourceRole,ruleset,...original}=previous;if(JSON.stringify(original)!==JSON.stringify(c))throw new LobbyError('ALREADY_COMMITTED',409);return state;}
+ if(previous){const {night,sourceRole,ruleset,privateInspection,...original}=previous;if(JSON.stringify(original)!==JSON.stringify(c))throw new LobbyError('ALREADY_COMMITTED',409);return state;}
  if(state.stage!=='collecting')throw new LobbyError('PHASE_LOCKED',409);
  if(state.actions.some(a=>a.id===c.id))throw new LobbyError('ALREADY_COMMITTED',409);
  const actor=state.players.find(p=>p.seat===c.casterId),target=state.players.find(p=>p.seat===c.targetId);

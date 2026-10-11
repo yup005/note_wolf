@@ -5,7 +5,7 @@ test('mobile presets derive saved 13/15/zero-wolf configurations without changin
   await page.getByLabel('选择板子').selectOption('mechanical-armor-12');
   await expect(page.locator('.room-overview')).toContainText('机械装甲');await expect(page.getByText('完整玩法开发中，暂不能发牌',{exact:false})).toBeVisible();
   await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();await page.getByRole('button',{name:'准备',exact:true}).click();
-  await page.getByText('自定义调整',{exact:true}).click();await page.getByLabel('板子名称').fill('Armor mixer 13');await page.getByLabel('玩家人数',{exact:true}).fill('13');await page.getByLabel('混子人数',{exact:true}).fill('1');
+  await page.getByText('自定义调整',{exact:true}).click();await page.getByLabel('板子名称').fill('Armor mixer 13');await page.getByLabel('玩家人数',{exact:true}).fill('13');await page.getByLabel('混血儿人数',{exact:true}).fill('1');
   await page.getByRole('button',{name:'另存板子',exact:true}).click();await expect(page.getByTestId('seated-count')).toHaveText('1 / 13');await expect(page.getByRole('button',{name:'准备',exact:true})).toBeVisible();
   await page.reload();await expect(page.getByLabel('选择板子')).toContainText('Armor mixer 13');await expect(page.getByTestId('seated-count')).toHaveText('1 / 13');
   await page.getByLabel('选择板子').selectOption('mechanical-12');await page.getByText('自定义调整',{exact:true}).click();await page.getByLabel('板子名称').fill('Expanded 15');await page.getByLabel('玩家人数',{exact:true}).fill('15');await page.getByLabel('狼人人数',{exact:true}).fill('4');await page.getByLabel('村民人数',{exact:true}).fill('5');await page.getByLabel('白痴人数',{exact:true}).fill('1');await page.getByRole('button',{name:'另存板子',exact:true}).click();

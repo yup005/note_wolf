@@ -8,12 +8,16 @@ export const engineSeedSchema=z.object({seat,role:boardRoleSchema,knifeGroup:z.e
 export const enginePlayerSchema=engineSeedSchema.extend({
  camp:camp.nullable(),alive:z.boolean(),abilities:snapshotSchema,
  publicState:z.object({revealedRole:boardRoleSchema.nullable(),canVote:z.boolean(),canInterject:z.boolean()}).strict(),
- learning:z.object({copyId:id,sourceSeat:seat,night,at:z.number().finite().nonnegative().nullable(),sourceSnapshot:snapshotSchema}).strict().nullable(),
+ learning:z.object({copyId:id,sourceSeat:seat,night,at:z.number().finite().nonnegative().nullable(),sourceSnapshot:snapshotSchema,copyProfileSnapshot:snapshotSchema.optional()}).strict().nullable(),
  model:z.object({seat,camp}).strict().nullable()
 }).strict();
 export const abilityTypeSchema=z.enum(['wolf-knife',...skillSchema.shape.kind.options]);
 export const nightActionCommandSchema=z.object({id,requestId:id,casterId:seat,targetId:seat.nullable(),abilityId:id.nullable(),abilityType:abilityTypeSchema,stage:id,at:z.number().finite().nonnegative()}).strict();
-export const nightActionSchema=nightActionCommandSchema.extend({night,sourceRole:boardRoleSchema,ruleset:rulesetSchema}).strict();
+const inspectionSchema=z.discriminatedUnion('status',[
+ z.object({status:z.literal('visible'),role:boardRoleSchema}).strict(),
+ z.object({status:z.literal('camp'),camp}).strict()
+]);
+export const nightActionSchema=nightActionCommandSchema.extend({night,sourceRole:boardRoleSchema,ruleset:rulesetSchema,privateInspection:inspectionSchema.optional()}).strict();
 export const effectSchema=z.object({id,actionId:id,casterId:seat,targetId:seat.nullable(),abilityType:abilityTypeSchema,sourceRole:boardRoleSchema,ruleset:rulesetSchema,night,outcome:z.enum(['killed','prevented','no-effect']),reflectTarget:seat.nullable(),preventedBy:z.array(id)}).strict();
 export const resolutionDecisionSchema=z.discriminatedUnion('status',[
  z.object({status:z.literal('blocked'),reason:z.enum(['unimplemented','product-decision']),questionIds:z.array(id).min(1)}).strict(),
