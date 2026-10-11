@@ -1,5 +1,6 @@
 import {boardRoleLabels,type RoomBoardSnapshot,type BoardRole} from '../../../packages/contracts/board';
 import {useState} from 'react';
+import {ProfileAvatar} from './ProfileEditor';
 import {ManualPanel} from './ManualPanel';
 import {PreparationPanel} from './PreparationPanel';
 import {IdentityPanel} from './IdentityPanel';
@@ -35,7 +36,7 @@ export function RoomLobby({view,connected,busy,onSeat,onHome,onAction,onPublicRe
      {room.seats.map(s=>{
       const yours=s.memberId===me.id;return <button key={s.number} className={`seat ${s.memberId?'occupied':''} ${yours?'yours':''}`} disabled={busy||!!s.memberId||!connected||phase!=='lobby'}
        aria-label={`${s.number} 号座位，${s.nickname??'空位'}${yours?'，你的座位':''}`} onClick={()=>onSeat(s.number)}>
-       <span className="seat-number">{String(s.number).padStart(2,'0')}</span><span className="seat-person">{s.memberId?<span className="person-avatar">{s.nickname?.slice(0,1)}</span>:<span className="empty-person">＋</span>}</span>
+       <span className="seat-number">{String(s.number).padStart(2,'0')}</span><span className="seat-person">{s.memberId?<ProfileAvatar url={s.avatarUrl} nickname={s.nickname??''} className="person-avatar"/>:<span className="empty-person">＋</span>}</span>
        <span className="seat-name">{s.nickname??'点击入座'}</span><span className="seat-tag">{testRoles[s.number]?roleLabels[testRoles[s.number]]:phase==='lobby'&&s.ready?'已准备':yours?'你':s.isHost?'房主':s.memberId?'玩家':'空位'}</span>
       </button>;
      })}

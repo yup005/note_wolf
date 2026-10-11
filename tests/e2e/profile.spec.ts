@@ -1,0 +1,51 @@
+import {test,expect,type Page} from '@playwright/test';
+import {randomUUID} from 'node:crypto';
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADUlEQVQImWOIqJz4HwAE8QJi/co1KgAAAABJRU5ErkJggg==','base64');
+async function registered(page:Page,nickname='资料玩家'){
+ await page.goto('/');await expect(page.getByRole('button',{name:'登录 / 注册',exact:true})).toBeEnabled();
+ const response=await page.request.post('/api/auth/register',{data:{username:'profile_'+randomUUID().slice(0,8),password:'profile-test-password',nickname}});expect(response.ok()).toBe(true);const session=await response.json();await page.reload();await expect(page.getByRole('button',{name:nickname,exact:true})).toBeVisible();return session.account;
+}
+async function editor(page:Page,nickname:string){
+ await page.getByRole('button',{name:nickname,exact:true}).click();await page.getByRole('button',{name:'编辑资料',exact:true}).click();const dialog=page.getByRole('dialog',{name:'编辑资料',exact:true});await expect(dialog).toBeVisible();return dialog;
+}
+
+test('profile changes retain the current room, seat and pending creation; uploaded avatar refreshes and deletes',async({page})=>{
+ await registered(page);await page.getByRole('button',{name:'创建房间',exact:true}).click();await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();
+ const code=await page.getByTestId('room-code').textContent();const pending={requestId:randomUUID(),nickname:'待确认创建'};await page.evaluate(p=>localStorage.setItem('wolf.pending-create',JSON.stringify(p)),pending);
+ const dialog=await editor(page,'资料玩家');await dialog.getByLabel('昵称',{exact:true}).fill('  新资料玩家  ');await dialog.getByRole('button',{name:'保存昵称',exact:true}).click();await expect(dialog.getByRole('status')).toHaveText('昵称已保存');
+ await expect(page.getByRole('button',{name:'新资料玩家',exact:true})).toBeVisible();await expect(page.getByTestId('room-code')).toHaveText(code!);await expect(page.locator('.room-overview')).toContainText('你在 1 号');expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('wolf.pending-create')!))).toEqual(pending);
+ await dialog.getByLabel('选择头像',{exact:true}).setInputFiles({name:'avatar.png',mimeType:'image/png',buffer:png});await expect(dialog.getByRole('img',{name:'待上传头像',exact:true})).toBeVisible();await dialog.getByRole('button',{name:'上传头像',exact:true}).click();await expect(dialog.getByRole('status')).toHaveText('头像已更新');
+ const url=await dialog.getByRole('img',{name:'当前头像',exact:true}).getAttribute('src');expect(url).toBeTruthy();expect(url).not.toMatch(/^blob:/);await expect(page.locator('.seat.yours .person-avatar img')).toHaveAttribute('src',url!);
+ await dialog.getByRole('button',{name:'返回账号',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'关闭',exact:true}).click();await page.reload();await expect(page.getByTestId('room-code')).toHaveText(code!);await expect(page.locator('.seat.yours .person-avatar img')).toHaveAttribute('src',url!);
+ const reopened=await editor(page,'新资料玩家');await reopened.getByRole('button',{name:'删除头像',exact:true}).click();await expect(reopened.getByRole('status')).toHaveText('头像已删除');await expect(page.locator('.seat.yours .person-avatar img')).toHaveCount(0);await page.reload();await expect(page.locator('.seat.yours .person-avatar img')).toHaveCount(0);
+});
+
+test('profile file validation makes no upload request and failed upload preserves current avatar for retry',async({page})=>{
+ await registered(page);const dialog=await editor(page,'资料玩家');
+ await page.evaluate(()=>{const tracking=window as Window&{profileObjectUrls?:{created:string[];revoked:string[]}};tracking.profileObjectUrls={created:[],revoked:[]};const create=URL.createObjectURL.bind(URL),revoke=URL.revokeObjectURL.bind(URL);URL.createObjectURL=blob=>{const url=create(blob);tracking.profileObjectUrls!.created.push(url);return url;};URL.revokeObjectURL=url=>{tracking.profileObjectUrls!.revoked.push(url);revoke(url);};});
+ let uploads=0;page.on('request',request=>{if(request.method()==='POST'&&request.url().endsWith('/api/auth/avatar'))uploads++;});
+ await dialog.getByLabel('选择头像',{exact:true}).setInputFiles({name:'unsafe.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg/>')});await expect(dialog.getByRole('alert')).toContainText('JPEG、PNG 或 WebP');expect(uploads).toBe(0);
+ await dialog.getByLabel('选择头像',{exact:true}).setInputFiles({name:'large.png',mimeType:'image/png',buffer:Buffer.alloc(1024*1024+1)});await expect(dialog.getByRole('alert')).toContainText('1 MB');expect(uploads).toBe(0);
+ await dialog.getByLabel('昵称',{exact:true}).fill('   ');await dialog.getByRole('button',{name:'保存昵称',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('1–24');
+ await dialog.getByLabel('选择头像',{exact:true}).setInputFiles({name:'first.png',mimeType:'image/png',buffer:png});await dialog.getByRole('button',{name:'上传头像',exact:true}).click();await expect(dialog.getByRole('status')).toHaveText('头像已更新');const oldUrl=await dialog.getByRole('img',{name:'当前头像',exact:true}).getAttribute('src');
+ await page.route('**/api/auth/avatar',route=>route.request().method()==='POST'?route.fulfill({status:500,contentType:'application/json',body:JSON.stringify({message:'头像上传暂时失败'})}):route.continue());
+ await dialog.getByLabel('选择头像',{exact:true}).setInputFiles({name:'retry.png',mimeType:'image/png',buffer:png});await dialog.getByRole('button',{name:'上传头像',exact:true}).click();await expect(dialog.getByRole('alert')).toHaveText('头像上传暂时失败');await expect(dialog.getByRole('img',{name:'当前头像',exact:true})).toHaveAttribute('src',oldUrl!);await expect(dialog.getByRole('button',{name:'上传头像',exact:true})).toBeEnabled();await expect(dialog.getByRole('status')).toHaveCount(0);
+ await page.unroute('**/api/auth/avatar');await dialog.getByRole('button',{name:'上传头像',exact:true}).click();await expect(dialog.getByRole('status')).toHaveText('头像已更新');await expect.poll(()=>page.evaluate(()=>{const urls=(window as Window&{profileObjectUrls?:{created:string[];revoked:string[]}}).profileObjectUrls;return !!urls&&urls.created.length>0&&urls.created.every(url=>urls.revoked.includes(url));})).toBe(true);
+});
+
+test('active VIP permits 2MB selection while expired VIP returns to 1MB and phone layouts stay contained',async({page,browser})=>{
+ const account=await registered(page,'资料昵称显示到二十四个字符测试玩家');const admin=await browser.newContext();
+ try{await admin.request.get('/api/session');expect((await admin.request.post('/api/auth/login',{data:{username:'test_admin',password:'test-admin-password'}})).ok()).toBe(true);expect((await admin.request.post(`/api/admin/users/${account.id}/vip`,{data:{enabled:true,expiresAt:null}})).ok()).toBe(true);await page.reload();
+  let dialog=await editor(page,account.nickname);await expect(dialog).toContainText('2 MB');await dialog.getByLabel('选择头像',{exact:true}).setInputFiles({name:'vip.png',mimeType:'image/png',buffer:Buffer.concat([png,Buffer.alloc(1024*1024)])});await expect(dialog.getByRole('button',{name:'上传头像',exact:true})).toBeEnabled();
+  for(const width of [320,390,430]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);const bounds=await dialog.boundingBox();expect(bounds!.x).toBeGreaterThanOrEqual(0);expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(width);await expect(dialog.getByRole('button',{name:'保存昵称',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'返回账号',exact:true})).toBeVisible();}
+  expect((await admin.request.post(`/api/admin/users/${account.id}/vip`,{data:{enabled:true,expiresAt:Date.now()+2000}})).ok()).toBe(true);await expect.poll(async()=>((await (await page.request.get('/api/session')).json()).account.vip.active),{timeout:10000}).toBe(false);await page.reload();dialog=await editor(page,account.nickname);await expect(dialog).toContainText('1 MB');await dialog.getByLabel('选择头像',{exact:true}).setInputFiles({name:'expired.png',mimeType:'image/png',buffer:Buffer.alloc(1024*1024+1)});await expect(dialog.getByRole('alert')).toContainText('1 MB');
+ }finally{await admin.close();}
+});
+
+test('editing a seated account after cards are locked preserves private identity, session and room phase',async({page,context})=>{
+ await registered(page);await page.getByRole('button',{name:'创建房间',exact:true}).click();await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();await page.getByRole('button',{name:'补满测试玩家',exact:true}).click();await page.getByRole('button',{name:'准备',exact:true}).click();await page.getByRole('button',{name:'开始发牌',exact:true}).click();await page.getByRole('button',{name:'查看身份',exact:true}).click();const role=await page.getByTestId('private-role').innerText();await page.getByRole('button',{name:'确认身份',exact:true}).click();await page.getByRole('button',{name:'开始对局',exact:true}).click();await expect(page.getByRole('heading',{name:'身份已锁定',exact:true})).toBeVisible();
+ const before=await (await page.request.get('/api/session')).json();const cookies=await context.cookies();const room=before.rooms[0];const identity=await (await page.request.get(`/api/rooms/${room.room.id}/identity`)).json();
+ const dialog=await editor(page,'资料玩家');await dialog.getByLabel('昵称',{exact:true}).fill('局中资料玩家');await dialog.getByRole('button',{name:'保存昵称',exact:true}).click();await expect(dialog.getByRole('status')).toHaveText('昵称已保存');
+ const after=await (await page.request.get('/api/session')).json();expect(after.rooms[0].me.id).toBe(room.me.id);expect(after.rooms[0].room.id).toBe(room.room.id);expect(after.rooms[0].room.preparation.phase).toBe(room.room.preparation.phase);expect((await context.cookies()).map(cookie=>({name:cookie.name,value:cookie.value}))).toEqual(cookies.map(cookie=>({name:cookie.name,value:cookie.value})));expect(await (await page.request.get(`/api/rooms/${room.room.id}/identity`)).json()).toEqual(identity);
+ await dialog.getByRole('button',{name:'返回账号',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'关闭',exact:true}).click();await expect(page.getByRole('heading',{name:'身份已锁定',exact:true})).toBeVisible();await page.getByRole('button',{name:'查看身份',exact:true}).click();await expect(page.getByTestId('private-role')).toHaveText(role);
+});

@@ -5,7 +5,7 @@ export const seatSchema=z.number().int().min(1).max(12);
 export const createSchema=z.object({nickname:nameSchema,requestId:z.string().uuid()});
 export const joinSchema=z.object({nickname:nameSchema,code:codeSchema});
 export const selectSchema=z.object({seat:z.number().int().positive().max(256)}).strict();
-export interface PublicSeat { number:number; memberId:string|null; nickname:string|null; isHost:boolean; isTestPlayer:boolean; ready:boolean }
+export interface PublicSeat { number:number; memberId:string|null; nickname:string|null; avatarUrl?:string|null; isHost:boolean; isTestPlayer:boolean; ready:boolean }
 export interface RoomSnapshot { board:import('./board.js').RoomBoardSnapshot; manual?:import('./records.js').ManualPublic|null; control?:import('./control.js').GameControl; testRoom:boolean; id:string; code:string; boardId:string; revision:number; seats:PublicSeat[]; preparation:PreparationState; night?:import('./night.js').NightPublic|null; day?:import('./day.js').DayPublic|null }
 export interface MyMembership { id:string; nickname:string; isHost:boolean; seat:number|null }
 export interface LobbyView { testPlayersEnabled:boolean; room:RoomSnapshot; me:MyMembership }
@@ -52,3 +52,4 @@ Object.assign(messages,{RECORDER_ONLY:"只有参赛房主或有效 VIP 可记录
 
 Object.assign(messages,{OFFICIAL_UNCOMMITTED:'死讯修改尚未提交，请先修正官方记录后发布'});
 Object.assign(messages,{LOGIN_REQUIRED:'请先登录账号',SHARE_AUTHOR_ONLY:'只能管理自己发布的复盘链接',SHARE_UNPUBLISHED:'请先结束对局并发布复盘',SHARE_REVOKED:'此链接已主动撤销，请重新生成',STALE_SHARE:'链接状态已更新，请重新读取',SHARE_UNAVAILABLE:'分享链接暂不可用'});
+Object.assign(messages,{AVATAR_TOO_LARGE:'头像超过当前账号允许的文件大小',INVALID_AVATAR:'请选择有效的 JPEG、PNG 或 WebP 图片'});

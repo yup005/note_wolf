@@ -3,6 +3,8 @@ import {createHash,randomBytes,randomUUID,scrypt,timingSafeEqual} from 'node:cry
 import {promisify} from 'node:util';
 import {LobbyError} from '../contracts/index.js';
 import type {Account} from '../contracts/auth.js';
+import {profileSchema} from '../contracts/auth.js';
+import {avatarUploadLimit,avatarUrl,normalizeAvatar} from './avatars.js';
 const derive=promisify(scrypt);
 export const sessionHash=(token:string)=>createHash('sha256').update(token).digest('hex');
 type Row={id:string;username:string;nickname:string;role:'user'|'admin';status:'active'|'disabled';created_at:number;password_hash:string;salt:string};
@@ -11,13 +13,51 @@ export class AuthStore {
  constructor(private db:Database.Database){
   db.exec(`CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY,username TEXT NOT NULL UNIQUE,nickname TEXT NOT NULL,password_hash TEXT NOT NULL,salt TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('user','admin')),status TEXT NOT NULL CHECK(status IN ('active','disabled')),created_at INTEGER NOT NULL);
    CREATE TABLE IF NOT EXISTS vip_entitlements(account_id TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,enabled INTEGER NOT NULL,expires_at INTEGER);
+   CREATE TABLE IF NOT EXISTS account_avatars(account_id TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,revision TEXT NOT NULL,image BLOB NOT NULL);
    CREATE UNIQUE INDEX IF NOT EXISTS single_admin ON accounts(role) WHERE role='admin';`);
   if(!(db.prepare('PRAGMA table_info(sessions)').all() as {name:string}[]).some(c=>c.name==='account_id'))db.exec('ALTER TABLE sessions ADD COLUMN account_id TEXT REFERENCES accounts(id)');
   db.pragma('user_version = 10');
  }
- private public(r:Row):Account{const v=this.db.prepare('SELECT enabled,expires_at FROM vip_entitlements WHERE account_id=?').get(r.id) as {enabled:number;expires_at:number|null}|undefined;return {...publicAccount(r),vip:{active:!!v?.enabled&&(v.expires_at===null||v.expires_at>Date.now()),expiresAt:v?.expires_at??null}};}
+ private public(r:Row):Account{const v=this.db.prepare('SELECT enabled,expires_at FROM vip_entitlements WHERE account_id=?').get(r.id) as {enabled:number;expires_at:number|null}|undefined;const avatar=this.db.prepare('SELECT revision FROM account_avatars WHERE account_id=?').get(r.id) as {revision:string}|undefined;return {...publicAccount(r),avatarUrl:avatar?avatarUrl(r.id,avatar.revision):null,vip:{active:!!v?.enabled&&(v.expires_at===null||v.expires_at>Date.now()),expiresAt:v?.expires_at??null}};}
  setVip(token:string,id:string,enabled:boolean,expiresAt:number|null){this.requireAdmin(token);if(!this.db.prepare('SELECT 1 FROM accounts WHERE id=?').get(id))throw new LobbyError('NOT_FOUND',404);if(enabled&&expiresAt!==null&&expiresAt<=Date.now())throw new LobbyError('INVALID_INPUT');this.db.prepare('INSERT INTO vip_entitlements VALUES (?,?,?) ON CONFLICT(account_id) DO UPDATE SET enabled=excluded.enabled,expires_at=excluded.expires_at').run(id,enabled?1:0,expiresAt);return {id,enabled,expiresAt};}
  account(token:string):Account|null{const r=this.db.prepare('SELECT a.* FROM accounts a JOIN sessions s ON s.account_id=a.id WHERE s.session_hash=? AND a.status=\'active\'').get(sessionHash(token)) as Row|undefined;return r?this.public(r):null;}
+ requireAccount(token:string):Account{
+  const account=this.account(token);if(account)return account;
+  const session=this.db.prepare('SELECT account_id FROM sessions WHERE session_hash=?').get(sessionHash(token)) as {account_id:string|null}|undefined;
+  throw new LobbyError(session?.account_id===null?'LOGIN_REQUIRED':'UNAUTHORIZED',session?.account_id===null?403:401);
+ }
+ private bumpProfileRooms(accountId:string){
+  this.db.prepare('UPDATE rooms SET revision=revision+1 WHERE id IN (SELECT room_id FROM members WHERE session_hash=?)').run('account:'+accountId);
+ }
+ updateProfile(token:string,nickname:string):Account{
+  const parsed=profileSchema.safeParse({nickname});if(!parsed.success)throw new LobbyError('INVALID_NAME');
+  return this.db.transaction(()=>{const account=this.requireAccount(token);
+   this.db.prepare('UPDATE accounts SET nickname=? WHERE id=?').run(parsed.data.nickname,account.id);
+   this.db.prepare('UPDATE members SET nickname=? WHERE session_hash=?').run(parsed.data.nickname,'account:'+account.id);
+   this.bumpProfileRooms(account.id);return this.requireAccount(token);
+  }).immediate();
+ }
+ async uploadAvatar(token:string,bytes:Buffer,contentType:string):Promise<Account>{
+  if(bytes.length>avatarUploadLimit(this.requireAccount(token)))throw new LobbyError('AVATAR_TOO_LARGE',413);
+  const image=await normalizeAvatar(bytes,contentType);
+  return this.db.transaction(()=>{
+   // Decoding is asynchronous: recheck session and current VIP entitlement before writing.
+   const account=this.requireAccount(token);if(bytes.length>avatarUploadLimit(account))throw new LobbyError('AVATAR_TOO_LARGE',413);
+   this.db.prepare('INSERT INTO account_avatars(account_id,revision,image) VALUES (?,?,?) ON CONFLICT(account_id) DO UPDATE SET revision=excluded.revision,image=excluded.image').run(account.id,randomUUID(),image);
+   this.bumpProfileRooms(account.id);return this.requireAccount(token);
+  }).immediate();
+ }
+ deleteAvatar(token:string):Account{
+  return this.db.transaction(()=>{const account=this.requireAccount(token);
+   const deleted=this.db.prepare('DELETE FROM account_avatars WHERE account_id=?').run(account.id);
+   if(deleted.changes)this.bumpProfileRooms(account.id);return this.requireAccount(token);
+  }).immediate();
+ }
+ avatar(accountId:string,revision?:string):Buffer{
+  const row=this.db.prepare("SELECT v.revision,v.image FROM account_avatars v JOIN accounts a ON a.id=v.account_id WHERE v.account_id=? AND a.status='active'").get(accountId) as {revision:string;image:Buffer}|undefined;
+  if(!row||revision!==undefined&&row.revision!==revision)throw new LobbyError('NOT_FOUND',404);
+  return row.image;
+ }
  owner(token:string){const a=this.account(token);return a?'account:'+a.id:sessionHash(token);}
  requireAdmin(token:string){if(this.account(token)?.role!=='admin')throw new LobbyError('ADMIN_ONLY',403);}
  adminExists(){return !!this.db.prepare("SELECT 1 FROM accounts WHERE role='admin'").get();}

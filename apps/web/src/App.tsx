@@ -9,8 +9,9 @@ import {FavoritesPanel} from './FavoritesPanel';
 import {MySharesPanel} from './MySharesPanel';
 import {AccountDialog,type AccountSession} from './AccountDialog';
 import {AdminPanel} from './AdminPanel';
+import {ProfileAvatar} from './ProfileEditor';
 import type {Account} from '../../../packages/contracts/auth';
-import {useRoom} from './useRoom';
+import {useRoom,expireRoomNavigation,acceptRoomActionView,type RoomExpiration} from './useRoom';
 interface PendingCreate {requestId:string;nickname:string}
 function loadPendingCreate():PendingCreate|undefined{
  try{const p=JSON.parse(localStorage.getItem('wolf.pending-create')??'null');
@@ -29,15 +30,22 @@ function LobbyApp(){
  const [previous,setPrevious]=useState<LobbyView[]>([]);const [booting,setBooting]=useState(true);const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');const [warning,setWarning]=useState(false);const lock=useRef(false);
  const snapshot=useCallback((room:RoomSnapshot)=>setView(current=>current&&current.room.id===room.id&&room.revision>=current.room.revision?{...current,room}:current),[]);
- const connected=useRoom(view?.room.id,snapshot,sessionRevision);
+ const navigation=useRef({view,previous});navigation.current={view,previous};
+ const expiredRoom=useCallback((event:RoomExpiration)=>{
+  const next=expireRoomNavigation({...navigation.current,rememberedRoom:localStorage.getItem('wolf.room')},event.roomId);navigation.current={view:next.view,previous:next.previous};
+  setPrevious(rooms=>rooms.filter(room=>room.room.id!==event.roomId));
+  if(localStorage.getItem('wolf.room')===event.roomId)localStorage.removeItem('wolf.room');
+  if(next.wasCurrent){setView(current=>current?.room.id===event.roomId?undefined:current);setDigits(['','','','']);setError(event.message);}
+ },[]);
+ const connected=useRoom(view?.room.id,snapshot,sessionRevision,expiredRoom);
  const initialize=useCallback(async()=>{
   setError('');setBooting(true);
   try{const session=await api<AccountSession>('/api/session');setPrevious(session.rooms);setAccount(session.account);if(session.account)setNickname(session.account.nickname);
-   const remembered=localStorage.getItem('wolf.room');const active=session.rooms.find(v=>v.room.id===remembered);if(active)setView(active);
+   const remembered=localStorage.getItem('wolf.room');const active=session.rooms.find(v=>v.room.id===remembered);if(active){navigation.current.view=active;setView(active);}
   }catch(e){setError(errorText(e));}finally{setBooting(false);}
  },[]);
  useEffect(()=>{void initialize();},[initialize]);
- function enter(next:LobbyView){localStorage.setItem('wolf.room',next.room.id);localStorage.setItem('wolf.nickname',next.me.nickname);setView(next);setError('');setPrevious(p=>[next,...p.filter(v=>v.room.id!==next.room.id)]);}
+ function enter(next:LobbyView){navigation.current.view=next;localStorage.setItem('wolf.room',next.room.id);localStorage.setItem('wolf.nickname',next.me.nickname);setView(next);setError('');setPrevious(p=>[next,...p.filter(v=>v.room.id!==next.room.id)]);}
  function validName(){if(!nickname.trim()||nickname.trim().length>24){setError('请输入 1–24 个字符的昵称');return false;}return true;}
  async function run(action:()=>Promise<LobbyView>){
   if(lock.current||booting)return false;lock.current=true;setBusy(true);setError('');
@@ -54,15 +62,16 @@ function LobbyApp(){
  function join(code:string){if(!validName())return;void run(()=>api<LobbyView>('/api/rooms/join',{nickname,code}));}
  async function roomAction(action:string,body:unknown={}){
   if(!view||lock.current)return;lock.current=true;setBusy(true);setError('');
-  try{const next=await api<LobbyView>(`/api/rooms/${view.room.id}/${action}`,body);setView(current=>current&&current.room.revision>next.room.revision?{...current,me:next.me}:next);}
+  try{const next=await api<LobbyView>(`/api/rooms/${view.room.id}/${action}`,body);setView(current=>acceptRoomActionView(current,next));}
   catch(e){setError(errorText(e));try{const current=await api<LobbyView>(`/api/rooms/${view.room.id}`);snapshot(current.room);}catch{/* reconnect retrieves the current snapshot */}}
   finally{lock.current=false;setBusy(false);}
  }
  async function refreshRoom(){if(view){const next=await api<LobbyView>(`/api/rooms/${view.room.id}`);snapshot(next.room);}}
  function accountSession(session:AccountSession){setAccount(session.account);setPrevious(session.rooms);setSessionRevision(v=>v+1);setView(current=>current?session.rooms.find(v=>v.room.id===current.room.id):undefined);setAdminOpen(false);setError('');pendingCreate.current=undefined;localStorage.removeItem('wolf.pending-create');if(session.account)setNickname(session.account.nickname);else localStorage.removeItem('wolf.room');}
- function home(){setView(undefined);setError('');setDigits(['','','','']);localStorage.removeItem('wolf.room');}
+ function profileSession(session:AccountSession){setAccount(session.account);setPrevious(session.rooms);setView(current=>{if(!current)return current;const updated=session.rooms.find(room=>room.room.id===current.room.id);return updated?{...updated,room:updated.room.revision>=current.room.revision?updated.room:current.room}:current;});if(session.account){setNickname(session.account.nickname);localStorage.setItem('wolf.nickname',session.account.nickname);}}
+ function home(){navigation.current.view=undefined;setView(undefined);setError('');setDigits(['','','','']);localStorage.removeItem('wolf.room');}
  return <div className={`app-shell${view?` in-room${(view.room.night||view.room.manual)?' in-night':''}`:''}`}>
-  <header className="app-header"><a className="brand" href="/" onClick={e=>{e.preventDefault();home();}}><span className="brand-symbol"><svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="m5 6 4 3 5-2 5 2 4-3-2 13-7 4-7-4L5 6Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/><path d="m9 14 2 1m6-1-2 1m-3 3h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></span><span>笔记狼人杀</span></a><div className="account-tools">{account?.role==='admin'&&<button className="text-button" onClick={()=>{home();setAdminOpen(true);}}>后台</button>}<button className="text-button" onClick={()=>setAccountOpen(true)} disabled={booting}>{account?account.nickname:'登录 / 注册'}</button></div></header>
+  <header className="app-header"><a className="brand" href="/" onClick={e=>{e.preventDefault();home();}}><span className="brand-symbol"><svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="m5 6 4 3 5-2 5 2 4-3-2 13-7 4-7-4L5 6Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/><path d="m9 14 2 1m6-1-2 1m-3 3h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></span><span>笔记狼人杀</span></a><div className="account-tools">{account?.role==='admin'&&<button className="text-button" onClick={()=>{home();setAdminOpen(true);}}>后台</button>}<button className="text-button header-account-button" onClick={()=>setAccountOpen(true)} disabled={booting}>{account&&<ProfileAvatar url={account.avatarUrl} nickname={account.nickname} className="avatar header-account-avatar"/>}<span className="header-account-name">{account?account.nickname:'登录 / 注册'}</span></button></div></header>
   <main>
    {error&&<div className="error-box" role="alert">{error}{booting===false&&!view&&previous.length===0&&<button className="text-button" onClick={()=>void initialize()}>重新连接</button>}</div>}
    {booting?<div className="card loading" role="status">正在连接房间服务…</div>:adminOpen&&account?.role==='admin'?<AdminPanel onClose={()=>setAdminOpen(false)}/>:view?<PublicVoiceProvider key={view.room.id} view={view} connected={connected}><RoomLobby view={view} connected={connected} busy={busy} onSeat={seat=>void roomAction('seat',{seat})} onAction={(action,body)=>void roomAction(action,body)} onPublicRefresh={refreshRoom} onHome={home}/></PublicVoiceProvider>:<>
@@ -84,7 +93,7 @@ function LobbyApp(){
    </>}
   </main>
 
-  {accountOpen&&<AccountDialog account={account} onClose={()=>setAccountOpen(false)} onSession={accountSession}/>}
+  {accountOpen&&<AccountDialog account={account} onClose={()=>setAccountOpen(false)} onSession={accountSession} onProfileSession={profileSession}/>}
   {warning&&<div className="modal-backdrop"><section className="card modal" role="dialog" aria-modal="true" aria-labelledby="guest-title"><div className="eyebrow">创建前的小提醒</div><h2 id="guest-title">保管好房主的设备</h2><p>未绑定账号无法跨设备恢复管理权限</p><p className="muted">游客房间可在登录后关联账号。</p><button autoFocus className="primary full" onClick={()=>{localStorage.setItem('wolf.host-warning','seen');void create();}}>以游客身份继续</button><button className="text-button full" onClick={()=>setWarning(false)}>取消</button></section></div>}
  </div>;
 }

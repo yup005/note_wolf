@@ -1,4 +1,5 @@
 import {VoiceStore} from './voice.js';
+import {RetentionStore} from './retention.js';
 import {SharingStore} from './sharing.js';
 import {BoardsStore,migrateBoardSeats} from './boards.js';
 import {assertPlayableBoard} from '../domain/boardConfig.js';
@@ -8,6 +9,7 @@ import type {VoiceCommand} from '../contracts/voice.js';
 import Database from 'better-sqlite3';
 import {RecordsStore} from './records.js';
 import {AuthStore} from './auth.js';
+import {avatarUrl} from './avatars.js';
 import { createHash, randomInt, randomUUID } from 'node:crypto';
 import { LobbyError, nameSchema, codeSchema, seatSchema, type LobbyView, type RoomSnapshot } from '../contracts/index.js';
 import {PreparationStore,type MemberRow} from './preparation.js';
@@ -33,6 +35,7 @@ export class LobbyStore {
  private voice:VoiceStore;
  private sharing:SharingStore;
  private boards:BoardsStore;
+ private retention:RetentionStore;
  constructor(path:string,private codeStart:()=>number=()=>randomInt(10000),private allowTestPlayers=false,private now:()=>number=Date.now,private dayRules:FirstDayRules=firstDayRules){
   this.db=new Database(path);this.db.pragma('journal_mode = WAL');this.db.pragma('foreign_keys = ON');this.db.pragma('busy_timeout = 5000');
   this.db.exec(`
@@ -72,12 +75,21 @@ export class LobbyStore {
   this.voice=new VoiceStore(this.db,this.now,(id,memberId)=>{const m=this.db.prepare('SELECT * FROM members WHERE room_id=? AND id=?').get(id,memberId) as MemberRow|undefined;return !!m&&this.control.canManage(id,m);});
   this.sharing=new SharingStore(this.db,this.auth,this.now);
   this.preparation=new PreparationStore(this.db,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats,id=>this.boards.configuration(id));
+  this.retention=new RetentionStore(this.db,this.now,id=>this.records.preserveForRoomCleanup(id));
  }
+ // Internal lifecycle hooks; neither reads nor background game/voice work renew rooms.
+ touchRooms(ids:readonly string[]){this.retention.touch(ids);}
+ touchRecordRoom(recordId:string){const row=this.db.prepare('SELECT room_id FROM record_drafts WHERE id=?').get(recordId) as {room_id:string}|undefined;if(row)this.retention.touch([row.room_id]);}
+ cleanupExpiredRooms(){const ids=this.retention.expiredcleanup();this.control.forgetRooms(ids);return ids;}
  publicVoice(token:string,id:string,command:VoiceCommand){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);const m=this.member(token,id);return this.voice.command(token,m.id,this.snapshot(id),command);}
  private nickname(value:string){const p=nameSchema.safeParse(value);if(!p.success)throw new LobbyError('INVALID_NAME');return p.data;}
  private member(token:string,roomId:string):MemberRow{
   const m=this.db.prepare('SELECT * FROM members WHERE room_id=? AND session_hash=?').get(roomId,this.auth.owner(token)) as MemberRow|undefined;
-  if(!m)throw new LobbyError('NOT_MEMBER',403);m.is_manager=this.control.canManage(roomId,m);return m;
+  if(!m){
+   if(!this.db.prepare('SELECT 1 FROM rooms WHERE id=?').get(roomId))throw new LobbyError('ROOM_NOT_FOUND',404);
+   throw new LobbyError('NOT_MEMBER',403);
+  }
+  m.is_manager=this.control.canManage(roomId,m);return m;
  }
  create(token:string,nickname:string,requestId:string=randomUUID()):LobbyView{
   const name=this.nickname(nickname);
@@ -93,6 +105,7 @@ export class LobbyStore {
    if(code===undefined)throw new LobbyError('ROOM_CODES_FULL',503);
    const roomId=randomUUID();
    this.db.prepare('INSERT INTO rooms(id,code,created_at) VALUES (?,?,?)').run(roomId,code,Date.now());
+   this.retention.touch([roomId]);
    this.boards.initialize(roomId);
    this.db.prepare('INSERT INTO preparations(room_id) VALUES (?)').run(roomId);
    this.db.prepare('INSERT INTO members(id,room_id,session_hash,nickname,is_host) VALUES (?,?,?,?,1)').run(randomUUID(),roomId,this.auth.owner(token),name);
@@ -131,10 +144,10 @@ export class LobbyStore {
  snapshot(roomId:string):RoomSnapshot{
   const r=this.db.prepare('SELECT * FROM rooms WHERE id=?').get(roomId) as RoomRow|undefined;
   if(!r)throw new LobbyError('ROOM_NOT_FOUND',404);
-  const members=this.db.prepare('SELECT id,nickname,is_host,seat,ready FROM members WHERE room_id=? AND seat IS NOT NULL').all(roomId) as MemberRow[];
+  const members=this.db.prepare("SELECT m.id,m.nickname,m.is_host,m.seat,m.ready,v.account_id AS avatar_account_id,v.revision AS avatar_revision FROM members m LEFT JOIN accounts a ON m.session_hash='account:'||a.id AND a.status='active' LEFT JOIN account_avatars v ON v.account_id=a.id WHERE m.room_id=? AND m.seat IS NOT NULL").all(roomId) as (MemberRow&{avatar_account_id:string|null;avatar_revision:string|null})[];
   const board=this.boards.snapshot(roomId);
   return {board,manual:this.records.public(roomId),...(this.night.snapshot(roomId)&&!this.records.public(roomId)?{control:this.control.snapshot(roomId)}:{}),testRoom:this.testPlayers.isTestRoom(roomId),id:r.id,code:r.code,boardId:board.id==='standard-12'?'seer-witch-hunter-idiot-12':board.id,revision:r.revision,night:this.night.snapshot(roomId),day:this.day.snapshot(roomId),preparation:this.preparation.snapshot(roomId),seats:Array.from({length:board.composition.seatCount},(_,i)=>{
-   const m=members.find(m=>m.seat===i+1);return {number:i+1,memberId:m?.id??null,nickname:m?.nickname??null,isHost:m?.is_host===1,isTestPlayer:m?this.testPlayers.isActor(m.id):false,ready:!!m?.ready};
+   const m=members.find(m=>m.seat===i+1);return {number:i+1,memberId:m?.id??null,nickname:m?.nickname??null,avatarUrl:m?.avatar_account_id&&m.avatar_revision?avatarUrl(m.avatar_account_id,m.avatar_revision):null,isHost:m?.is_host===1,isTestPlayer:m?this.testPlayers.isActor(m.id):false,ready:!!m?.ready};
   })};
  }
  unseat(token:string,roomId:string):LobbyView{
@@ -200,7 +213,7 @@ export class LobbyStore {
  saveFavorite(token:string,id:string){return this.db.transaction(()=>{const record=this.gameReplay(token,id);const room=this.snapshot(id);this.db.prepare('INSERT OR IGNORE INTO saved_replays VALUES (?,?,?,?,?,?)').run(this.auth.owner(token),id,room.code,record.winner,this.now(),JSON.stringify(record));return {saved:true};}).immediate();}
  favorites(token:string):import('../contracts/game.js').FavoriteGame[]{return this.db.prepare('SELECT room_id AS roomId,code,winner,saved_at AS savedAt FROM saved_replays WHERE owner_hash=? ORDER BY saved_at DESC,room_id').all(this.auth.owner(token)) as import('../contracts/game.js').FavoriteGame[];}
  favoriteReplay(token:string,id:string):import('../contracts/game.js').GameReplay{const row=this.db.prepare('SELECT record FROM saved_replays WHERE owner_hash=? AND room_id=?').get(this.auth.owner(token),id) as {record:string}|undefined;if(!row)throw new LobbyError('NOT_FOUND',404);return {...JSON.parse(row.record),saved:true};}
- removeFavorite(token:string,id:string){this.db.prepare('DELETE FROM saved_replays WHERE owner_hash=? AND room_id=?').run(this.auth.owner(token),id);return {saved:false};}
+ removeFavorite(token:string,id:string){const result=this.db.prepare('DELETE FROM saved_replays WHERE owner_hash=? AND room_id=?').run(this.auth.owner(token),id);if(result.changes)this.retention.touch([id]);return {saved:false};}
  recordsList(token:string,id:string){return this.records.list(token,id);}
  saveRecord(token:string,id:string,revision:number,document:import('../contracts/records.js').RecordDocument){return this.records.save(token,id,revision,document);}
  importAutomaticRecord(token:string,id:string,revision:number){return this.records.importAutomatic(token,id,revision);}
@@ -215,7 +228,7 @@ export class LobbyStore {
  sharedRecord(token:string){return this.sharing.read(token);}
  saveRecordFavorite(token:string,id:string){return this.records.favorite(token,id);}
  recordFavorites(token:string){return this.records.favorites(token);}
- removeRecordFavorite(token:string,id:string){return this.records.removeFavorite(token,id);}
+ removeRecordFavorite(token:string,id:string){const exists=this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(this.auth.owner(token),id);const result=this.records.removeFavorite(token,id);if(exists)this.touchRecordRoom(id);return result;}
  switchManual(token:string,id:string,confirmed:boolean){this.records.switch(token,id,confirmed);return this.view(token,id);}
  commitManual(token:string,id:string,revision:number){return this.records.commit(token,id,revision);}
  requestManualEnd(token:string,id:string,revision:number){return this.records.requestEnd(token,id,revision);}
@@ -226,6 +239,16 @@ export class LobbyStore {
   const rows=this.db.prepare('SELECT room_id FROM members WHERE session_hash=? ORDER BY rowid DESC LIMIT 20').all(this.auth.owner(token)) as {room_id:string}[];
   return rows.map(r=>this.view(token,r.room_id));
  }
+ private profileResult(token:string){
+  const account=this.auth.requireAccount(token);
+  const rooms=(this.db.prepare('SELECT room_id FROM members WHERE session_hash=? ORDER BY rowid DESC').all('account:'+account.id) as {room_id:string}[]).map(({room_id})=>this.view(token,room_id));
+  this.retention.touch(rooms.map(room=>room.room.id));
+  return {account,rooms};
+ }
+ updateProfile(token:string,nickname:string){this.auth.updateProfile(token,nickname);return this.profileResult(token);}
+ async uploadAvatar(token:string,bytes:Buffer,contentType:string){await this.auth.uploadAvatar(token,bytes,contentType);return this.profileResult(token);}
+ deleteAvatar(token:string){this.auth.deleteAvatar(token);return this.profileResult(token);}
+ avatar(accountId:string,revision?:string){return this.auth.avatar(accountId,revision);}
  issueSession(token:string){this.db.prepare('INSERT INTO sessions(session_hash,created_at) VALUES (?,?)').run(sessionKey(token),Date.now());}
  hasSession(token:string){return !!this.db.prepare("SELECT 1 FROM sessions s LEFT JOIN accounts a ON a.id=s.account_id WHERE s.session_hash=? AND (s.account_id IS NULL OR a.status='active')").get(sessionKey(token));}
  isDevelopmentTestHost(token:string){return this.allowTestPlayers&&!!this.db.prepare('SELECT 1 FROM members m JOIN test_rooms t ON t.room_id=m.room_id WHERE m.session_hash=? AND m.is_host=1 LIMIT 1').get(this.auth.owner(token));}

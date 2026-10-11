@@ -77,6 +77,7 @@ export class ControlStore {
   this.db.prepare('INSERT INTO member_presence(member_id,room_id,connected,turn_id,lost_ms) VALUES (?,?,1,?,?) ON CONFLICT(member_id) DO UPDATE SET connected=1,disconnected_at=NULL,turn_id=excluded.turn_id,lost_ms=excluded.lost_ms').run(memberId,id,turn,lost);return changed;
  }
  disconnect(connectionId:string){const p=this.connections.get(connectionId);if(!p)return [];this.connections.delete(connectionId);if([...this.connections.values()].some(v=>v.memberId===p.memberId))return [];this.offline(p.roomId,p.memberId);return [p.roomId];}
+ forgetRooms(ids:readonly string[]){const removed=new Set(ids);for(const [connectionId,p] of this.connections)if(removed.has(p.roomId))this.connections.delete(connectionId);}
  private offline(id:string,memberId:string){const turn=this.active(id)?.state.turnId??null;this.row(id);
   this.db.prepare('UPDATE member_presence SET connected=0,disconnected_at=?,lost_ms=CASE WHEN turn_id=? THEN lost_ms ELSE 0 END,turn_id=? WHERE member_id=?').run(this.frozen(id)?null:this.now(),turn,turn,memberId);
   if(this.active(id)){this.db.prepare('UPDATE room_controls SET notice_until=? WHERE room_id=?').run(this.now()+15000,id);this.bump(id);}

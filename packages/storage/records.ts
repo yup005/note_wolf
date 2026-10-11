@@ -13,6 +13,7 @@ interface ManualRow {room_id:string;status:ManualPublic['status'];version:number
 export class RecordsStore {
  constructor(private db:Database.Database,private auth:AuthStore,private now:()=>number,private replay:(id:string)=>GameReplay){
   db.exec(`CREATE TABLE IF NOT EXISTS record_rooms(room_id TEXT PRIMARY KEY,code TEXT NOT NULL,roles TEXT NOT NULL,participants TEXT NOT NULL,host_owner TEXT NOT NULL,ended INTEGER NOT NULL DEFAULT 0);
+   CREATE TABLE IF NOT EXISTS record_official_snapshots(room_id TEXT PRIMARY KEY REFERENCES record_rooms(room_id),document TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS record_drafts(id TEXT PRIMARY KEY,room_id TEXT NOT NULL REFERENCES record_rooms(room_id),owner TEXT NOT NULL,author TEXT NOT NULL,official INTEGER NOT NULL,draft TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 0,published_version INTEGER,withdrawn INTEGER NOT NULL DEFAULT 0,published_at INTEGER NOT NULL DEFAULT 0,UNIQUE(room_id,owner));
    CREATE TABLE IF NOT EXISTS record_versions(record_id TEXT NOT NULL REFERENCES record_drafts(id),version INTEGER NOT NULL,document TEXT NOT NULL,outcome TEXT,published_at INTEGER NOT NULL,PRIMARY KEY(record_id,version));
    CREATE TABLE IF NOT EXISTS record_favorites(owner TEXT NOT NULL,record_id TEXT NOT NULL REFERENCES record_drafts(id),saved_at INTEGER NOT NULL,PRIMARY KEY(owner,record_id));
@@ -29,6 +30,18 @@ export class RecordsStore {
   const room=this.db.prepare('SELECT code FROM rooms WHERE id=?').get(id) as {code:string};
   this.db.prepare('INSERT INTO record_rooms VALUES (?,?,?,?,?,0)').run(id,room.code,JSON.stringify(members.map(({seat,role})=>({seat,role}))),JSON.stringify(members.map(m=>m.owner)),members.find(m=>m.is_host)!.owner);
   return this.db.prepare('SELECT * FROM record_rooms WHERE room_id=?').get(id) as Archive;
+ }
+ // Capture authorized record evidence before runtime foreign-key cascades remove it.
+ // Keep private drafts and published versions unchanged; ongoing rooms stay locked.
+ preserveForRoomCleanup(id:string):void{
+  if(!this.db.prepare('SELECT 1 FROM record_rooms WHERE room_id=?').get(id))return;
+  const ended=this.ended(id),document=this.officialDocument(id);
+  this.db.prepare('INSERT INTO record_official_snapshots VALUES (?,?) ON CONFLICT(room_id) DO UPDATE SET document=excluded.document').run(id,JSON.stringify(document));
+  if(ended)this.db.prepare('UPDATE record_rooms SET ended=1 WHERE room_id=?').run(id);
+ }
+ private preservedDocument(id:string):RecordDocument|null{
+  const row=this.db.prepare('SELECT document FROM record_official_snapshots WHERE room_id=?').get(id) as {document:string}|undefined;
+  return row?JSON.parse(row.document):null;
  }
  private participant(token:string,id:string){const a=this.capture(id),owner=this.auth.owner(token);if(!(JSON.parse(a.participants) as string[]).includes(owner))throw new LobbyError('PARTICIPANT_ONLY',403);return {a,owner};}
  private canRecord(token:string,a:Archive){return a.host_owner===this.auth.owner(token)||this.auth.account(token)?.vip?.active===true;}
@@ -54,6 +67,7 @@ export class RecordsStore {
   const manual=this.db.prepare('SELECT official FROM manual_games WHERE room_id=?').get(id) as {official:string}|undefined;if(manual)return JSON.parse(manual.official);
   const history=this.db.prepare('SELECT document FROM manual_revisions WHERE room_id=? ORDER BY version DESC LIMIT 1').get(id) as {document:string}|undefined;if(history)return JSON.parse(history.document);
   if(this.db.prepare('SELECT 1 FROM rooms WHERE id=?').get(id))return this.automaticDocument(id);
+  const preserved=this.preservedDocument(id);if(preserved)return preserved;
   const published=this.db.prepare('SELECT v.document FROM record_drafts d JOIN record_versions v ON v.record_id=d.id AND v.version=d.published_version WHERE d.room_id=? AND d.official=1').get(id) as {document:string}|undefined;
   if(!published)throw new LobbyError('NOT_FOUND',404);return JSON.parse(published.document);
  }
@@ -73,6 +87,7 @@ export class RecordsStore {
  removeFavorite(token:string,id:string){this.db.prepare('DELETE FROM record_favorites WHERE owner=? AND record_id=?').run(this.auth.owner(token),id);return {saved:false};}
  start(id:string){const p=this.db.prepare('SELECT game_mode FROM preparations WHERE room_id=?').get(id) as {game_mode:string};this.capture(id);if(p.game_mode==='manual')this.db.prepare('INSERT OR IGNORE INTO manual_games(room_id,official) VALUES (?,?)').run(id,JSON.stringify(emptyRecord()));}
  private automaticDocument(id:string):RecordDocument{
+  if(!this.db.prepare('SELECT 1 FROM rooms WHERE id=?').get(id)){const preserved=this.preservedDocument(id);if(preserved)return preserved;}
   const doc=emptyRecord(),ended=this.ended(id);
   const rows=this.db.prepare("SELECT state FROM game_history WHERE room_id=? AND kind='day' UNION ALL SELECT state FROM day_games WHERE room_id=?").all(id,id) as {state:string}[];
   for(const {state} of rows.sort((a,b)=>JSON.parse(a.state).day-JSON.parse(b.state).day)){
