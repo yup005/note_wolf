@@ -12,7 +12,8 @@
     "start": "NODE_ENV=production node --import tsx apps/server/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test --test-isolation=none tests/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "admin:create": "node --import tsx apps/server/create-admin.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",

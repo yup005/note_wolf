@@ -1,0 +1,13 @@
+import {useEffect,useState} from 'react';
+import type {RecordFavorite} from '../../../packages/contracts/records';
+import {RecordPostDialog} from './RecordPostDialog';
+import type {FavoriteGame} from '../../../packages/contracts/game';
+import {api,errorText} from './api';
+import {ReplayDialog} from './ReplayDialog';
+export function FavoritesPanel(){
+ const [posts,setPosts]=useState<RecordFavorite[]>([]);const [post,setPost]=useState<string>();
+ const [items,setItems]=useState<FavoriteGame[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [open,setOpen]=useState<string>();const [removing,setRemoving]=useState<string>();
+ useEffect(()=>{let cancelled=false;void Promise.all([api<{items:FavoriteGame[]}>('/api/favorites'),api<{items:RecordFavorite[]}>('/api/record-favorites')]).then(([r,p])=>{if(!cancelled){setItems(r.items);setPosts(p.items);}}).catch(e=>{if(!cancelled)setError(errorText(e));}).finally(()=>{if(!cancelled)setLoading(false);});return()=>{cancelled=true;};},[]);
+ async function remove(id:string){if(removing)return;setRemoving(id);setError('');try{await api(`/api/favorites/${id}/remove`,{});setItems(old=>old.filter(item=>item.roomId!==id));}catch(e){setError(errorText(e));}finally{setRemoving(undefined);}}
+ return <section className="card favorites-panel" aria-label="我的收藏"><h2>我的收藏</h2>{error&&<p role="alert">{error}</p>}{loading?<p className="helper">正在读取…</p>:items.length===0&&posts.length===0?<p className="helper">暂无收藏</p>:<div className="favorite-games">{items.map(item=><div className="favorite-game" key={item.roomId}><button className="favorite-open" onClick={()=>setOpen(item.roomId)}><strong>房间 {item.code}</strong><span>{item.winner==='wolves'?'狼人获胜':'好人获胜'} · {new Date(item.savedAt).toLocaleDateString('zh-CN')}</span></button><button className="text-button" aria-label={`取消收藏房间 ${item.code}`} disabled={!!removing} onClick={()=>void remove(item.roomId)}>取消收藏</button></div>)}</div>}{posts.length>0&&<div className="favorite-games">{posts.map(p=><div className="favorite-game" key={p.id}><button className="favorite-open" onClick={()=>setPost(p.id)}><strong>房间 {p.code} · {p.official?'官方':p.author}</strong><span>版本 {p.version} · {p.withdrawn?'作者已撤回，暂不可读':'已发布'}</span></button><button className="text-button" disabled={!!removing} onClick={()=>{setRemoving(p.id);void api(`/api/record-favorites/${p.id}/remove`,{}).then(()=>setPosts(old=>old.filter(x=>x.id!==p.id))).catch(e=>setError(errorText(e))).finally(()=>setRemoving(undefined));}}>取消收藏版本</button></div>)}</div>}{post&&<RecordPostDialog id={post} onClose={()=>setPost(undefined)}/>} {open&&<ReplayDialog roomId={open} favorite onClose={()=>setOpen(undefined)}/>}</section>;
+}

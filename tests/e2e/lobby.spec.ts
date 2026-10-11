@@ -1,4 +1,4 @@
-import {test,expect,type Browser,type Page} from '@playwright/test';
+import {test,expect,type Browser,type Page,type Route} from '@playwright/test';
 async function guest(browser:Browser,name:string){const ctx=await browser.newContext({viewport:{width:390,height:844}});const page=await ctx.newPage();await page.goto('/');await page.getByLabel('你的昵称').fill(name);return {ctx,page};}
 async function join(page:Page,code:string){await page.getByLabel('房间号第 1 位').fill(code);await expect(page.getByRole('heading',{name:'选择你的座位'})).toBeVisible();}
 test('three independent browsers create, join, see seats, race and refresh',async({browser})=>{
@@ -14,7 +14,20 @@ test('three independent browsers create, join, see seats, race and refresh',asyn
   await Promise.all([join(a.page,code),join(b.page,code)]);
   await host.page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();
   for(const p of [host.page,a.page,b.page])await expect(p.getByRole('button',{name:/1 号座位，房主/})).toBeVisible();
+  // Hold both commands until both UI clicks have submitted; a broadcast must not
+  // disable the second button before its competing request exists.
+  const competing:Route[]=[];
+  let bothSubmitted!:()=>void;
+  const submitted=new Promise<void>(resolve=>{bothSubmitted=resolve;});
+  const hold=(route:Route)=>{competing.push(route);if(competing.length===2)bothSubmitted();};
+  for(const p of [a.page,b.page]){
+   await expect(p.getByRole('status')).toHaveText('已连接');
+   await p.route('**/api/rooms/*/seat',hold);
+  }
   await Promise.all([a.page.getByRole('button',{name:'2 号座位，空位',exact:true}).click(),b.page.getByRole('button',{name:'2 号座位，空位',exact:true}).click()]);
+  await submitted;
+  await Promise.all(competing.map(route=>route.continue()));
+  for(const p of [a.page,b.page])await p.unroute('**/api/rooms/*/seat',hold);
   await expect(a.page.getByTestId('seated-count')).toHaveText('2 / 12');
   await expect(b.page.getByTestId('seated-count')).toHaveText('2 / 12');
   const state=await host.page.evaluate(async()=>{const r=await fetch('/api/session');return (await r.json()).rooms[0];});
@@ -23,8 +36,8 @@ test('three independent browsers create, join, see seats, race and refresh',asyn
   await loser.getByRole('button',{name:'3 号座位，空位',exact:true}).click();
   for(const p of [host.page,a.page,b.page])await expect(p.getByTestId('seated-count')).toHaveText('3 / 12');
   await a.page.reload();await expect(a.page.getByRole('heading',{name:'选择你的座位'})).toBeVisible();await expect(a.page.getByRole('button',{name:/，你的座位$/})).toBeDisabled();
-  await b.ctx.setOffline(true);await expect(b.page.getByRole('status')).toContainText('重新连接');
-  await b.ctx.setOffline(false);await expect(b.page.getByRole('status')).toContainText('实时同步');
+  await b.ctx.setOffline(true);await expect(b.page.getByRole('status')).toContainText('重连中');
+  await b.ctx.setOffline(false);await expect(b.page.getByRole('status')).toContainText('已连接');
   await expect(b.page.getByTestId('seated-count')).toHaveText('3 / 12');
   await expect(host.page.locator('body')).toHaveJSProperty('scrollWidth',390);
   await host.page.screenshot({path:'test-results/lobby-mobile.png',fullPage:true});
@@ -48,7 +61,7 @@ test('OTP supports deletion, paste with leading zero, missing room errors and si
   for(let i=0;i<4;i++)await expect(page.getByLabel(`房间号第 ${i+1} 位`)).toHaveValue(missing[i]);
   await page.getByRole('button',{name:'创建房间',exact:true}).click();await page.getByRole('button',{name:'以游客身份继续'}).click();
   await expect(page.getByRole('heading',{name:'选择你的座位'})).toBeVisible();
-  await page.getByRole('button',{name:'返回首页'}).click();await page.getByRole('button',{name:'创建房间',exact:true}).click();
+  await page.getByRole('button',{name:'← 首页',exact:true}).click();await page.getByRole('button',{name:'创建房间',exact:true}).click();
   await expect(page.getByRole('heading',{name:'选择你的座位'})).toBeVisible();
  }finally{await ctx.close();}
 });

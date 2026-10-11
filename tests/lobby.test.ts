@@ -32,7 +32,7 @@ test('ROOM-03/04: only members read rooms; joining never grants host rights',()=
  assert.equal(JSON.stringify(guest.room).includes('guest'),false);
  db.close();
 });
-test('first seating is unique, idempotent and does not silently change a seat',()=>{
+test('seating is unique, idempotent and allows explicit correction',()=>{
  const db=new LobbyStore(':memory:');
  const {room}=db.create('host','H');
  const guest=db.join('guest',room.code,'G');
@@ -41,8 +41,8 @@ test('first seating is unique, idempotent and does not silently change a seat',(
  assert.equal(seated.me.seat,3);
  assert.equal(db.select('host',room.id,3).room.revision,seated.room.revision);
  assert.throws(()=>db.select('guest',room.id,3),/SEAT_TAKEN/);
- assert.throws(()=>db.select('host',room.id,4),/RULE_UNRESOLVED/);
- assert.equal(db.view('guest',room.id).room.seats[2].nickname,'H');
+ assert.equal(db.select('host',room.id,4).me.seat,4);
+ assert.equal(db.view('guest',room.id).room.seats[3].nickname,'H');
  assert.throws(()=>db.select('intruder',room.id,4),/NOT_MEMBER/);
  for(const seat of [0,13,1.5,NaN])assert.throws(()=>db.select('guest',room.id,seat),/INVALID_SEAT/);
  db.close();
