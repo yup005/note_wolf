@@ -1,17 +1,17 @@
 import {PublicVoiceProvider} from './PublicVoice';
 import {SharedRecordPage} from './SharedRecordPage';
-import {useCallback,useEffect,useRef,useState} from 'react';
+import {lazy,Suspense,useCallback,useEffect,useRef,useState} from 'react';
 import type {LobbyView,RoomSnapshot} from '../../../packages/contracts/index';
 import {api,errorText,requestId} from './api';
 import {OtpInput} from './OtpInput';
 import {RoomLobby} from './RoomLobby';
-import {FavoritesPanel} from './FavoritesPanel';
 import {MySharesPanel} from './MySharesPanel';
 import {AccountDialog,type AccountSession} from './AccountDialog';
 import {AdminPanel} from './AdminPanel';
 import {ProfileAvatar} from './ProfileEditor';
 import type {Account} from '../../../packages/contracts/auth';
 import {useRoom,expireRoomNavigation,acceptRoomActionView,type RoomExpiration} from './useRoom';
+const FavoritesPanel=lazy(()=>import('./FavoritesPanel').then(module=>({default:module.FavoritesPanel})));
 interface PendingCreate {requestId:string;nickname:string}
 function loadPendingCreate():PendingCreate|undefined{
  try{const p=JSON.parse(localStorage.getItem('wolf.pending-create')??'null');
@@ -88,7 +88,7 @@ function LobbyApp(){
 
     </div>
     {previous.length>0&&<section className="recent"><h2>{account?'我的房间':'这台设备加入的房间'}</h2><div>{previous.map(r=><button className="recent-room" key={r.room.id} onClick={()=>void run(()=>api<LobbyView>(`/api/rooms/${r.room.id}`))}><strong>{r.room.code}</strong><span>{r.room.board.composition.seatCount} 人 · {r.room.board.name}</span><span>返回 →</span></button>)}</div></section>}
-    <FavoritesPanel key={`favorites:${sessionRevision}`}/>
+    <Suspense fallback={<section className="card favorites-panel" aria-label="我的收藏"><h2>我的收藏</h2><p className="helper" role="status">正在读取…</p></section>}><FavoritesPanel key={`favorites:${sessionRevision}`}/></Suspense>
     {account&&<MySharesPanel key={`shares:${sessionRevision}`}/>}
    </>}
   </main>

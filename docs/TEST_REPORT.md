@@ -1,5 +1,15 @@
 # 阶段验证记录
 
+## 最新：VIP收藏管理（2026-10-11，ACCOUNT-011–014）
+
+最终 `npm test` **339 pass /0 fail /0 skip**（新增8项favorite-library专项）、`npm run typecheck`、`npm run build`通过；`PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:e2e`全量 **48 pass /0 fail /0 skip（2.0m）**，新增2项收藏手机视口场景。按需加载收藏面板后主包496.71KB，未新增500KB构建提示；仅已有Zod PURE注释提示。
+
+服务端覆盖两套现有收藏的名称/默认标题/合法发布内容搜索、组合板子/作者/收藏日期、稳定排序，草稿/撤回正文不命中、普通和过期VIP403、其他用户名称隔离、归档板子清理/重启恢复、未知旧快照、清空名称和乐观版本冲突。从未改名的收藏取消重加旧编辑，两种来源均先200失败再409通过；原标题改名后仍能搜索也先失败后通过。独立复核8/8通过且无剩余阻塞项。
+
+浏览器验证搜索/组合筛选/命名、双端版本冲突后读取最新并保留输入、跨设备恢复、到期隐藏高级入口且普通取消可用，320/390/430px无横向溢出，合成截图检查通过。原重复面板/正式整局快照/撤回拒绝均保留原断言。早期全单元元数据一致性及最小夹具缺列问题已修正；首次全浏览器撤回文案和入口退化已恢复，针对性5项通过。最后一轮全量曾47通过/1语音计时超时：跟踪停在等待拦截claim请求，独立1项及最终完整48项通过；偶发根因未单独确定，未改语音逻辑或放宽断言。
+
+仅隔离合成测试，不接触生产数据；没有部署或改变Render开关。当前管理范围是既有完整对局快照/参赛者复盘收藏，非参赛外部分享读者入口GAP-01仍待完成；不新增分享授权、不裁决H-03。真实iPhone Safari、实际声音/锁屏/弱网及真实多手机未验收，持久化和备份仍待完成。源文件包括 `packages/contracts/favorites.ts`、`packages/storage/favorites.ts`、`packages/storage/lobby.ts` / `records.ts`、`apps/server/app.ts` 和 `apps/web/src/FavoritesPanel.tsx`；自动证据为 `tests/favorite-library.test.ts`、`tests/e2e/favorite-library.spec.ts`。实施SHA在同批文档跟进中记录。
+
 ## 最新：BETA-004管理员模拟测试房隔离（2026-10-11）
 
 `npm test` **331 pass /0 fail /0 skip**（含10项新增权限/隔离专项）、`npm run typecheck`和`npm run build`通过；`PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:e2e`全量 **46 pass /0 fail /0 skip（1.8m）**，包含2项新增管理员／普通账号浏览器场景。构建仅既有Zod PURE注释提示。

@@ -9,7 +9,7 @@ import {summarizeReplay} from '../domain/replay.js';
 import type {DayState} from '../domain/day.js';
 import type {GameReplay} from '../contracts/game.js';
 import type {AuthStore} from './auth.js';
-interface Archive {room_id:string;code:string;roles:string;participants:string;host_owner:string;ended:number;victory_facts:string|null}
+interface Archive {room_id:string;code:string;roles:string;participants:string;host_owner:string;ended:number;victory_facts:string|null;board_metadata:string|null}
 interface DraftRow {id:string;room_id:string;owner:string;author:string;official:number;draft:string;revision:number;published_version:number|null;withdrawn:number;published_at:number}
 interface ManualRow {room_id:string;status:ManualPublic['status'];version:number;official:string;winner:'wolves'|'good'|null;request:string|null}
 export class RecordsStore {
@@ -24,6 +24,8 @@ export class RecordsStore {
    PRAGMA user_version=12;`);
   db.exec(`CREATE TABLE IF NOT EXISTS manual_adjudications(room_id TEXT PRIMARY KEY REFERENCES record_rooms(room_id),winner TEXT NOT NULL,version INTEGER NOT NULL,at INTEGER NOT NULL,host_owner TEXT NOT NULL); CREATE TABLE IF NOT EXISTS manual_revision_sources(room_id TEXT NOT NULL REFERENCES record_rooms(room_id),version INTEGER NOT NULL,source TEXT NOT NULL,PRIMARY KEY(room_id,version)); CREATE TABLE IF NOT EXISTS record_version_sources(record_id TEXT NOT NULL REFERENCES record_drafts(id),version INTEGER NOT NULL,source TEXT NOT NULL,PRIMARY KEY(record_id,version));`);
   if(!(db.prepare('PRAGMA table_info(record_rooms)').all() as {name:string}[]).some(c=>c.name==='victory_facts'))db.exec('ALTER TABLE record_rooms ADD COLUMN victory_facts TEXT');
+  if(!(db.prepare('PRAGMA table_info(record_rooms)').all() as {name:string}[]).some(c=>c.name==='board_metadata'))db.exec('ALTER TABLE record_rooms ADD COLUMN board_metadata TEXT');
+  db.exec("UPDATE record_rooms SET board_metadata=(SELECT json_object('id',id,'name',name) FROM room_boards b WHERE b.room_id=record_rooms.room_id) WHERE board_metadata IS NULL;");
   db.transaction(()=>{for(const r of db.prepare("SELECT room_id FROM preparations WHERE phase='started' AND game_mode='manual'").all() as {room_id:string}[])this.start(r.room_id);}).immediate();
  }
  capture(id:string):Archive {
@@ -34,6 +36,7 @@ export class RecordsStore {
   if(members.length!==composition.seatCount||new Set(members.map(m=>m.seat)).size!==composition.seatCount||members.some(m=>!Number.isSafeInteger(m.seat)||m.seat<1||m.seat>composition.seatCount)||Object.entries(composition.roles).some(([role,count])=>members.filter(m=>m.role===role).length!==count)||members.some(m=>!composition.roles[m.role]))throw new LobbyError('IDENTITY_INCOMPLETE',409);
   const room=this.db.prepare('SELECT code FROM rooms WHERE id=?').get(id) as {code:string};
   this.db.prepare('INSERT INTO record_rooms(room_id,code,roles,participants,host_owner,ended) VALUES (?,?,?,?,?,0)').run(id,room.code,JSON.stringify(members.map(({seat,role})=>({seat,role}))),JSON.stringify(members.map(m=>m.owner)),members.find(m=>m.is_host)!.owner);
+  this.db.prepare("UPDATE record_rooms SET board_metadata=(SELECT json_object('id',id,'name',name) FROM room_boards WHERE room_id=?) WHERE room_id=?").run(id,id);
   return this.db.prepare('SELECT * FROM record_rooms WHERE room_id=?').get(id) as Archive;
  }
  // Capture authorized record evidence before runtime foreign-key cascades remove it.
@@ -109,7 +112,7 @@ export class RecordsStore {
   return {...this.summary(r),version:v.version,publishedAt:v.published_at,document:JSON.parse(v.document),outcome:v.outcome,outcomeSource:(this.db.prepare('SELECT source FROM record_version_sources WHERE record_id=? AND version=?').get(recordId,v.version) as {source:'computed'|'host-adjudicated'}|undefined)?.source??'computed',roles:JSON.parse(a.roles),versions:(this.db.prepare('SELECT version FROM record_versions WHERE record_id=? ORDER BY version DESC').all(recordId) as {version:number}[]).map(x=>x.version),saved:!!this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(owner,recordId),shareAccess:{manage,create:manage&&!!account?.vip?.active}};
  }
  favorite(token:string,recordId:string){this.post(token,recordId);this.db.prepare('INSERT OR IGNORE INTO record_favorites VALUES (?,?,?)').run(this.auth.owner(token),recordId,this.now());return {saved:true};}
- favorites(token:string):RecordFavorite[]{return (this.db.prepare('SELECT d.*,f.saved_at FROM record_drafts d JOIN record_favorites f ON f.record_id=d.id WHERE f.owner=? ORDER BY f.saved_at DESC,d.id').all(this.auth.owner(token)) as (DraftRow&{saved_at:number})[]).map(r=>({...this.summary(r),savedAt:r.saved_at}));}
+ favorites(token:string):RecordFavorite[]{return (this.db.prepare('SELECT d.*,f.saved_at FROM record_drafts d JOIN record_favorites f ON f.record_id=d.id WHERE f.owner=? ORDER BY f.saved_at DESC,d.id').all(this.auth.owner(token)) as (DraftRow&{saved_at:number})[]).map(r=>({...this.summary(r),savedAt:r.saved_at,board:this.capture(r.room_id).board_metadata?JSON.parse(this.capture(r.room_id).board_metadata!):null}));}
  removeFavorite(token:string,id:string){this.db.prepare('DELETE FROM record_favorites WHERE owner=? AND record_id=?').run(this.auth.owner(token),id);return {saved:false};}
  start(id:string){const p=this.db.prepare('SELECT game_mode FROM preparations WHERE room_id=?').get(id) as {game_mode:string};this.capture(id);if(p.game_mode==='manual')this.db.prepare('INSERT OR IGNORE INTO manual_games(room_id,official) VALUES (?,?)').run(id,JSON.stringify(emptyRecord()));}
  private automaticDocument(id:string):RecordDocument{

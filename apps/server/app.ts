@@ -16,6 +16,7 @@ import {dayCommandSchema,type FirstDayRules} from '../../packages/contracts/day.
 import type {IncomingMessage} from 'node:http';
 import type {ZodType} from 'zod';
 import {testPlayersAllowed} from './testPlayerPolicy.js';
+import {favoriteQuerySchema,favoriteKindSchema,favoriteNameSchema} from '../../packages/contracts/favorites.js';
 
 export interface ServerOptions {dbPath:string;codeStart?:()=>number;secureCookie?:boolean;allowTestPlayers?:boolean;testPlayerScope?:string;now?:()=>number;dayRulesFixture?:FirstDayRules}
 const cookieName='wolf_session';
@@ -144,6 +145,8 @@ export async function createServer(options:ServerOptions){
  web.get('/api/rooms/:id/replay',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const token=authenticated(req);res.json({...store.gameReplay(token,req.params.id),saved:store.isFavorite(token,req.params.id)});});
  web.post('/api/rooms/:id/favorite',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body);roomWrite(res,req.params.id,store.saveFavorite(authenticated(req),req.params.id));});
  web.get('/api/favorites',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json({items:store.favorites(authenticated(req))});});
+ web.get('/api/favorite-library',(req,res)=>{res.json(store.favoriteLibrary(authenticated(req),parse(favoriteQuerySchema,req.query)));});
+ web.post('/api/favorite-library/:kind/:id/name',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.renameFavorite(authenticated(req),parse(favoriteKindSchema,req.params.kind),req.params.id,parse(favoriteNameSchema,req.body)));});
  web.get('/api/favorites/:id',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.favoriteReplay(authenticated(req),req.params.id));});
  web.post('/api/favorites/:id/remove',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body);res.json(store.removeFavorite(authenticated(req),req.params.id));});
  // Private drafts never enter room snapshots. Published records use archived participant authorization.

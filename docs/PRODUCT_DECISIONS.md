@@ -41,15 +41,19 @@ Handoff's latest reported verification: **156 server tests**, **34 Chromium mobi
 - Published versions update only by author action. VIP external link access depends on active membership; expiration temporarily disables unrevoked links and renewal restores them.
 - Guests may play; administrators/temporary hosts cannot read ongoing secret identities/actions or unpublished private notes.
 
-## Explicitly incomplete / planned according to handoff
+<a id="explicitly-incomplete--planned-according-to-handoff"></a>
 
-- Avatar upload; VIP advanced favorites search/filter/sort/custom names.
+## Historical incomplete / planned list from the handoff
+
+- Avatar upload and VIP advanced favorites were incomplete in that handoff; later local deliveries supersede that status (see the decision log and current verification).
 - Game likes; comment threads, nested replies and their likes; notification center.
 - Reporting/moderation/restrictions and full admin audit features.
 - Other boards/roles, guest lost-credential recovery, automatic room cleanup policy and public hosting.
 - Payments are not integrated.
 
-## Future feature requirements retained from earlier discussions
+<a id="future-feature-requirements-retained-from-earlier-discussions"></a>
+
+## Feature requirements retained from earlier discussions
 
 - **Game likes:** one per logged-in account per game per calendar day, non-reversible, across all review versions.
 - **Comment/reply likes:** one per account per comment/reply lifetime, non-reversible.
@@ -76,13 +80,15 @@ These remain **planned** unless current code/tests show otherwise; do not reimpl
 2. Test on physical iPhone Safari and multi-phone full games; verify real speech, backgrounding, interruption and weak networks.
 3. Private HTTPS beta hosting, persistence, backups, logging, and security boundaries.
 4. Fix any acceptance blockers and refine mobile one-screen usability.
-5. Next customer-visible additions: VIP favorites management, then community features subject to moderation prerequisites.
+5. VIP favorites management is now implemented locally; next customer-visible candidates are community features subject to moderation prerequisites.
 
 ## How to record future ChatGPT decisions
 
 Append a short entry below when the owner confirms a new rule, scope change or product decision. Include date, feature/rule ID if available, **status** (confirmed/proposed/unresolved), changed decision, superseded rule if any, and whether implementation is verified. Never paste private conversation transcripts or secrets into this public repository.
 
 ### Decision log
+
+- **2026-10-11 — Owner continuation / ACCOUNT-011–014:** The owner instructed “可以先完成其他需求 暂时不部署”. Implement existing H-003 VIP favorite search/filter/date-sort/private names in the existing game snapshots and participant record collections. This delivery adds readable published-content search, archived board metadata, personal names with optimistic conflict recovery, and active-VIP server checks; ordinary basic access and expired-user saved names remain available. This supersedes those four implementation-pending statuses only. External share-reader collection GAP-01, H-03, community features and physical-device acceptance remain separate. No deployment or Render switch change; executed checks are in [current verification](TEST_REPORT.md).
 
 - **2026-10-11 — BETA-004 implementation under the owner's approval:** The owner accepted the proposed next task in this chat. Existing administrator-only/independent simulated-room requirements are now implemented locally: per-request authorization, real-member join/recovery/Socket isolation, simulated-only identity lists, automatic readiness/confirmation checks and a fail-closed policy for the specifically authorized Render trial. Own-player identity/actions retain their normal private endpoints. This supersedes the earlier not-yet-implemented status, not the confirmed privacy boundaries. Verification is recorded in [current tests](TEST_REPORT.md); no deployment or online flag change in this delivery.
 

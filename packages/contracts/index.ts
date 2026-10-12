@@ -54,4 +54,5 @@ Object.assign(messages,{RECORDER_ONLY:"只有参赛房主或有效 VIP 可记录
 Object.assign(messages,{OFFICIAL_UNCOMMITTED:'死讯修改尚未提交，请先修正官方记录后发布'});
 Object.assign(messages,{LOGIN_REQUIRED:'请先登录账号',SHARE_AUTHOR_ONLY:'只能管理自己发布的复盘链接',SHARE_UNPUBLISHED:'请先结束对局并发布复盘',SHARE_REVOKED:'此链接已主动撤销，请重新生成',STALE_SHARE:'链接状态已更新，请重新读取',SHARE_UNAVAILABLE:'分享链接暂不可用'});
 Object.assign(messages,{AVATAR_TOO_LARGE:'头像超过当前账号允许的文件大小',INVALID_AVATAR:'请选择有效的 JPEG、PNG 或 WebP 图片'});
+Object.assign(messages,{STALE_FAVORITE:'收藏名称已更新，请重新读取后修改'});
 Object.assign(messages,{RULE_DECISION_REQUIRED:'该技能组合的规则尚未确认，请选择已确认的操作',GUARD_CONSECUTIVE_TARGET:'不能连续两夜守护同一玩家',SKILL_NOT_ACTIVE:'该技能从下一夜开始可用',SKILL_EXHAUSTED:'该技能已用完',ALREADY_LEARNED:'已经完成学习，不能重新选择',KNIFE_NOT_INHERITED:'继承普通狼刀后才可使用额外刀'});

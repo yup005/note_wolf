@@ -21,6 +21,8 @@ import {DayStore} from './day.js';
 import {firstDayRules,type FirstDayRules,type DayCommand} from '../contracts/day.js';
 import type {NightCommand} from '../contracts/night.js';
 import {TestPlayersStore} from './testPlayers.js';
+import {FavoriteLibraryStore,type FavoriteSource} from './favorites.js';
+import type {FavoriteQuery,FavoriteName,FavoriteKind} from '../contracts/favorites.js';
 import type {RoomSettings,Role} from '../contracts/index.js';
 interface RoomRow {id:string;code:string;revision:number}
 const sessionKey=(token:string)=>createHash('sha256').update(token).digest('hex');
@@ -29,6 +31,7 @@ export class LobbyStore {
  readonly auth:AuthStore;
  private preparation:PreparationStore;
  private testPlayers:TestPlayersStore;
+ private favoriteLibraryStore:FavoriteLibraryStore;
  private night:NightStore;
  private day:DayStore;
  private control:ControlStore;
@@ -76,6 +79,7 @@ export class LobbyStore {
   this.records=new RecordsStore(this.db,this.auth,this.now,id=>this.readReplay(id));
   this.voice=new VoiceStore(this.db,this.now,(id,memberId)=>{const m=this.db.prepare('SELECT * FROM members WHERE room_id=? AND id=?').get(id,memberId) as MemberRow|undefined;return !!m&&this.control.canManage(id,m);});
   this.sharing=new SharingStore(this.db,this.auth,this.now);
+  this.favoriteLibraryStore=new FavoriteLibraryStore(this.db,this.auth,token=>this.favoriteSources(token));
   this.preparation=new PreparationStore(this.db,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats,id=>this.boards.configuration(id));
   this.retention=new RetentionStore(this.db,this.now,id=>this.records.preserveForRoomCleanup(id));
  }
@@ -214,13 +218,28 @@ export class LobbyStore {
  private readReplay(id:string):import('../contracts/game.js').GameReplay{const day=this.day.snapshot(id);if(day?.phase!=='ended')throw new LobbyError('PHASE_LOCKED',409);
   const saved=this.db.prepare('SELECT kind,round,state FROM game_history WHERE room_id=?').all(id) as {kind:'night'|'day';round:number;state:string}[];
   for(const kind of ['night','day'] as const){const row=this.db.prepare(`SELECT state FROM ${kind}_games WHERE room_id=?`).get(id) as {state:string}|undefined;if(row){const s=JSON.parse(row.state);saved.push({kind,round:s[kind],state:row.state});}}
-  return {winner:day.winner!,roles:day.revealed,rounds:saved.sort((a,b)=>a.round-b.round||(a.kind==='night'?-1:1)).map(r=>({kind:r.kind,round:r.round,events:JSON.parse(r.state).events,...(JSON.parse(r.state).engine?{engine:JSON.parse(r.state).engine}:{}),...(r.kind==='day'?{outcome:{sheriff:JSON.parse(r.state).sheriff,badge:JSON.parse(r.state).badge,result:JSON.parse(r.state).result}}:{})}))};
+  const board=this.boards.snapshot(id);const host=this.db.prepare('SELECT nickname FROM members WHERE room_id=? AND is_host=1').get(id) as {nickname:string}|undefined;
+  return {board:{id:board.id,name:board.name},author:host?.nickname,winner:day.winner!,roles:day.revealed,rounds:saved.sort((a,b)=>a.round-b.round||(a.kind==='night'?-1:1)).map(r=>({kind:r.kind,round:r.round,events:JSON.parse(r.state).events,...(JSON.parse(r.state).engine?{engine:JSON.parse(r.state).engine}:{}),...(r.kind==='day'?{outcome:{sheriff:JSON.parse(r.state).sheriff,badge:JSON.parse(r.state).badge,result:JSON.parse(r.state).result}}:{})}))};
  }
  isFavorite(token:string,id:string){return !!this.db.prepare('SELECT 1 FROM saved_replays WHERE owner_hash=? AND room_id=?').get(this.auth.owner(token),id);}
- saveFavorite(token:string,id:string){return this.db.transaction(()=>{const record=this.gameReplay(token,id);const room=this.snapshot(id);this.db.prepare('INSERT OR IGNORE INTO saved_replays VALUES (?,?,?,?,?,?)').run(this.auth.owner(token),id,room.code,record.winner,this.now(),JSON.stringify(record));return {saved:true};}).immediate();}
+ saveFavorite(token:string,id:string){return this.db.transaction(()=>{const record=this.gameReplay(token,id);const room=this.snapshot(id);this.db.prepare('INSERT OR IGNORE INTO saved_replays VALUES (?,?,?,?,?,?)').run(this.auth.owner(token),id,room.code,record.winner,this.now(),JSON.stringify({...record,board:{id:room.board.id,name:room.board.name}}));return {saved:true};}).immediate();}
  favorites(token:string):import('../contracts/game.js').FavoriteGame[]{return this.db.prepare('SELECT room_id AS roomId,code,winner,saved_at AS savedAt FROM saved_replays WHERE owner_hash=? ORDER BY saved_at DESC,room_id').all(this.auth.owner(token)) as import('../contracts/game.js').FavoriteGame[];}
  favoriteReplay(token:string,id:string):import('../contracts/game.js').GameReplay{const row=this.db.prepare('SELECT record FROM saved_replays WHERE owner_hash=? AND room_id=?').get(this.auth.owner(token),id) as {record:string}|undefined;if(!row)throw new LobbyError('NOT_FOUND',404);return {...JSON.parse(row.record),saved:true};}
- removeFavorite(token:string,id:string){const result=this.db.prepare('DELETE FROM saved_replays WHERE owner_hash=? AND room_id=?').run(this.auth.owner(token),id);if(result.changes)this.retention.touch([id]);return {saved:false};}
+ removeFavorite(token:string,id:string){return this.db.transaction(()=>{const result=this.db.prepare('DELETE FROM saved_replays WHERE owner_hash=? AND room_id=?').run(this.auth.owner(token),id);if(result.changes){this.favoriteLibraryStore.clearName(token,'game',id);this.retention.touch([id]);}return {saved:false};}).immediate();}
+ private favoriteSources(token:string):FavoriteSource[]{
+  const games=this.favorites(token).map(item=>{
+   const replay=this.favoriteReplay(token,item.roomId);
+   const board=replay.board??(this.db.prepare('SELECT id,name FROM room_boards WHERE room_id=?').get(item.roomId) as {id:string;name:string}|undefined)??null;
+   return {kind:'game' as const,id:item.roomId,code:item.code,author:replay.author??'',title:`房间 ${item.code}`,savedAt:item.savedAt,board,available:true,detail:item.winner==='wolves'?'狼人获胜':'好人获胜',searchText:JSON.stringify(replay)};
+  });
+  const records=this.recordFavorites(token).map(item=>{
+   let available=true,searchText='';try{searchText=JSON.stringify(this.recordPost(token,item.id).document);}catch(error){if(!(error instanceof LobbyError&&['RECORD_WITHDRAWN','PARTICIPANT_ONLY','NOT_FOUND','PHASE_LOCKED'].includes(error.code)))throw error;available=false;}
+   return {kind:'record' as const,id:item.id,code:item.code,author:item.author,title:`房间 ${item.code} · ${item.official?'官方':item.author}`,savedAt:item.savedAt,board:item.board??null,available,detail:`版本 ${item.version} · ${available?'已发布':item.withdrawn?'作者已撤回，暂不可读':'暂不可读'}`,searchText};
+  });
+  return [...games,...records];
+ }
+ favoriteLibrary(token:string,query:Partial<FavoriteQuery>={}){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.view(token,query);}
+ renameFavorite(token:string,kind:FavoriteKind,id:string,input:FavoriteName){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.rename(token,kind,id,input);}
  recordsList(token:string,id:string){return this.records.list(token,id);}
  saveRecord(token:string,id:string,revision:number,document:import('../contracts/records.js').RecordDocument){return this.records.save(token,id,revision,document);}
  importAutomaticRecord(token:string,id:string,revision:number){return this.records.importAutomatic(token,id,revision);}
@@ -235,7 +254,7 @@ export class LobbyStore {
  sharedRecord(token:string){return this.sharing.read(token);}
  saveRecordFavorite(token:string,id:string){return this.records.favorite(token,id);}
  recordFavorites(token:string){return this.records.favorites(token);}
- removeRecordFavorite(token:string,id:string){const exists=this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(this.auth.owner(token),id);const result=this.records.removeFavorite(token,id);if(exists)this.touchRecordRoom(id);return result;}
+ removeRecordFavorite(token:string,id:string){return this.db.transaction(()=>{const exists=this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(this.auth.owner(token),id);const result=this.records.removeFavorite(token,id);if(exists){this.favoriteLibraryStore.clearName(token,'record',id);this.touchRecordRoom(id);}return result;}).immediate();}
  switchManual(token:string,id:string,confirmed:boolean){this.records.switch(token,id,confirmed);return this.view(token,id);}
  adjudicateManual(token:string,id:string,input:import('../contracts/records.js').ManualAdjudicate){return this.records.adjudicate(token,id,input);}
  commitManual(token:string,id:string,revision:number){return this.records.commit(token,id,revision);}

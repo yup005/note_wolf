@@ -26,6 +26,6 @@ export interface RecordDraft {id:string;revision:number;document:RecordDocument;
 export interface RecordPostSummary {id:string;code:string;author:string;official:boolean;version:number;withdrawn:boolean;publishedAt:number}
 export interface RecordPost extends RecordPostSummary {document:RecordDocument;outcome:RecordOutcome;outcomeSource?:RecordOutcomeSource;roles:{seat:number;role:Role}[];versions:number[];saved:boolean;shareAccess:{manage:boolean;create:boolean}}
 export interface RecordList {canRecord:boolean;own:RecordDraft|null;posts:RecordPostSummary[]}
-export interface RecordFavorite extends RecordPostSummary {savedAt:number}
+export interface RecordFavorite extends RecordPostSummary {savedAt:number;board?:import('./favorites.js').FavoriteBoard|null}
 export interface ManualPublic {status:'playing'|'pending'|'ended';version:number;dead:number[];winner:RecordOutcome;outcomeSource?:RecordOutcomeSource;revealed:{seat:number;role:Role}[]}
 export interface OfficialRevision {version:number;at:number;document:RecordDocument;outcome:RecordOutcome;outcomeSource?:RecordOutcomeSource}

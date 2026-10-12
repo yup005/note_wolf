@@ -9,5 +9,5 @@ export async function sharingFixture(path=':memory:',existing?:LobbyStore){
  const draft=s.recordsList(guest,id).own!;const account=await s.auth.register(guest,'share_author','correct-password','分享作者'),token=account.token;s.auth.setVip(admin.token,account.account.id,true,null);
  const roles=players.map((player,i)=>({seat:i+1,role:s.identity(i===0?token:player,id).role}));const document:RecordDocument={...emptyRecord(),deaths:roles.filter(r=>r.role==='wolf').map(r=>({seat:r.seat,round:1,period:'night',cause:'unrecorded'})),notes:'已发布复盘'};
  function publish(){s.saveRecord(token,id,0,document);s.commitManual(token,id,1);return s.publishRecord(token,id,1);}
- return {s,id,room,recordId:draft.id,token,admin:admin.token,account:account.account,document,publish};
+ return {s,id,room,recordId:draft.id,token,admin:admin.token,account:account.account,document,publish,players};
 }
