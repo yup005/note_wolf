@@ -2,6 +2,9 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {voiceFrame} from '../packages/domain/voice.js';
 import {voiceFixture} from './helpers/voice-fixture.js';
+import {createDay,dayCommand,publicDay} from '../packages/domain/day.js';
+import {createNight} from '../packages/domain/night.js';
+import {firstDayRules} from '../packages/contracts/day.js';
 const text=(r:ReturnType<typeof voiceFrame>)=>r.cues.map(c=>c.text).join(' ');
 test('public voice uses only stage information, never private inputs or nicknames',()=>{
  const {store:s,id}=voiceFixture();try{const room=s.snapshot(id),a=voiceFrame(room,1000);assert.match(text(a),/狼人.*睁眼/);
@@ -27,4 +30,17 @@ test('day voice only announces published deaths and uniformly asks all deceased 
 });
 test('manual mode has no automated voice even when old automatic states remain',()=>{
  const {store:s,id}=voiceFixture();try{const r=s.snapshot(id);assert.equal(voiceFrame({...r,preparation:{...r.preparation,settings:{...r.preparation.settings,gameMode:'manual'}}},1000).cues.length,0);}finally{s.close();}
+});
+test('public voice follows an interjecting idiot and returns to the paused speaker without exposing true role',()=>{
+ const {store:s,id}=voiceFixture();try{
+  const night=createNight([{seat:1,role:'wolf'},{seat:2,role:'villager'},{seat:3,role:'mechanicalWolf'},{seat:4,role:'hunter'}],0);night.phase='first_night_complete';
+  const day=createDay(night,firstDayRules,0);day.phase='day_speech';day.speaker=2;day.speakers=[4];day.deadline=90000;day.players[2].alive=false;day.flippedIdiots=[3];
+  const room=s.snapshot(id),frame=(now:number)=>voiceFrame({...room,night:null,day:publicDay(day,now)},now);
+  const original=frame(0);assert.match(text(original),/2号玩家发言/);
+  dayCommand(day,{seat:3,isHost:false},{action:'interject',turnId:day.turnId},1000);
+  const interjecting=frame(1000);assert.match(text(interjecting),/3号.*插话/);assert.doesNotMatch(text(interjecting),/2号玩家发言|机械|狼人|额外夜/);assert.notEqual(interjecting.stage,original.stage);
+  for(const control of [{...room.control!,status:'paused' as const},{...room.control!,status:'resuming' as const},{...room.control!,reconnecting:true}])assert.doesNotMatch(text(voiceFrame({...room,night:null,day:publicDay(day,1000),control},1000)),/3号|插话/);
+  dayCommand(day,{seat:3,isHost:false},{action:'end_interjection',turnId:day.turnId},4000);
+  const resumed=frame(4000);assert.match(text(resumed),/2号玩家发言/);assert.notEqual(resumed.stage,interjecting.stage);assert.equal(day.deadline,93000);
+ }finally{s.close();}
 });

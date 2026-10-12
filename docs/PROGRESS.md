@@ -1,5 +1,11 @@
 # Project progress
 
+## 最新：插话公共播报修复（2026-10-11）
+
+AUDIO-003 / WIN-001维护：白痴插话已暂停原发言者，但公共语音仍叫原发言者继续发言。新增真实日间指令→公开投影→语音回归先复现失败，再按公开插话座位播报；结束插话恢复原发言提示，暂停／恢复／重连仍优先。提示不读取或说明真实身份、学习、刀权或额外夜。
+
+本批最终 `npm test` **321 pass /0 fail /0 skip**、typecheck/build通过；适用语音Chromium手机视口E2E **8 pass /0 fail /0 skip**（11.9s），未改UI组件，未重复全量44项浏览器测试。21项语音／插话／控制针对性测试通过；构建仅原有Zod注释提示。真实iPhone声音仍未验收，未部署。缺失规则与14人策略边界不变。实现SHA由本批文档跟进记录。
+
 ## Current: confirmed mechanical/armor and custom runtime (2026-10-11)
 
 CFG-001/COPY-001/WIN-001: dynamic dealing in all four online/physical × automatic/manual combinations; fixed private stages, independent learning/copies and settlement, inherited knives, mixer model, default idiot/interjection and actual last-wolf bonus-night flow. Host adjudication for missing private manual facts is explicit and retained in public results, revision history, immutable published versions and sharing; hosts gain no private reads. Standard12 and its authorized3-villager+1-mixer variant remain covered.

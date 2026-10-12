@@ -15,6 +15,7 @@ export function voiceFrame(room:RoomSnapshot,now:number):VoiceFrame{
   add(names[n.phase]);if(n.phase==='wolves'&&n.deadline!==null&&n.deadline-now>0&&n.deadline-now<=30000)add('狼人行动最后30秒，请确认。',`${stage}:30s`);return frame;
  }
  if(!d)return frame;
+ if(d.interjection){add(`请${d.interjection.seat}号玩家插话，原发言计时已暂停。`);return frame;}
  const seat=d.currentDeath;
  const vote=d.vote?.purpose.startsWith('sheriff')?'警长':'放逐';
  switch(d.phase){
