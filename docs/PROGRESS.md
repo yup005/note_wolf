@@ -6,6 +6,8 @@ CFG-001/COPY-001/WIN-001: dynamic dealing in all four online/physical × automat
 
 Fresh verification: unit320/320, typecheck/build pass; full Chromium mobile E2E 44 pass /0 fail /0 skip（1.6m）. Review defects have failing/passing regressions. All data synthetic; real iPhone/voice/background/weak-network/multiplayer acceptance pending. Unknown rule interactions remain blocked,14-player dual-category policy unselectable and special king runtime roles absent. Documentation reviewed for consistent current scope, stable IDs/source history and evidence boundaries. No deployment; Render auto-deploy verified off. Implementation SHA follows in this batch. See [current test evidence](TEST_REPORT.md) and [milestone limits](MECHANICAL_IMPLEMENTATION_PROGRESS.md).
 
+实施提交：[dc8de15a4ffb707e540d329315736eb6def44bf2](https://github.com/yup005/note_wolf/commit/dc8de15a4ffb707e540d329315736eb6def44bf2)。本次SHA跟进仅文档，复核引用与差异，代码检查未重复运行；正常推送后另核对最终远程SHA。
+
 ## Historical: profile, runtime retention and internal mechanical domain (2026-10-11)
 
 ACCOUNT-001/010: own nickname/avatar editing, ordinary1MiB/activeVIP2MiB, JPEG/PNG/WebP normalization and preview/replace/delete, retained room/session/private identity. G-003/FUTURE-001/RECAP-008: startup/minute cleanup after24h successful-user inactivity including playing/paused; either favorites or unrevoked renewable shares protect rooms. Runtime-only deletion preserves independent drafts/history/authorization and completed unpublished-record publication after restart. Offline resubscription distinguishes deleted rooms from existing nonmembership. Both review defects reproduced before fixes; independent follow-up confirmed resolution.

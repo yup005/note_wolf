@@ -38,6 +38,8 @@ Current blockers are [unified specification §7](CODEX_MECHANICAL_BOARDS_IMPLEME
 - Review findings addressed with regressions: standard12 mixed-blood threshold, mixer camp leakage, guarded/reflected hunter poison state, idempotent private receipts and turn-scoped acknowledgement, missing replay events, pending manual bonus-night premature victory and share provenance. Independent review covered migrations and runtime; final manual-sharing follow-up was completed by the implementer after reviewer execution became unavailable.
 - Final full unit **320 pass /0 fail /0 skip**; typecheck/build pass; full Chromium mobile E2E **44 pass /0 fail /0 skip（1.6m）**. Browser actions/save/refresh/adjudicate/publish and320/390/430px layouts use synthetic data. Physical iPhone/actual sound/background/weak network/real multiplayer remain unverified; M6 stays partially verified. No deployment; Render auto-deploy is off.
 
+实施提交：[dc8de15a4ffb707e540d329315736eb6def44bf2](https://github.com/yup005/note_wolf/commit/dc8de15a4ffb707e540d329315736eb6def44bf2)。本次SHA跟进仅文档，复核引用与差异，代码检查未重复运行；正常推送后另核对最终远程SHA。
+
 The following M0/M1/M2/internal-increment evidence is historical, preserving the exact verification and feature gates at each earlier delivery. Current scope is governed by the milestones and blockers above.
 
 ## Foundation implementation provenance

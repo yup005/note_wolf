@@ -12,6 +12,8 @@ CFG-001 / COPY-001 / WIN-001：已接通固定模板及1–256席位有效自定
 
 文档同步规则、验收场景、需求矩阵和计划进度，保留稳定ID、确认来源及历史证据；旧“尚不能发牌”的摘要标为历史。本批实施SHA在文档跟进中记录；完整边界见[实施进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md)。
 
+实施提交：[dc8de15a4ffb707e540d329315736eb6def44bf2](https://github.com/yup005/note_wolf/commit/dc8de15a4ffb707e540d329315736eb6def44bf2)。本次SHA跟进仅文档，复核引用与差异，代码检查未重复运行；正常推送后另核对最终远程SHA。
+
 ## 最新：线上管理员初始化与测试权限要求（2026-10-11）
 
 ADMIN-001 / BETA-009：已按用户授权通过 Render 启动环境变量初始化线上唯一管理员，凭据不进入代码、文档或本地文件。部署 `dep-db5tkdt9fdbs73e32a20` 返回 live，当前运行源码为 [b950e99066231ed6842a1821f3f7226c984fa8ad](https://github.com/yup005/note_wolf/commit/b950e99066231ed6842a1821f3f7226c984fa8ad)，相比上一版仅部署文档增量。公网登录返回管理员角色、受保护后台接口 HTTP 200，未读取用户列表正文。

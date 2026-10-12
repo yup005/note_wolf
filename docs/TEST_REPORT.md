@@ -12,6 +12,9 @@ CFG-001 / COPY-001 / WIN-001：已接通固定模板及1–256席位有效自定
 
 文档同步规则、验收场景、需求矩阵和计划进度，保留稳定ID、确认来源及历史证据；旧“尚不能发牌”的摘要标为历史。本批实施SHA在文档跟进中记录；完整边界见[实施进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md)。
 
+
+实施提交：[dc8de15a4ffb707e540d329315736eb6def44bf2](https://github.com/yup005/note_wolf/commit/dc8de15a4ffb707e540d329315736eb6def44bf2)。本次SHA跟进仅文档，复核引用与差异，代码检查未重复运行；正常推送后另核对最终远程SHA。
+
 ## 历史：账号资料、房间清理及机械内部增量（2026-10-11）
 
 最终完整检查：`npm test` **271 pass /0 fail /0 skip**，`npm run typecheck`、`npm run build`通过；全量 Chromium手机视口E2E **42 pass /0 fail /0 skip**（1.6m）。旧标准板自动/手动、资料编辑、过期房返回首页、收藏面板去重等均在隔离环境回归；构建仅原有Zod PURE注释提示。没有重新部署公网服务或使用生产数据。
