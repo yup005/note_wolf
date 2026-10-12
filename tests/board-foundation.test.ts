@@ -8,12 +8,11 @@ import {selectMixerModel} from '../packages/domain/mixer.js';
 import {createDeck,rolesMatchBoard,assertCanDeal} from '../packages/domain/preparation.js';
 import {manualOutcome} from '../packages/domain/manual.js';
 
-test('presets support 12, 13 and 15 players without enabling incomplete boards',()=>{
+test('confirmed presets support playable 12, 13 and 15 player configurations',()=>{
  for(const [id,size] of [['standard-12',12],['mechanical-12',12],['mechanical-armor-12',12],['mechanical-mixer-13',13],['mechanical-expanded-15',15]] as const){
   const config=boardPreset(id);assert.equal(config.seatCount,size);
   assert.equal(Object.values(config.roles).reduce((a,b)=>a+b,0),size);
-  assert.equal(config.playable,id==='standard-12');
-  if(id!=='standard-12')assert.throws(()=>assertPlayableBoard(config),/BOARD_NOT_IMPLEMENTED/);
+  assert.equal(config.playable,true);assert.doesNotThrow(()=>assertPlayableBoard(config));
  }
  const expanded=boardPreset('mechanical-expanded-15');
  assert.equal(expanded.roles.wolf,4);assert.equal(expanded.roles.villager,5);assert.equal(expanded.roles.idiot,1);
@@ -23,7 +22,7 @@ test('presets support 12, 13 and 15 players without enabling incomplete boards',
 test('custom composition derives armor rules from positive armor count',()=>{
  const base=boardPreset('mechanical-12');
  const armor=createBoardConfiguration({seatCount:13,roles:{...base.roles,armoredWolf:1}});
- assert.equal(armor.ruleset,'mechanical-armor');assert.equal(armor.playable,false);
+ assert.equal(armor.ruleset,'mechanical-armor');assert.equal(armor.playable,true);
  const noArmor=createBoardConfiguration({seatCount:12,roles:{...base.roles,armoredWolf:0}});
  assert.equal(noArmor.ruleset,'mechanical-seer');assert.equal(Object.hasOwn(noArmor.roles,'armoredWolf'),false);
  const larger=createBoardConfiguration({seatCount:24,roles:{wolf:11,villager:9,spiritSeer:1,witch:1,hunter:1,guard:1}});
@@ -48,21 +47,21 @@ test('composition refuses count mismatch, fractions, unknown roles and injected 
  ])assert.throws(()=>createBoardConfiguration(input),/INVALID_BOARD_CONFIGURATION/);
 });
 
-test('changing a returned preset cannot contaminate subsequent presets or bypass playable gate',()=>{
+test('changing a returned preset cannot contaminate subsequent presets or bypass service capacity',()=>{
  const config=boardPreset('standard-12');config.roles.wolf=3;
  assert.equal(boardPreset('standard-12').roles.wolf,4);
  assert.throws(()=>assertPlayableBoard(config),/INVALID_BOARD_CONFIGURATION/);
- const armor=boardPreset('mechanical-12');armor.playable=true;
- assert.throws(()=>assertPlayableBoard(armor),/BOARD_NOT_IMPLEMENTED/);
+ const oversized=createBoardConfiguration({seatCount:257,roles:{wolf:1,villager:256}});oversized.playable=true;
+ assert.throws(()=>assertPlayableBoard(oversized),/BOARD_NOT_IMPLEMENTED/);
 });
 
-test('standard preparation consumes the canonical preset and rejects new-board dealing',()=>{
+test('preparation deals canonical standard and mechanical presets with exact roster validation',()=>{
  const deck=createDeck();assert.equal(deck.length,12);assert.equal(rolesMatchBoard(deck),true);
  assert.equal(rolesMatchBoard([...deck.slice(0,11),'wolf']),deck[11]==='wolf');
  const seats=Array.from({length:12},(_,i)=>({number:i+1,memberId:String(i),nickname:'simulated',isHost:i===0,isTestPlayer:false,ready:true}));
  assert.doesNotThrow(()=>assertCanDeal(seats));
- assert.throws(()=>assertCanDeal(seats,boardPreset('mechanical-12')),/BOARD_NOT_IMPLEMENTED/);
- assert.throws(()=>createDeck(boardPreset('mechanical-12')),/BOARD_NOT_IMPLEMENTED/);
+ assert.doesNotThrow(()=>assertCanDeal(seats,boardPreset('mechanical-12')));
+ const mechanical=createDeck(boardPreset('mechanical-12'));assert.equal(rolesMatchBoard(mechanical,boardPreset('mechanical-12')),true);
 });
 
 function source():SkillSnapshot{return {ownerSeat:1,originalRole:'mechanicalWolf',mimickedRole:'witch',skills:[
@@ -134,9 +133,9 @@ test('mechanical simultaneous terminal death gives wolves priority after the bat
  assert.deepEqual(evaluateVictory([{...players[0]},{...players[1],alive:true},{...players[2],alive:false}],'mechanical-seer'),{status:'ended',winner:'wolves',reason:'all-gods-dead'});
 });
 
-test('unresolved mixer and mechanical idiot victory cannot silently apply ordinary ending',()=>{
+test('unresolved mixer remains blocked and non-exile mechanical idiot follows settled victory',()=>{
  assert.deepEqual(evaluateVictory([{seat:1,role:'mixer',alive:false},{seat:2,role:'wolf',alive:true}],'mechanical-seer'),{status:'unresolved',questionId:'MA-VICTORY-MIXER'});
- assert.deepEqual(evaluateVictory([{seat:1,role:'mechanicalWolf',learnedRole:'idiot',alive:false},{seat:2,role:'villager',alive:true},{seat:3,role:'hunter',alive:true}],'mechanical-seer'),{status:'unresolved',questionId:'MA-VICTORY-MECHANICAL-IDIOT'});
+ assert.deepEqual(evaluateVictory([{seat:1,role:'mechanicalWolf',learnedRole:'idiot',alive:false},{seat:2,role:'villager',alive:true},{seat:3,role:'hunter',alive:true}],'mechanical-seer'),{status:'ended',winner:'good',reason:'all-wolves-dead'});
 });
 
 test('armor inherits confirmed simultaneous priority and incompatible role/ruleset input is rejected',()=>{

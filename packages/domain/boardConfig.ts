@@ -17,7 +17,7 @@ export function createBoardConfiguration(input:unknown):BoardConfiguration{
  const roles=Object.fromEntries(Object.entries(parsed.data.roles).filter(([,count])=>count!>0)) as BoardComposition['roles'];
  const standard=parsed.data.seatCount===12&&Object.keys(roles).length===6&&
   Object.entries(standardRoleCounts).every(([role,count])=>roles[role as keyof typeof standardRoleCounts]===count);
- return {seatCount:parsed.data.seatCount,roles,ruleset:roles.armoredWolf?'mechanical-armor':standard?'standard':'mechanical-seer',playable:standard};
+ return {seatCount:parsed.data.seatCount,roles,ruleset:roles.armoredWolf?'mechanical-armor':standard?'standard':'mechanical-seer',playable:parsed.data.seatCount<=256};
 }
 
 export function boardPreset(id:BoardPresetId):BoardConfiguration{

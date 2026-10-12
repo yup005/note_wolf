@@ -14,7 +14,9 @@ export function validateEngineState(input:unknown):EngineState{
  if(typeof input==='object'&&input!==null&&'formatVersion' in input&&input.formatVersion!==1)throw new LobbyError('ENGINE_VERSION_UNSUPPORTED',409);
  const parsed=engineStateSchema.safeParse(input);if(!parsed.success)throw new LobbyError('INVALID_ENGINE_STATE');const state=parsed.data;
  const b=state.board.composition;const derived=createBoardConfiguration({seatCount:b.seatCount,roles:b.roleCounts});
- if(derived.ruleset!==b.ruleset||derived.playable!==b.playable||state.players.length!==b.seatCount||
+ // playable is release/UI metadata. Old internal snapshots retain their original
+ // flag; gameplay authority always derives from the current validated composition.
+ if(derived.ruleset!==b.ruleset||state.players.length!==b.seatCount||
   new Set(state.players.map(p=>p.seat)).size!==state.players.length||state.players.some(p=>p.seat>b.seatCount||p.camp!==playerCamp(p.role)||p.abilities.ownerSeat!==p.seat||p.abilities.originalRole!==p.role)||
   Object.entries(derived.roles).some(([role,count])=>state.players.filter(p=>p.role===role).length!==count)||
   state.players.some(p=>!derived.roles[p.role]))throw new LobbyError('INVALID_ENGINE_STATE');

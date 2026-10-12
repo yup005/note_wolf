@@ -6,25 +6,28 @@ export interface DayVoteResult {purpose:VotePurpose;counts:{seat:number;votes:nu
 export interface DayPublic {
  skillResults?:{key:string;seat:number;activated:boolean;at:number}[];
  day:number;phase:DayPhase;turnId:string;deadline:number|null;serverNow:number;alive:number[];dead:number[];
+ interjection?:{seat:number;originalSpeaker:number}|null;
  speechMode:'phone'|'free'|null;direction:'ascending'|'descending'|null;speechStart:number|null;nightDeaths:number[];
  signupCount:number;sheriff:number|null;badge:'available'|'elected'|'lost'|'deferred';candidates:number[];originalCandidates:number[];speaker:number|null;currentDeath:number|null;
  vote:null|{purpose:VotePurpose;method:'phone'|'offline';visibility:'individual'|'totals';eligible:number[];candidates:number[];submittedCount:number};
  result:DayVoteResult|null;announcement:number[]|null;revealed:{seat:number;role:Role}[];winner:'wolves'|'good'|null;reason:string|null;
 }
-export interface DayPrivate {turnId:string;seat:number;canSignup:boolean;signup:boolean|null;canWithdraw:boolean;canVote:boolean;voted:boolean;myVote:number|null;canShoot:boolean;canExplode:boolean;canEndSpeech:boolean;canTransfer:boolean}
-const turn=z.string().uuid();const seat=z.number().int().min(1).max(12);
+export interface DayPrivate {turnId:string;seat:number;canSignup:boolean;signup:boolean|null;canWithdraw:boolean;canVote:boolean;voted:boolean;myVote:number|null;canShoot:boolean;canExplode:boolean;canEndSpeech:boolean;canTransfer:boolean;canInterject?:boolean;canEndInterjection?:boolean;interjectionRemainingMs?:number;mixerModel?:{seat:number}}
+const turn=z.string().uuid();const seat=z.number().int().min(1).max(256);
 export const dayCommandSchema=z.discriminatedUnion('action',[
  z.object({action:z.literal('start'),turnId:turn}).strict(),
  z.object({action:z.literal('signup'),turnId:turn,join:z.boolean()}).strict(),
  z.object({action:z.literal('close_signup'),turnId:turn}).strict(),
  z.object({action:z.literal('withdraw'),turnId:turn}).strict(),
  z.object({action:z.literal('end_speech'),turnId:turn}).strict(),
+ z.object({action:z.literal('interject'),turnId:turn}).strict(),
+ z.object({action:z.literal('end_interjection'),turnId:turn}).strict(),
  z.object({action:z.literal('close_withdraw'),turnId:turn}).strict(),
  z.object({action:z.literal('start_vote'),turnId:turn,method:z.enum(['phone','offline']),visibility:z.enum(['individual','totals']),seconds:z.number().int().min(5).max(300)}).strict(),
  z.object({action:z.literal('vote'),turnId:turn,target:seat.nullable()}).strict(),
  z.object({action:z.literal('offline_vote'),turnId:turn,voter:seat,target:seat.nullable()}).strict(),
- z.object({action:z.literal('offline_ballots'),turnId:turn,ballots:z.array(z.object({seat,target:seat.nullable()}).strict()).min(1).max(12)}).strict(),
- z.object({action:z.literal('offline_results'),turnId:turn,counts:z.array(z.object({seat,votes:z.number().finite().min(0).max(12.5).multipleOf(0.5)}).strict()).min(1).max(12)}).strict(),
+ z.object({action:z.literal('offline_ballots'),turnId:turn,ballots:z.array(z.object({seat,target:seat.nullable()}).strict()).min(1).max(256)}).strict(),
+ z.object({action:z.literal('offline_results'),turnId:turn,counts:z.array(z.object({seat,votes:z.number().finite().min(0).max(256.5).multipleOf(0.5)}).strict()).min(1).max(256)}).strict(),
  z.object({action:z.literal('close_vote'),turnId:turn}).strict(),
  z.object({action:z.literal('continue'),turnId:turn}).strict(),
  z.object({action:z.literal('shoot'),turnId:turn}).strict(),

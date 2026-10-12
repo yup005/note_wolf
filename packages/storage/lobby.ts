@@ -2,6 +2,7 @@ import {VoiceStore} from './voice.js';
 import {RetentionStore} from './retention.js';
 import {SharingStore} from './sharing.js';
 import {BoardsStore,migrateBoardSeats} from './boards.js';
+import {migrateIdentityRoles} from './identityMigration.js';
 import {assertPlayableBoard} from '../domain/boardConfig.js';
 import type {BoardSave,BoardConfigure} from '../contracts/board.js';
 import type {ShareCommand} from '../contracts/sharing.js';
@@ -65,11 +66,12 @@ export class LobbyStore {
    if(!preparationColumns.some(c=>c.name==='settings_revision'))this.db.exec('ALTER TABLE preparations ADD COLUMN settings_revision INTEGER NOT NULL DEFAULT 0');
   }).immediate();
   migrateBoardSeats(this.db);
+  migrateIdentityRoles(this.db);
   this.auth=new AuthStore(this.db);
   this.boards=new BoardsStore(this.db,token=>this.auth.owner(token));
   this.control=new ControlStore(this.db,this.now);
   this.testPlayers=new TestPlayersStore(this.db,this.allowTestPlayers,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats);
-  this.night=new NightStore(this.db,(token,id)=>this.member(token,id),this.now,this.control);
+  this.night=new NightStore(this.db,(token,id)=>this.member(token,id),this.now,this.control,id=>this.boards.snapshot(id));
   this.day=new DayStore(this.db,(token,id)=>this.member(token,id),id=>this.night.completedState(id),this.now,this.dayRules,this.control);
   this.records=new RecordsStore(this.db,this.auth,this.now,id=>this.readReplay(id));
   this.voice=new VoiceStore(this.db,this.now,(id,memberId)=>{const m=this.db.prepare('SELECT * FROM members WHERE room_id=? AND id=?').get(id,memberId) as MemberRow|undefined;return !!m&&this.control.canManage(id,m);});
@@ -186,7 +188,7 @@ export class LobbyStore {
  testDayCommand(token:string,id:string,actorId:string,c:DayCommand){this.testPlayers.actor(token,id,actorId);return this.testDayStore(actorId).command(token,id,c);}
  testDayAdvance(token:string,id:string){this.testPlayers.authorize(token,id);if(!this.testPlayers.isTestRoom(id))throw new LobbyError('NOT_TEST_PLAYER',403);this.day.testAdvance(id);return this.view(token,id);}
  testDayActor(token:string,id:string){const host=this.testPlayers.authorize(token,id);if(!this.testPlayers.isTestRoom(id))throw new LobbyError('NOT_TEST_PLAYER',403);const day=this.day.snapshot(id);if(!day)throw new LobbyError('DAY_UNAVAILABLE',409);const seat=this.day.testActionSeat(id);const actor=this.snapshot(id).seats.find(s=>s.number===seat&&(s.memberId===host.id||s.isTestPlayer));return {turnId:day.turnId,actorId:actor?.memberId??null};}
- testNightStore(actorId:string){return new NightStore(this.db,(token,id)=>this.testPlayers.actor(token,id,actorId),this.now,this.control);}
+ testNightStore(actorId:string){return new NightStore(this.db,(token,id)=>this.testPlayers.actor(token,id,actorId),this.now,this.control,id=>this.boards.snapshot(id));}
  testNightPrivate(token:string,id:string,actorId:string){this.testPlayers.actor(token,id,actorId);return this.testNightStore(actorId).private(token,id);}
  testNightActor(token:string,id:string){
   const host=this.testPlayers.authorize(token,id);if(!this.testPlayers.isTestRoom(id))throw new LobbyError('NOT_TEST_PLAYER',403);
@@ -207,7 +209,7 @@ export class LobbyStore {
  private readReplay(id:string):import('../contracts/game.js').GameReplay{const day=this.day.snapshot(id);if(day?.phase!=='ended')throw new LobbyError('PHASE_LOCKED',409);
   const saved=this.db.prepare('SELECT kind,round,state FROM game_history WHERE room_id=?').all(id) as {kind:'night'|'day';round:number;state:string}[];
   for(const kind of ['night','day'] as const){const row=this.db.prepare(`SELECT state FROM ${kind}_games WHERE room_id=?`).get(id) as {state:string}|undefined;if(row){const s=JSON.parse(row.state);saved.push({kind,round:s[kind],state:row.state});}}
-  return {winner:day.winner!,roles:day.revealed,rounds:saved.sort((a,b)=>a.round-b.round||(a.kind==='night'?-1:1)).map(r=>({kind:r.kind,round:r.round,events:JSON.parse(r.state).events,...(r.kind==='day'?{outcome:{sheriff:JSON.parse(r.state).sheriff,badge:JSON.parse(r.state).badge,result:JSON.parse(r.state).result}}:{})}))};
+  return {winner:day.winner!,roles:day.revealed,rounds:saved.sort((a,b)=>a.round-b.round||(a.kind==='night'?-1:1)).map(r=>({kind:r.kind,round:r.round,events:JSON.parse(r.state).events,...(JSON.parse(r.state).engine?{engine:JSON.parse(r.state).engine}:{}),...(r.kind==='day'?{outcome:{sheriff:JSON.parse(r.state).sheriff,badge:JSON.parse(r.state).badge,result:JSON.parse(r.state).result}}:{})}))};
  }
  isFavorite(token:string,id:string){return !!this.db.prepare('SELECT 1 FROM saved_replays WHERE owner_hash=? AND room_id=?').get(this.auth.owner(token),id);}
  saveFavorite(token:string,id:string){return this.db.transaction(()=>{const record=this.gameReplay(token,id);const room=this.snapshot(id);this.db.prepare('INSERT OR IGNORE INTO saved_replays VALUES (?,?,?,?,?,?)').run(this.auth.owner(token),id,room.code,record.winner,this.now(),JSON.stringify(record));return {saved:true};}).immediate();}
@@ -230,6 +232,7 @@ export class LobbyStore {
  recordFavorites(token:string){return this.records.favorites(token);}
  removeRecordFavorite(token:string,id:string){const exists=this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(this.auth.owner(token),id);const result=this.records.removeFavorite(token,id);if(exists)this.touchRecordRoom(id);return result;}
  switchManual(token:string,id:string,confirmed:boolean){this.records.switch(token,id,confirmed);return this.view(token,id);}
+ adjudicateManual(token:string,id:string,input:import('../contracts/records.js').ManualAdjudicate){return this.records.adjudicate(token,id,input);}
  commitManual(token:string,id:string,revision:number){return this.records.commit(token,id,revision);}
  requestManualEnd(token:string,id:string,revision:number){return this.records.requestEnd(token,id,revision);}
  manualRequest(token:string,id:string){return this.records.request(token,id);}

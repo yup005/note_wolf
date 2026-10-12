@@ -1,9 +1,10 @@
 import {useEffect,useRef,useState} from 'react';
 import type {PrivateIdentity,Role,PreparationState} from '../../../packages/contracts/index';
 import {roleLabels} from '../../../packages/contracts/labels';
+import type {BoardComposition} from '../../../packages/contracts/board';
 import {api,errorText} from './api';
-interface Props {roomId:string;phase:PreparationState['phase'];dealMethod:'online'|'physical';connected:boolean;onPublicRefresh:()=>Promise<void>}
-export function IdentityPanel({roomId,phase,dealMethod,connected,onPublicRefresh}:Props){
+interface Props {roomId:string;phase:PreparationState['phase'];dealMethod:'online'|'physical';connected:boolean;roleCounts:BoardComposition['roles'];onPublicRefresh:()=>Promise<void>}
+export function IdentityPanel({roomId,phase,dealMethod,connected,roleCounts,onPublicRefresh}:Props){
  const [visible,setVisible]=useState(false);const [card,setCard]=useState<PrivateIdentity>();const [selection,setSelection]=useState<Role|''>('');
  const [busy,setBusy]=useState(false);const [error,setError]=useState('');const generation=useRef(0);const lock=useRef(false);
  const path=`/api/rooms/${roomId}/identity`;
@@ -28,7 +29,7 @@ export function IdentityPanel({roomId,phase,dealMethod,connected,onPublicRefresh
  return <section className="identity-panel" aria-label="私人身份"><h2>你的身份</h2>
   {error&&<p className="validation-warning" role="alert">{error}</p>}
   {!visible?<><p className="helper">仅本人可查看，请注意周围视线。</p><button className="secondary full" disabled={busy||!connected} onClick={()=>void reveal()}>{busy?'加载中…':'查看身份'}</button></>:<>
-   {dealMethod==='physical'&&!card?.locked?<><label className="input-label" htmlFor="physical-role">你的实体身份</label><select id="physical-role" value={selection} disabled={busy||!connected} onChange={e=>setSelection(e.target.value as Role|'')}><option value="" disabled>选择实体牌上的角色</option>{Object.entries(roleLabels).map(([r,label])=><option key={r} value={r}>{label}</option>)}</select><button className="primary full" disabled={busy||!connected||selection===''} onClick={()=>void save()}>提交身份</button></>:<>
+   {dealMethod==='physical'&&!card?.locked?<><label className="input-label" htmlFor="physical-role">你的实体身份</label><select id="physical-role" value={selection} disabled={busy||!connected} onChange={e=>setSelection(e.target.value as Role|'')}><option value="" disabled>选择实体牌上的角色</option>{Object.entries(roleLabels).filter(([r])=>(roleCounts[r as Role]??0)>0).map(([r,label])=><option key={r} value={r}>{label}</option>)}</select><button className="primary full" disabled={busy||!connected||selection===''} onClick={()=>void save()}>提交身份</button></>:<>
     {card?.role&&<p className="private-role" data-testid="private-role">{roleLabels[card.role]}</p>}
     {phase==='identity_collection'&&!card?.confirmed&&<button className="primary full" disabled={busy||!connected} onClick={()=>void save()}>确认身份</button>}
     {card?.confirmed&&<p className="helper">身份已确认</p>}

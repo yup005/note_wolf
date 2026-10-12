@@ -83,7 +83,7 @@ test('startup cleanup honors both favorites and renewable shares and removes onl
   const ids=[];for(let i=0;i<4;i++)ids.push((await f.create()).id);
   f.db.prepare('INSERT INTO saved_replays VALUES (?,?,?,?,?,?)').run('synthetic-other',ids[0],'0000','good',0,'{}');
   for(const id of ids.slice(1,3)){
-   f.db.prepare('INSERT INTO record_rooms VALUES (?,?,?,?,?,1)').run(id,'0000','[]','[]','synthetic-owner');
+   f.db.prepare('INSERT INTO record_rooms(room_id,code,roles,participants,host_owner,ended) VALUES (?,?,?,?,?,1)').run(id,'0000','[]','[]','synthetic-owner');
    f.db.prepare('INSERT INTO record_drafts(id,room_id,owner,author,official,draft) VALUES (?,?,?,?,1,?)').run('draft:'+id,id,'synthetic-owner','Synthetic','{}');
   }
   f.db.prepare('INSERT INTO record_favorites VALUES (?,?,0)').run('synthetic-other','draft:'+ids[1]);

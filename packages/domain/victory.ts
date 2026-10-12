@@ -23,13 +23,19 @@ export function evaluateVictory(players:readonly VictoryPlayer[],ruleset:Ruleset
  if(players.filter(p=>p.role==='mixer').length>1)throw new LobbyError('INVALID_VICTORY_STATE');
  if(mixer&&(mixer.modelSeat===undefined||mixer.modelCamp===undefined))return {status:'unresolved',questionId:'MA-VICTORY-MIXER'};
  if(mixer&&(mixer.modelSeat===mixer.seat||!model||playerCamp(model.role)!==mixer.modelCamp))throw new LobbyError('INVALID_VICTORY_STATE');
- if(players.some(p=>p.role==='mechanicalWolf'&&p.learnedRole==='idiot'))return {status:'unresolved',questionId:'MA-VICTORY-MECHANICAL-IDIOT'};
+ // The daytime orchestrator handles the confirmed exile-only extra-night exception.
+ // A learned idiot alone never blocks ordinary night settlement or wolves-first victory.
  const alive=players.filter(p=>p.alive);
- const noVillagers=players.some(p=>p.role==='villager')&&!alive.some(p=>p.role==='villager');
+ // Confirmed 12-player 3-villager + mixed-blood variant keeps four civilian
+ // identities. The expanded-board early thresholds never apply to this roster.
+ const standardMixerCounts={...standardRoleCounts,villager:3,mixer:1};
+ const standardMixer=players.length===12&&Object.entries(standardMixerCounts).every(([role,count])=>players.filter(p=>p.role===role).length===count);
+ const civilian=(p:VictoryPlayer)=>p.role==='villager'||standardMixer&&p.role==='mixer';
+ const noVillagers=players.some(civilian)&&!alive.some(civilian);
  const noGods=players.some(p=>gods.has(p.role))&&!alive.some(p=>gods.has(p.role));
  const noWolves=players.some(p=>wolves.has(p.role))&&!alive.some(p=>wolves.has(p.role));
- const mixerThreshold=!!mixer&&!mixer.alive&&players.some(p=>p.role==='villager')&&alive.filter(p=>p.role==='villager').length===1;
- const mixerLastCivilian=!!mixer&&mixer.alive&&!alive.some(p=>p.role==='villager');
+ const mixerThreshold=!standardMixer&&!!mixer&&!mixer.alive&&players.some(p=>p.role==='villager')&&alive.filter(p=>p.role==='villager').length===1;
+ const mixerLastCivilian=!standardMixer&&!!mixer&&mixer.alive&&!alive.some(p=>p.role==='villager');
  // All confirmed rulesets give wolves priority when both sides finish in the same batch.
  const ended=(winner:'wolves'|'good',reason:Extract<VictoryResult,{status:'ended'}>['reason']):VictoryResult=>({status:'ended',winner,reason,
   ...(mixer?{personalResults:[{seat:mixer.seat,won:mixer.modelCamp===winner}]}:{})});

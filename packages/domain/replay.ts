@@ -1,5 +1,6 @@
 import type {GameEvent,GameReplay} from '../contracts/game.js';
 import type {DayVoteResult} from '../contracts/day.js';
+import {boardRoleLabels} from '../contracts/board.js';
 export interface ReplaySection {title:string;lines:string[]}
 const seats=(values:number[])=>values.join('、')+' 号';
 const voteName={sheriff:'警长',sheriff_pk:'警长 PK',exile:'放逐',exile_pk:'放逐 PK'};
@@ -25,12 +26,50 @@ function legacyVotes(events:GameEvent[],last:DayVoteResult|null|undefined):strin
  return groups.flatMap(g=>{if(g.recorded)return [];if(g.result)return [describeVote({...g.result,...(g.individual?{ballots:g.result.ballots??[...g.ballots].map(([seat,target])=>({seat,target}))}:{ballots:undefined})})];if(!g.individual||!g.ballots.size)return [];const grouped=new Map<number|null,number[]>();for(const [seat,target] of g.ballots)grouped.set(target,[...(grouped.get(target)??[]),seat]);return [`${voteName[g.purpose]}投票：${[...grouped].map(([target,voters])=>`${seats(voters)}${target===null?'弃票':`投 ${target} 号`}`).join('；')}`];});
 }
 export function summarizeReplay(record:GameReplay):ReplaySection[]{
- const roles=new Map(record.roles.map(p=>[p.seat,p.role]));let hunterSpent=false;let sheriff:number|null=null;const applicants=new Set<number>();
+ const roles=new Map(record.roles.map(p=>[p.seat,p.role]));const hunterSpent=new Set<number>();let sheriff:number|null=null;const applicants=new Set<number>();
  const sections=record.rounds.map(round=>{
   const lines:string[]=[];const e=round.events;
   if(round.kind==='night'){
    const knife=e.findLast(x=>x.type==='knife_resolved');const priority=e.find(x=>x.type==='priority_knife');if(knife)lines.push(knife.target==null?'狼人空刀':`狼刀 ${knife.target} 号${priority?`（${priority.seat} 号自爆狼指刀）`:''}`);
-   for(const action of e){if(action.type==='witch_save')lines.push(`女巫救 ${action.target} 号`);if(action.type==='witch_poison')lines.push(`女巫毒 ${action.target} 号`);if(action.type==='witch_skip')lines.push('女巫未用药');if(action.type==='seer_check')lines.push(`预言家验 ${action.target} 号：${roles.get(action.target!)==='wolf'?'狼人':'好人'}`);if(action.type==='hunter_seen')lines.push(`猎人查看状态：技能${hunterSpent||e.some(x=>x.type==='witch_poison'&&x.target===action.seat)?'不可':'可'}发动`);}
+   for(const action of e){
+    if(action.type==='witch_save')lines.push(`女巫救 ${action.target} 号`);
+    if(action.type==='witch_poison')lines.push(`女巫毒 ${action.target} 号`);
+    if(action.type==='witch_skip')lines.push('女巫未用药');
+    if(action.type==='seer_check'){
+     const inspection=round.engine?.actions.find(a=>a.casterId===action.seat&&a.targetId===action.target&&a.abilityType==='inspect')?.privateInspection;
+     const camp=inspection?.status==='camp'?inspection.camp:roles.get(action.target!)==='wolf'?'wolves':'good';
+     lines.push(action.target===null?'预言家空验':`预言家验 ${action.target} 号：${camp==='wolves'?'狼人':'好人'}`);
+    }
+    if(action.type==='hunter_seen'){
+     const seat=action.seat??record.roles.find(p=>p.role==='hunter')?.seat??-1;
+     const resolution=round.engine?.resolution;
+     const poisoned=resolution?.status==='settled'?resolution.effects.some(effect=>effect.abilityType==='poison'&&effect.outcome==='killed'&&(effect.reflectTarget??effect.targetId)===seat):e.some(x=>x.type==='witch_poison'&&x.target===seat);
+     const spent=hunterSpent.has(seat)||round.engine?.players.find(p=>p.seat===seat)?.abilities.skills.find(skill=>skill.kind==='shot')?.remaining===0;
+     lines.push(`猎人查看状态：技能${spent||poisoned?'不可':'可'}发动`);
+    }
+   }
+   for(const action of e){
+    const actor=roles.get(action.seat!);const actorName=actor?boardRoleLabels[actor]:'玩家';
+    if(action.type==='mechanical_learn'||action.type==='armor_learn'){
+     const learned=round.engine?.players.find(p=>p.seat===action.seat)?.learning;
+     const learnedRole=learned?.sourceSnapshot.mimickedRole??learned?.sourceSnapshot.originalRole;
+     lines.push(action.target==null?`${action.seat} 号${actorName}未学习`:`${action.seat} 号${actorName}学习 ${action.target} 号${learned?.night===round.round&&learnedRole?'：'+boardRoleLabels[learnedRole]:''}`);
+    }
+    if(action.type==='guard_protect'){const name=actor==='guard'?'守卫':`${action.seat} 号${actorName}`;lines.push(action.target==null?`${name}空守`:`${name}守 ${action.target} 号`);}
+    if(action.type==='spirit_check'||action.type==='mechanical_check'){
+     const inspection=round.engine?.actions.find(a=>a.casterId===action.seat&&a.targetId===action.target&&a.abilityType==='inspect')?.privateInspection;
+     const result=inspection?.status==='visible'?boardRoleLabels[inspection.role]:inspection?.status==='camp'?inspection.camp==='wolves'?'狼人':'好人':null;
+     const name=action.type==='spirit_check'?'通灵师':`${action.seat} 号${actorName}`;
+     lines.push(action.target==null?`${name}空验`:`${name}验 ${action.target} 号${result?'：'+result:''}`);
+    }
+    if(action.type==='mechanical_poison')lines.push(action.target==null?`${action.seat} 号${actorName}未用毒`:`${action.seat} 号${actorName}毒 ${action.target} 号`);
+    if(action.type==='mechanical_knife'||action.type==='armor_knife')lines.push(action.target==null?`${action.seat} 号${actorName}未用额外刀`:`${action.seat} 号${actorName}额外刀 ${action.target} 号`);
+    if(action.type==='mixer_model')lines.push(action.target==null?'混血儿未选择榜样':`混血儿榜样 ${action.target} 号`);
+   }
+   for(const effect of round.engine?.resolution?.status==='settled'?round.engine.resolution.effects:[]){
+    if(effect.reflectTarget!==null)lines.push(`${effect.casterId} 号毒药反弹至 ${effect.reflectTarget} 号${effect.outcome==='killed'?'（死亡）':''}`);
+    else if(effect.outcome==='prevented'&&effect.targetId!==null)lines.push(`${effect.targetId} 号受到保护，${effect.abilityType==='poison'?'毒药':'狼刀'}未生效`);
+   }
   }else{
    for(const action of e){if(action.type==='command'&&action.command?.action==='signup'){if(action.command.join===true)applicants.add(action.seat!);else applicants.delete(action.seat!);}if(action.type==='command'&&action.command?.action==='withdraw'||action.type==='death_explosion')applicants.delete(action.seat!);if(action.type==='vote_outcome'&&action.result?.purpose.startsWith('sheriff')){applicants.clear();for(const seat of action.result.leaders)applicants.add(seat);}}
    if(e.some(x=>x.type.startsWith('sheriff_')||x.command?.action==='signup'||x.command?.action==='withdraw')&&applicants.size)lines.push(`留警：${seats([...applicants].sort((a,b)=>a-b))}`);
@@ -42,9 +81,9 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
     if(action.type.startsWith('death_')){
      const who=`${action.seat} 号`;const reason=action.type.slice(6);if(reason==='shot'&&shotTargets.has(action.seat))continue;
      const description:Record<string,string>={knife:'被狼刀杀死',poison:'被毒死',shot:'被猎人开枪带走',exile:roles.get(action.seat!)==='idiot'?'被放逐，白痴翻牌死亡':'被放逐',explosion:'狼人自爆'};
-     if(description[reason])lines.push(`${who}${description[reason]}${roles.get(action.seat!)==='hunter'&&(reason==='poison'||hunterSpent)?'（技能不可发动）':''}`);
+     if(description[reason])lines.push(`${who}${description[reason]}${roles.get(action.seat!)==='hunter'&&(reason==='poison'||hunterSpent.has(action.seat!))?'（技能不可发动）':''}`);
     }
-    if(action.type==='hunter_shot'){lines.push(`${action.seat} 号猎人开枪，带走 ${action.target} 号`);hunterSpent=true;}
+    if(action.type==='hunter_shot'){lines.push(`${action.seat} 号${boardRoleLabels[roles.get(action.seat!)??'hunter']}开枪，带走 ${action.target} 号`);hunterSpent.add(action.seat!);}
     if(action.type==='command'&&action.command?.action==='transfer_badge'){const target=action.command.target;sheriff=typeof target==='number'?target:null;lines.push(sheriff===null?`${action.seat} 号撕掉警徽`:`${action.seat} 号将警徽移交给 ${sheriff} 号`);}
    }
    if(round.outcome?.badge==='elected'&&round.outcome.sheriff!==null&&round.outcome.sheriff!==sheriff){sheriff=round.outcome.sheriff;lines.push(`${sheriff} 号当选警长`);}

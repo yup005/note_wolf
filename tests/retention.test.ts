@@ -17,7 +17,7 @@ function fixture(){
 }
 function room(db:Database.Database,id:string){const count=db.prepare('SELECT COUNT(*) AS n FROM rooms').get() as {n:number};db.prepare('INSERT INTO rooms(id,code,created_at) VALUES (?,?,?)').run(id,String(count.n).padStart(4,'0'),0);}
 function archive(db:Database.Database,id:string){
- db.prepare('INSERT INTO record_rooms VALUES (?,?,?,?,?,1)').run(id,'0000','[]','[]','synthetic-owner');
+ db.prepare('INSERT INTO record_rooms(room_id,code,roles,participants,host_owner,ended) VALUES (?,?,?,?,?,1)').run(id,'0000','[]','[]','synthetic-owner');
  db.prepare('INSERT INTO record_drafts(id,room_id,owner,author,official,draft,published_version) VALUES (?,?,?,?,?,?,1)').run('draft:'+id,id,'synthetic-owner','Synthetic',1,'{}');
  db.prepare('INSERT INTO record_versions VALUES (?,1,?,?,0)').run('draft:'+id,'{}',null);
  db.prepare('INSERT INTO manual_revisions VALUES (?,1,0,?,NULL)').run(id,'{}');

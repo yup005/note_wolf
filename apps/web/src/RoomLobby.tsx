@@ -44,7 +44,7 @@ export function RoomLobby({view,connected,busy,onSeat,onHome,onAction,onPublicRe
     {!own&&seated===room.board.composition.seatCount&&<p className="helper">座位已满</p>}
    </section>
    <section className="card room-focus" aria-label="当前阶段">
-    {phase!=='lobby'&&own&&<IdentityPanel roomId={room.id} phase={phase} dealMethod={room.preparation.settings.dealMethod} connected={connected} onPublicRefresh={onPublicRefresh}/>}
+    {phase!=='lobby'&&own&&<IdentityPanel roomId={room.id} roleCounts={room.board.composition.roleCounts} phase={phase} dealMethod={room.preparation.settings.dealMethod} connected={connected} onPublicRefresh={onPublicRefresh}/>}
     <PreparationPanel view={view} busy={busy} connected={connected} onAction={onAction}/>
    </section>
   </div>

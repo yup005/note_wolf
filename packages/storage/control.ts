@@ -47,6 +47,7 @@ export class ControlStore {
    }else if(c.action==='pause'){
     if(r.status==='paused')throw new LobbyError('STALE_CONTROL',409);const remaining=r.status==='resuming'?r.remaining_ms:a.state.deadline===null?null:Math.max(0,a.state.deadline-this.now());
     for(const p of this.db.prepare('SELECT * FROM member_presence WHERE room_id=?').all(id) as Presence[]){const lost=(p.turn_id===a.state.turnId?p.lost_ms:0)+(p.connected||p.disconnected_at===null?0:Math.max(0,this.now()-Math.max(p.disconnected_at,this.started(a))));this.db.prepare('UPDATE member_presence SET lost_ms=?,turn_id=?,disconnected_at=NULL WHERE member_id=?').run(Math.min(15000,lost),a.state.turnId,p.member_id);}
+    if(a.kind==='day'&&r.status==='running'){const interjection=(a.state as DayState).interjection;if(interjection)interjection.pausedElapsedMs=Math.max(0,this.now()-interjection.startedAt);}
     this.db.prepare("UPDATE room_controls SET status='paused',remaining_ms=?,resume_at=NULL,kind=?,turn_id=? WHERE room_id=?").run(remaining,a.kind,a.state.turnId,id);a.state.deadline=null;this.saveActive(id,a);
    }else{
     if(r.status!=='paused')throw new LobbyError('STALE_CONTROL',409);this.db.prepare("UPDATE room_controls SET status='resuming',resume_at=? WHERE room_id=?").run(this.now()+5000,id);
@@ -58,7 +59,9 @@ export class ControlStore {
    let dirty=false;const a=this.active(r.room_id);
    if(r.temp_member){const m=this.db.prepare('SELECT seat FROM members WHERE id=?').get(r.temp_member) as {seat:number|null}|undefined;if(!m||!this.living(r.room_id,m.seat)){this.db.prepare('UPDATE room_controls SET temp_member=NULL,version=version+1 WHERE room_id=?').run(r.room_id);dirty=true;}}
    if(r.status==='resuming'&&r.resume_at!==null&&this.now()>=r.resume_at){
-    if(!a||a.kind!==r.kind||a.state.turnId!==r.turn_id)throw new Error('Frozen phase changed');a.state.deadline=r.remaining_ms===null?null:r.resume_at+r.remaining_ms;this.saveActive(r.room_id,a);
+    if(!a||a.kind!==r.kind||a.state.turnId!==r.turn_id)throw new Error('Frozen phase changed');a.state.deadline=r.remaining_ms===null?null:r.resume_at+r.remaining_ms;
+    if(a.kind==='day'){const interjection=(a.state as DayState).interjection;if(interjection&&interjection.pausedElapsedMs!==undefined){interjection.startedAt=r.resume_at-interjection.pausedElapsedMs;delete interjection.pausedElapsedMs;}}
+    this.saveActive(r.room_id,a);
     this.db.prepare("UPDATE room_controls SET status='running',remaining_ms=NULL,resume_at=NULL,version=version+1 WHERE room_id=?").run(r.room_id);
     // Preserve pre-pause loss; start counting offline playable time at resume.
     this.db.prepare('UPDATE member_presence SET lost_ms=CASE WHEN turn_id=? THEN lost_ms ELSE 0 END,turn_id=?,disconnected_at=CASE WHEN connected=0 THEN ? ELSE NULL END WHERE room_id=?').run(a.state.turnId,a.state.turnId,r.resume_at,r.room_id);dirty=true;
@@ -84,9 +87,11 @@ export class ControlStore {
  }
  hasGrace(id:string,s:NightState){return !!this.db.prepare('SELECT 1 FROM member_presence WHERE room_id=? AND grace_turn=?').get(id,s.turnId);}
  grace(id:string,s:NightState,now:number){
-  if(!['witch','seer','hunter'].includes(s.phase)||s.deadline===null)return;
+  if(!['witch','seer','hunter','guard','spiritSeer','mechanical','armor','mixer'].includes(s.phase)||s.deadline===null)return;
+  if(s.engine){const role=s.phase==='mechanical'?'mechanicalWolf':s.phase==='armor'?'armoredWolf':s.phase;const actor=s.engine.players.find(p=>p.role===role&&p.alive);if(!actor||s.mechanical?.locked[actor.seat]?.turnId===s.turnId)return;}
   if(s.phase==='witch'&&(s.witchChoice||!s.antidote&&!s.poison)||s.phase==='seer'&&s.seerCheck||s.phase==='hunter'&&(s.hunterSeen||s.hunterSpent))return;
-  const player=s.players.find(p=>p.role===s.phase&&p.alive!==false);if(!player)return;
+  const role=s.phase==='mechanical'?'mechanicalWolf':s.phase==='armor'?'armoredWolf':s.phase;
+  const player=s.players.find(p=>p.role===role&&p.alive!==false);if(!player)return;
   const p=this.db.prepare('SELECT p.* FROM member_presence p JOIN members m ON m.id=p.member_id WHERE m.room_id=? AND m.seat=?').get(id,player.seat) as Presence|undefined;
   if(!p||p.grace_used)return;
   const lost=p.connected?p.turn_id===s.turnId?p.lost_ms:0:15000;if(!lost)return;

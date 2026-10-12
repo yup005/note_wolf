@@ -6,8 +6,8 @@ Original detailed instructions were moved here from root AGENTS.md at [cd6a8ae](
 
 ## Project context
 - This is a mobile-first, in-person Werewolf assistant ("笔记狼人杀"), optimized for iPhone Safari.
-- Current playable scope is **12-player 预女猎白 only**: 4 wolves, 4 villagers, one seer, witch, hunter and idiot. Preserve the existing architecture and UI style; other boards are out of scope unless the owner explicitly authorizes them.
-- The owner explicitly authorized beginning the updated mechanical/armor requirements on 2026-10-10. Shared domain foundations are in development; full new-board gameplay remains gated on implementation and unresolved decisions. See `docs/MECHANICAL_WOLF_SEER.md`, `docs/MECHANICAL_ARMOR.md` and current progress.
+- Preserve **12-player 预女猎白**: 4 wolves, 4 villagers, one seer, witch, hunter and idiot. Mechanical/armor and custom-board confirmed flows are implemented locally under the owner's 2026-10-10 authorization and 2026-10-11 instruction to finish implementation before considering deployment. Preserve the existing architecture and UI style; other boards remain out of scope without explicit authorization.
+- Unresolved mechanical/armor interactions remain blocked instead of receiving invented defaults; the separate 14-player dual-category idiot policy is not selectable. See `docs/MECHANICAL_WOLF_SEER.md`, `docs/MECHANICAL_ARMOR.md` and current progress for implementation and verification limits. Do not deploy this delivery until the owner requests deployment.
 - Read `docs/PRODUCT_DECISIONS.md` before making product-rule decisions.
 - Read `docs/NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md` if present; it is the product requirement index, not proof of implementation.
 - The older `README.md`, `docs/WEREWOLF_RULES_SPEC.md`, `docs/WEREWOLF_TEST_CASES.md`, `docs/PROGRESS.md`, and `docs/TEST_REPORT.md` may describe earlier revisions. Resolve discrepancies using later explicitly confirmed product decisions, and verify actual implementation against the current checked-out code and tests.

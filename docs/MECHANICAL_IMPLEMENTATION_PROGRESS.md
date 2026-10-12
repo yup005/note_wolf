@@ -2,7 +2,7 @@
 
 Date: 2026-10-11 (America/Los_Angeles). Entry point: [M0–M6 specification](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md). Confirmation, implementation and executed verification are separate.
 
-## M0 module/test differences
+## Historical M0 module/test differences
 
 | Module | Existing, verified baseline | Missing / next milestone |
 |---|---|---|
@@ -19,16 +19,26 @@ Date: 2026-10-11 (America/Los_Angeles). Entry point: [M0–M6 specification](COD
 | Milestone | Status | Evidence / limits |
 |---|---|---|
 | M0 | Complete | Fresh npm test 178 pass / 0 fail / 0 skip, typecheck/build pass; full Chromium mobile E2E 34 pass / 0 fail / 0 skip. Physical-device acceptance remains pending. |
-| M1 | Complete; published | Three selectable immutable presets, saved owner templates, composition preview/edit, 13/15/zero wolf configs, public room snapshots and dynamic seats. New gameplay gate remains until M3–M5. |
+| M1 | Complete; published | Three selectable immutable presets, saved owner templates, composition preview/edit, 13/15/zero wolf configs, public room snapshots and dynamic seats. Confirmed runtime now connected; capacity remains1–256 seats. |
 | M2 | Complete | Versioned role/ability/copy/action/effect/resolution/victory framework and internal durable store; concrete new-board runtime remains M3–M5. |
-| M3 | Partial internal domain delivery; runtime pending | Native/copy profiles, learning, frozen inspection and confirmed settlement; fixed phases/private runtime still not connected |
-| M4 | Partial domain; runtime pending | Armor frozen nested copy, invincible guard/stacked knife algorithms; unresolved branches explicitly blocked |
-| M5 | Confirmed decisions recorded; implementation pending | Mixed-blood timeout/private feedback, idiot classification and dual-variant speech confirmed; state machine/UI not connected |
-| M6 | Pending | Automation and physical acceptance must be reported separately |
+| M3 | Confirmed runtime implemented; unresolved interactions blocked | Native/copy profiles, fixed phases/private learning/inspection/guard/witch/hunter UI, settled night evidence and cross-night persistence |
+| M4 | Confirmed runtime implemented; unresolved interactions blocked | Armor frozen nested copy, independent inventory, invincible guard/stacked knife, inherited knife and fixed armor stage |
+| M5 | Confirmed default runtime implemented; separate dual-category variant pending | Mixer private model/timeout, standard12 mixed-blood exception, extra-night mechanical idiot, independent15s interjection and pause/resume;14-player dual-category policy not selectable |
+| M6 | Automated coverage expanded; physical acceptance pending | Dynamic online/physical × automatic/manual, browser private actions/refresh, HTTP/Socket privacy, restart, replay and extra-night scenarios; real devices/multiplayer remain separate |
 
 ## Product decision blockers
 
-Current blockers are [unified specification §7](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md#7-未决项--codex-禁止擅自决定). Later explicit owner confirmations resolve never-self-save, milk-through for ordinary/mechanical/armor guards, mixed-blood exact inspection/privacy/random timeout, and idiot categories/dual-only speech restriction. They are implementation work, not unresolved decisions. Armor source inheritance ced569a/fab5566d and extra knife only after inherited normal knife remain authoritative. Complex reflection, undefined damage/copy combinations and unconfirmed camp inspection/custom configuration boundaries remain blocked. Existing standard12 stays unchanged; owner-authorized3-villager+1-mixed-blood variant is confirmed but not yet playable.
+Current blockers are [unified specification §7](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md#7-未决项--codex-禁止擅自决定). Confirmed never-self-save, milk-through, mixed-blood timeout/private seat view, default idiot categories and extra-night runtime are implemented;14-player dual-category policy is still not selectable, without inferring it from headcount. Armor source inheritance ced569a/fab5566d and extra knife only after inherited normal knife remain authoritative. Complex reflection, undefined damage/copy combinations (including ordinary seer copies), unconfirmed camp inspection of mixed blood and special model/configuration boundaries remain blocked. CFG-05 generic shared-knife membership is domain-supported; black/white wolf king declarations/powers are absent from the runtime role catalog. Existing standard12 stays compatible; owner-authorized3-villager+1-mixed-blood variant uses all4 civilian targets. This is code delivery, not a deployment.
+
+## Current runtime delivery evidence (2026-10-11)
+
+- Confirmed M3–M5 flows now run through existing night/day/control/storage and private player UI; dynamic online/physical × automatic/manual, native spirit-seer exact inspection, armor frozen learning/independent poison and inherited knife are exercised. Three-night actual LobbyStore tests cover final mechanical-idiot exile, restart, ghost private knife, surviving protection and both terminal outcomes.
+- `mechanical-server-privacy.test.ts` uses actual synthetic participant HTTP/Socket sessions and restart: private learning/inspection stays local to the actor; hosts, outsiders and spoofed requests cannot read it; test helpers are disabled in production. Ongoing mixer cards expose only the model seat. Replay includes native/copy results and confirmation/priority-knife events only after the existing end authorization.
+- Manual missing learning/model or unrecorded extra-night facts remain uncertain. Existing owner-confirmed host adjudication is now an explicit version-checked endpoint and confirmation UI; audits, publication, cleanup/restart and sharing retain the `host-adjudicated` source. Standard/computable results cannot be overridden. Regression includes unchanged official drafts and auto-to-manual pending bonus night.
+- Review findings addressed with regressions: standard12 mixed-blood threshold, mixer camp leakage, guarded/reflected hunter poison state, idempotent private receipts and turn-scoped acknowledgement, missing replay events, pending manual bonus-night premature victory and share provenance. Independent review covered migrations and runtime; final manual-sharing follow-up was completed by the implementer after reviewer execution became unavailable.
+- Final full unit **320 pass /0 fail /0 skip**; typecheck/build pass; full Chromium mobile E2E **44 pass /0 fail /0 skip（1.6m）**. Browser actions/save/refresh/adjudicate/publish and320/390/430px layouts use synthetic data. Physical iPhone/actual sound/background/weak network/real multiplayer remain unverified; M6 stays partially verified. No deployment; Render auto-deploy is off.
+
+The following M0/M1/M2/internal-increment evidence is historical, preserving the exact verification and feature gates at each earlier delivery. Current scope is governed by the milestones and blockers above.
 
 ## Foundation implementation provenance
 

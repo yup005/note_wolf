@@ -4,9 +4,13 @@ import type {DayCommand,DayPhase,DayPublic,DayPrivate,DayVoteResult,FirstDayRule
 import type {GameEvent} from '../contracts/game.js';
 import type {NightState} from './night.js';
 import {evaluateVictory} from './victory.js';
+import type {EngineState} from '../contracts/engine.js';
+import {useSkill} from './skills.js';
 type DeathReason='knife'|'poison'|'shot'|'exile'|'explosion';
 type Task={seat:number;step:'skill'|'words'|'badge'};
 export interface DayState {
+ engine?:EngineState;extraNightSeat?:number|null;flippedIdiots?:number[];
+ interjection?:{seat:number;startedAt:number;remainingSpeechMs:number;pausedElapsedMs?:number}|null;interjectionUsed?:Record<number,number>;
  voteDefaults?:{seconds:number;visibility:'individual'|'totals'};
  day:number;phase:DayPhase;turnId:string;deadline:number|null;players:{seat:number;role:Role;alive:boolean}[];rules:FirstDayRules;
  nightDeaths:number[];hunterSpent:boolean;speechStart:number|null;pendingDeaths:{seat:number;reason:DeathReason}[];deaths:{seat:number;reason:DeathReason}[];tasks:Task[];currentDeath:number|null;
@@ -17,26 +21,53 @@ export interface DayState {
 }
 const error=(code='PHASE_LOCKED',status=409):never=>{throw new LobbyError(code,status);};
 const living=(s:DayState)=>s.players.filter(p=>p.alive).map(p=>p.seat);
-function phase(s:DayState,p:DayPhase,now:number,seconds?:number){s.phase=p;s.turnId=randomUUID();s.deadline=seconds===undefined?null:now+seconds*1000;s.events.push({type:p,at:now,...(p==='sheriff_speech'||p==='day_speech'?{seat:s.speaker!}:['death_skill','last_words','badge_transfer','hunter_target'].includes(p)?{seat:s.currentDeath!}:{})});}
+function phase(s:DayState,p:DayPhase,now:number,seconds?:number){s.interjection=null;s.interjectionUsed={};s.phase=p;s.turnId=randomUUID();s.deadline=seconds===undefined?null:now+seconds*1000;s.events.push({type:p,at:now,...(p==='sheriff_speech'||p==='day_speech'?{seat:s.speaker!}:['death_skill','last_words','badge_transfer','hunter_target'].includes(p)?{seat:s.currentDeath!}:{})});}
 export function createDay(n:NightState,rules:FirstDayRules,now:number,previous?:DayState):DayState{
  if(n.phase!=='first_night_complete')error();
  const pendingDeaths:DayState['pendingDeaths']=[];
- if(n.knife!==null&&n.witchChoice?.choice!=='save')pendingDeaths.push({seat:n.knife,reason:'knife'});
- if(n.witchChoice?.choice==='poison'){const seat=n.witchChoice.target!;const old=pendingDeaths.find(d=>d.seat===seat);if(old)old.reason='poison';else pendingDeaths.push({seat,reason:'poison'});}
- return {day:n.night,nightDeaths:pendingDeaths.map(d=>d.seat),hunterSpent:previous?.hunterSpent??false,speechStart:null,phase:'awaiting_host',turnId:randomUUID(),deadline:null,players:n.players.map(p=>({...p,alive:previous?.players.find(old=>old.seat===p.seat)?.alive??p.alive??true})),rules:{...rules},pendingDeaths,deaths:previous?.deaths.map(d=>({...d}))??[],tasks:[],currentDeath:null,sheriff:previous?.sheriff??null,badge:previous?.badge??'available',signup:previous?.badge==='deferred'?{...previous.signup}:{},originalCandidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.originalCandidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],candidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.candidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],speakers:[],speaker:null,vote:null,result:null,announcement:null,revealed:previous?.revealed.map(p=>({...p}))??[],winner:null,reason:null,electionPurpose:previous?.badge==='deferred'?(previous.electionPurpose??(previous.vote?.purpose==='sheriff_pk'||previous.result?.purpose==='sheriff'&&previous.result.leaders.length>1?'sheriff_pk':'sheriff')):'sheriff',voteStarted:false,speechMode:null,direction:null,afterDeaths:'day',explosions:previous?.explosions??0,priorityWolf:null,events:[{type:'day_created',at:now}]};
+ if(n.engine){
+  const resolution=n.engine.resolution;if(!resolution||resolution.status!=='settled')return error('NIGHT_NOT_SETTLED');
+  for(const death of resolution.deaths){
+   const effects=resolution.effects.filter(e=>death.sourceEffectIds.includes(e.id));
+   pendingDeaths.push({seat:death.seat,reason:effects.some(e=>e.abilityType==='poison')?'poison':'knife'});
+  }
+ }else{
+  if(n.knife!==null&&n.witchChoice?.choice!=='save')pendingDeaths.push({seat:n.knife,reason:'knife'});
+  if(n.witchChoice?.choice==='poison'){const seat=n.witchChoice.target!;const old=pendingDeaths.find(d=>d.seat===seat);if(old)old.reason='poison';else pendingDeaths.push({seat,reason:'poison'});}
+ }
+ return {...(n.engine?{engine:structuredClone(n.engine)}:{}),extraNightSeat:n.extraNightSeat??null,flippedIdiots:[...(previous?.flippedIdiots??n.engine?.players.filter(p=>p.publicState.revealedRole==='idiot'&&!p.publicState.canVote).map(p=>p.seat)??[])],interjection:null,interjectionUsed:{},day:n.night,nightDeaths:pendingDeaths.map(d=>d.seat),hunterSpent:previous?.hunterSpent??false,speechStart:null,phase:'awaiting_host',turnId:randomUUID(),deadline:null,players:n.players.map(p=>({...p,alive:previous?.players.find(old=>old.seat===p.seat)?.alive??p.alive??true})),rules:{...rules},pendingDeaths,deaths:previous?.deaths.map(d=>({...d}))??[],tasks:[],currentDeath:null,sheriff:previous?.sheriff??null,badge:previous?.badge??'available',signup:previous?.badge==='deferred'?{...previous.signup}:{},originalCandidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.originalCandidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],candidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.candidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],speakers:[],speaker:null,vote:null,result:null,announcement:null,revealed:previous?.revealed.map(p=>({...p}))??[],winner:null,reason:null,electionPurpose:previous?.badge==='deferred'?(previous.electionPurpose??(previous.vote?.purpose==='sheriff_pk'||previous.result?.purpose==='sheriff'&&previous.result.leaders.length>1?'sheriff_pk':'sheriff')):'sheriff',voteStarted:false,speechMode:null,direction:null,afterDeaths:'day',explosions:previous?.explosions??0,priorityWolf:null,events:[{type:'day_created',at:now}]};
 }
 function checkWin(s:DayState,now:number){
- const result=evaluateVictory(s.players,'standard');
+ const roster=s.players.map(p=>{const engine=s.engine?.players.find(e=>e.seat===p.seat);return {...p,...(engine?.abilities.mimickedRole?{learnedRole:engine.abilities.mimickedRole}:{}),...(engine?.model?{modelSeat:engine.model.seat,modelCamp:engine.model.camp}:{})};});
+ const result=evaluateVictory(roster,s.engine?.board.composition.ruleset??'standard');
+ if(s.engine){s.engine.victory=result;for(const p of s.players){const engine=s.engine.players.find(e=>e.seat===p.seat);if(engine){engine.alive=p.alive;engine.publicState.canVote=p.alive;}}}
+ if(result.status==='unresolved'){rulePending(s,'规则待确认',now);return true;}
  const winner=result.status==='ended'?result.winner:null;
- if(winner){s.winner=winner;s.revealed=s.players.map(({seat,role})=>({seat,role}));s.tasks=[];s.speaker=null;s.currentDeath=null;s.vote=null;phase(s,'ended',now);return true;}return false;
+ // Last mechanical idiot only postpones a good verdict on exile. Wolves win first.
+ if(winner==='good'&&s.extraNightSeat!==null&&s.extraNightSeat!==undefined)return false;
+ if(winner){s.extraNightSeat=null;s.winner=winner;
+  if(result.status==='ended')s.reason=({'all-villagers-dead':s.engine?'民职全部出局，狼人屠边':'村民全部出局，狼人屠边','all-gods-dead':'神职全部出局，狼人屠边','all-wolves-dead':'所有狼人已出局','mixer-dead-one-villager':'混血儿出局且仅剩一名村民，狼人屠边','mixer-last-civilian':'仅混血儿为存活民职，狼人屠边'} as const)[result.reason];
+  s.revealed=s.players.map(({seat,role})=>({seat,role}));s.tasks=[];s.speaker=null;s.currentDeath=null;s.vote=null;phase(s,'ended',now);return true;}return false;
 }
 function reveal(s:DayState,seat:number,role:Role){if(!s.revealed.some(p=>p.seat===seat))s.revealed.push({seat,role});}
-function kill(s:DayState,seat:number,reason:DeathReason,now:number){const p=s.players.find(p=>p.seat===seat);if(!p||!p.alive)return false;p.alive=false;s.deaths.push({seat,reason});s.events.push({type:`death_${reason}`,seat,at:now});if(reason==='exile'&&p.role==='idiot')reveal(s,seat,'idiot');return true;}
+function kill(s:DayState,seat:number,reason:DeathReason,now:number){
+ const p=s.players.find(p=>p.seat===seat);if(!p||!p.alive)return false;p.alive=false;s.deaths.push({seat,reason});s.events.push({type:`death_${reason}`,seat,at:now});
+ const engine=s.engine?.players.find(e=>e.seat===seat);
+ if(engine){engine.alive=false;engine.publicState.canVote=false;}
+ const mechanicalIdiot=p.role==='mechanicalWolf'&&engine?.abilities.mimickedRole==='idiot';
+ if(reason==='exile'&&(p.role==='idiot'||mechanicalIdiot)){
+  reveal(s,seat,'idiot');s.flippedIdiots??=[];if(!s.flippedIdiots.includes(seat))s.flippedIdiots.push(seat);
+  if(engine){engine.publicState.revealedRole='idiot';engine.publicState.canInterject=true;}
+  if(mechanicalIdiot&&!s.players.some(other=>other.alive&&['wolf','mechanicalWolf','armoredWolf'].includes(other.role)))s.extraNightSeat=seat;
+ }
+ return true;
+}
 function deathTasks(s:DayState,seat:number,words=true):Task[]{return [{seat,step:'skill'},...(words?[{seat,step:'words' as const}]:[]),...(s.sheriff===seat?[{seat,step:'badge' as const}]:[])];}
 function nextTask(s:DayState,now:number){const task=s.tasks.shift();s.currentDeath=task?.seat??null;if(!task){if(s.afterDeaths==='night')phase(s,'day_complete',now);else phase(s,'day_direction',now);return;}phase(s,task.step==='skill'?'death_skill':task.step==='words'?'last_words':'badge_transfer',now,task.step==='skill'?10:task.step==='words'?90:undefined);}
 function shuffle<T>(items:T[],choose:(n:number)=>number){const out=[...items];for(let i=out.length-1;i>0;i--){const j=choose(i+1);[out[i],out[j]]=[out[j],out[i]];}return out;}
 function announce(s:DayState,now:number,choose:(n:number)=>number){
  s.announcement=s.pendingDeaths.map(p=>p.seat).sort((a,b)=>a-b);for(const d of s.pendingDeaths)kill(s,d.seat,d.reason,now);s.pendingDeaths=[];
+ if(s.extraNightSeat!==null&&s.extraNightSeat!==undefined)s.extraNightSeat=null;
  if(checkWin(s,now))return;s.tasks=shuffle(s.announcement,choose).flatMap(seat=>deathTasks(s,seat,s.day===1));phase(s,'night_announcement',now);
 }
 function startSpeeches(s:DayState,seats:number[],p:'sheriff_speech'|'day_speech',now:number){s.speakers=[...seats];s.speaker=s.speakers.shift()??null;if(s.speaker!==null)phase(s,p,now,90);else if(p==='sheriff_speech')phase(s,'sheriff_withdraw',now);else setupVote(s,'exile',living(s),living(s),now);}
@@ -72,18 +103,44 @@ function startDaySpeech(s:DayState,now:number,choose:(n:number)=>number){
  start??=seats[choose(seats.length)];s.speechStart=start;const index=seats.indexOf(start);
  startSpeeches(s,[...seats.slice(index),...seats.slice(0,index)],'day_speech',now);
 }
+function canShoot(s:DayState,seat:number){
+ if(s.phase!=='death_skill'||seat!==s.currentDeath||s.winner!==null)return false;
+ const p=s.players.find(p=>p.seat===seat),death=s.deaths.find(d=>d.seat===seat);
+ if(!p||p.alive||!death||death.reason==='poison')return false;
+ if(s.engine){const skill=s.engine.players.find(p=>p.seat===seat)?.abilities.skills.find(a=>a.kind==='shot');return !!skill&&skill.remaining!==0&&skill.availableFromNight<=s.day&&(p.role==='hunter'||['knife','exile'].includes(death.reason));}
+ return p.role==='hunter'&&!s.hunterSpent;
+}
+function interjectionRemaining(s:DayState,seat:number){return Math.max(0,15000-(s.interjectionUsed?.[seat]??0));}
+function canInterject(s:DayState,seat:number){
+ return !!s.flippedIdiots?.includes(seat)&&['sheriff_speech','day_speech','last_words'].includes(s.phase)&&
+  seat!==(s.phase==='last_words'?s.currentDeath:s.speaker)&&s.deadline!==null&&!s.interjection&&interjectionRemaining(s,seat)>0;
+}
+function finishInterjection(s:DayState,now:number){
+ const current=s.interjection!;s.interjectionUsed??={};s.interjectionUsed[current.seat]=(s.interjectionUsed[current.seat]??0)+Math.min(interjectionRemaining(s,current.seat),Math.max(0,now-current.startedAt));
+ s.deadline=now+current.remainingSpeechMs;s.interjection=null;s.turnId=randomUUID();s.events.push({type:'interjection_ended',seat:current.seat,at:now});
+}
 export function advanceDay(s:DayState,now:number,choose=(n:number)=>randomInt(n)){
- while(s.deadline!==null&&now>=s.deadline){const boundary=s.deadline;if(s.phase==='voting')tally(s,boundary);else if(s.phase==='sheriff_speech'||s.phase==='day_speech'){
+ while(s.deadline!==null&&now>=s.deadline){const boundary=s.deadline;if(s.interjection){finishInterjection(s,boundary);continue;}if(s.phase==='voting')tally(s,boundary);else if(s.phase==='sheriff_speech'||s.phase==='day_speech'){
   if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.speakers.length===0){s.speaker=null;setupVote(s,'exile_pk',s.vote.candidates,s.vote.eligible,boundary);}else nextSpeaker(s,boundary);
  }else if(s.phase==='death_skill'||s.phase==='last_words')nextTask(s,boundary);else error();}
 }
 function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayCommand,now:number,choose=(n:number)=>randomInt(n)){
  advanceDay(s,now,choose);if(c.turnId!==s.turnId)error('STALE_TURN');const seat=actor.seat;const p=s.players.find(p=>p.seat===seat);if(!p)error('NOT_SEATED');
  const host=()=>{if(!actor.isHost)error('HOST_ONLY',403);};const need=(phaseName:DayPhase)=>{if(s.phase!==phaseName)error();};
+ if(c.action==='end_interjection'){
+  if(!s.interjection)return error();if(seat!==s.interjection.seat&&!actor.isHost)error('NOT_YOUR_TURN',403);finishInterjection(s,now);return;
+ }
+ // A player cannot end/replace the paused original speaker's turn.
+ if(s.interjection&&!['explode','withdraw'].includes(c.action))error();
+ if(c.action==='interject'){
+  if(!canInterject(s,seat))error('NOT_YOUR_TURN',403);
+  s.interjection={seat,startedAt:now,remainingSpeechMs:Math.max(0,s.deadline!-now)};s.deadline=now+interjectionRemaining(s,seat);s.turnId=randomUUID();s.events.push({type:'interjection_started',seat,at:now});return;
+ }
+
  if(c.action==='start'){host();need('awaiting_host');if(s.rules.winTiming===null||s.rules.preAnnouncementEligibility===null)error('DAY_RULE_UNRESOLVED');if(s.rules.winTiming==='before_election')error('DAY_RULE_UNRESOLVED');if(s.badge==='deferred'){s.candidates=s.candidates.filter(seat=>living(s).includes(seat));s.speaker=null;s.speakers=[];if(s.candidates.length<=1)closeElection(s,now);else phase(s,'sheriff_withdraw',now);}else phase(s,s.day===1?'sheriff_signup':'night_announcement',now);return;}
  if(c.action==='signup'){need('sheriff_signup');if(!p!.alive)error('NOT_YOUR_TURN',403);s.signup[seat]=c.join;return;}
  if(c.action==='close_signup'){host();need('sheriff_signup');s.originalCandidates=living(s).filter(seat=>s.signup[seat]);s.candidates=[...s.originalCandidates];if(s.candidates.length===living(s).length||s.candidates.length===0){s.badge='lost';electionFinished(s,now);}else if(s.candidates.length===1)closeElection(s,now);else{const seats=[...s.candidates].sort((a,b)=>a-b);const start=choose(seats.length);startSpeeches(s,[...seats.slice(start),...seats.slice(0,start)],'sheriff_speech',now);}return;}
- if(c.action==='withdraw'){if(!['sheriff_speech','sheriff_withdraw'].includes(s.phase)||!s.candidates.includes(seat))error();s.candidates=s.candidates.filter(p=>p!==seat);s.speakers=s.speakers.filter(p=>p!==seat);if(s.vote?.purpose==='sheriff_pk'){s.vote.candidates=[...s.candidates];s.vote.eligible=living(s).filter(p=>!s.candidates.includes(p));}if(s.candidates.length<=1){closeElection(s,now);announce(s,now,choose);return;}if(s.speaker===seat)nextSpeaker(s,now);return;}
+ if(c.action==='withdraw'){if(!['sheriff_speech','sheriff_withdraw'].includes(s.phase)||!s.candidates.includes(seat))error();s.candidates=s.candidates.filter(p=>p!==seat);s.speakers=s.speakers.filter(p=>p!==seat);if(s.vote?.purpose==='sheriff_pk'){s.vote.candidates=[...s.candidates];s.vote.eligible=living(s).filter(p=>!s.candidates.includes(p));}if(s.candidates.length<=1){closeElection(s,now);announce(s,now,choose);return;}if(s.speaker===seat){if(s.interjection)finishInterjection(s,now);nextSpeaker(s,now);}return;}
  if(c.action==='end_speech'){if(!['sheriff_speech','day_speech','last_words','free_speech'].includes(s.phase))error();if(!actor.isHost&&seat!==(s.phase==='last_words'?s.currentDeath:s.speaker))error('NOT_YOUR_TURN',403);if(s.phase==='last_words')nextTask(s,now);else if(s.phase==='free_speech'){host();setupVote(s,'exile',living(s),living(s),now);}else if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.speakers.length===0){s.speaker=null;setupVote(s,'exile_pk',s.vote.candidates,s.vote.eligible,now);}else nextSpeaker(s,now);return;}
  if(c.action==='close_withdraw'){host();need('sheriff_withdraw');closeElection(s,now);return;}
  if(c.action==='start_vote'){host();need('vote_setup');s.voteStarted=true;s.vote!.method=c.method;s.vote!.visibility=c.visibility;phase(s,'voting',now,c.method==='phone'?c.seconds:undefined);return;}
@@ -107,7 +164,12 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
  }
  if(c.action==='close_vote'){host();need('voting');if(s.vote!.method!=='offline')error();tally(s,now);return;}
  if(c.action==='continue'){host();if(s.phase==='vote_result')continueResult(s,now,choose);else if(s.phase==='night_announcement'){if(s.announcement===null)announce(s,now,choose);else nextTask(s,now);}else error();return;}
- if(c.action==='shoot'){need('death_skill');if(seat!==s.currentDeath||p!.role!=='hunter'||s.hunterSpent||s.deaths.find(d=>d.seat===seat)?.reason==='poison')error('NOT_YOUR_TURN',403);s.hunterSpent=true;reveal(s,seat,'hunter');phase(s,'hunter_target',now);return;}
+ if(c.action==='shoot'){
+  need('death_skill');if(!canShoot(s,seat))error('NOT_YOUR_TURN',403);
+  const engine=s.engine?.players.find(e=>e.seat===seat),shot=engine?.abilities.skills.find(a=>a.kind==='shot');
+  if(engine&&shot)engine.abilities=useSkill(engine.abilities,shot.id,{requestId:s.turnId,night:s.day,target:null});
+  if(p!.role==='hunter')s.hunterSpent=true;reveal(s,seat,'hunter');if(engine)engine.publicState.revealedRole='hunter';phase(s,'hunter_target',now);return;
+ }
  if(c.action==='record_shot'){host();need('hunter_target');if(!living(s).includes(c.target))error('INVALID_INPUT');kill(s,c.target,'shot',now);s.events.push({type:'hunter_shot',at:now,seat:s.currentDeath!,target:c.target});if(checkWin(s,now))return;s.tasks=[...deathTasks(s,c.target,s.tasks.some(t=>t.seat===s.currentDeath&&t.step==='words')),...s.tasks];nextTask(s,now);return;}
  if(c.action==='transfer_badge'){need('badge_transfer');if(seat!==s.currentDeath&&(!actor.isHost||c.takeover!==true))error('NOT_YOUR_TURN',403);if(c.target!==null&&!living(s).includes(c.target))error('INVALID_INPUT');s.sheriff=c.target;s.badge=c.target===null?'lost':'elected';nextTask(s,now);return;}
  if(c.action==='speech_mode'){host();need('day_direction');s.speechMode=c.mode==='ordered'?'phone':c.mode;if(s.sheriff===null)s.direction='ascending';startDaySpeech(s,now,choose);return;}
@@ -134,8 +196,19 @@ function publicDeathSkills(s:DayState):NonNullable<DayPublic['skillResults']>{
  }
  return results;
 }
-export function publicDay(s:DayState,now:number):DayPublic{return {skillResults:publicDeathSkills(s),day:s.day,speechMode:s.speechMode==='ordered'?'phone':s.speechMode,direction:s.direction,speechStart:s.speechStart,nightDeaths:s.announcement===null?[]:s.nightDeaths,phase:s.phase,turnId:s.turnId,deadline:s.deadline,serverNow:now,alive:living(s),dead:s.deaths.map(d=>d.seat).sort((a,b)=>a-b),signupCount:living(s).filter(seat=>Object.hasOwn(s.signup,seat)).length,sheriff:s.sheriff,badge:s.badge,candidates:[...s.candidates],originalCandidates:[...s.originalCandidates],speaker:s.speaker,currentDeath:s.currentDeath,vote:s.vote?{purpose:s.vote.purpose,method:s.vote.method,visibility:s.vote.visibility,eligible:s.vote.eligible,candidates:s.vote.candidates,submittedCount:Object.keys(s.vote.ballots).length}:null,result:s.phase==='vote_result'?s.result:null,announcement:s.announcement,revealed:s.revealed,winner:s.winner,reason:s.reason};}
-export function privateDay(s:DayState,seat:number):DayPrivate{const p=s.players.find(p=>p.seat===seat);const vote=s.vote;return {turnId:s.turnId,seat,canSignup:s.phase==='sheriff_signup'&&!!p?.alive,signup:s.signup[seat]??null,canWithdraw:['sheriff_speech','sheriff_withdraw'].includes(s.phase)&&s.candidates.includes(seat),canVote:s.phase==='voting'&&vote?.method==='phone'&&vote.eligible.includes(seat)&&!Object.hasOwn(vote.ballots,seat)||false,voted:!!vote&&Object.hasOwn(vote.ballots,seat),myVote:vote?.ballots[seat]??null,canShoot:s.phase==='death_skill'&&seat===s.currentDeath&&p?.role==='hunter'&&!s.hunterSpent&&s.deaths.find(d=>d.seat===seat)?.reason!=='poison',canExplode:s.rules.explosionOrder!==null&&(s.rules.explosionLock==='during_vote'||!s.voteStarted)&&['sheriff_signup','sheriff_speech','sheriff_withdraw','day_speech','free_speech'].includes(s.phase)&&!(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.vote.candidates.includes(seat))&&!!p?.alive&&p.role==='wolf',canEndSpeech:seat===(s.phase==='last_words'?s.currentDeath:s.speaker),canTransfer:s.phase==='badge_transfer'&&seat===s.currentDeath};}
+export function publicDay(s:DayState,now:number):DayPublic{return {skillResults:publicDeathSkills(s),interjection:s.interjection?{seat:s.interjection.seat,originalSpeaker:(s.phase==='last_words'?s.currentDeath:s.speaker)!}:null,day:s.day,speechMode:s.speechMode==='ordered'?'phone':s.speechMode,direction:s.direction,speechStart:s.speechStart,nightDeaths:s.announcement===null?[]:s.nightDeaths,phase:s.phase,turnId:s.turnId,deadline:s.deadline,serverNow:now,alive:living(s),dead:s.deaths.map(d=>d.seat).sort((a,b)=>a-b),signupCount:living(s).filter(seat=>Object.hasOwn(s.signup,seat)).length,sheriff:s.sheriff,badge:s.badge,candidates:[...s.candidates],originalCandidates:[...s.originalCandidates],speaker:s.speaker,currentDeath:s.currentDeath,vote:s.vote?{purpose:s.vote.purpose,method:s.vote.method,visibility:s.vote.visibility,eligible:s.vote.eligible,candidates:s.vote.candidates,submittedCount:Object.keys(s.vote.ballots).length}:null,result:s.phase==='vote_result'?s.result:null,announcement:s.announcement,revealed:s.revealed,winner:s.winner,reason:s.reason};}
+export function privateDay(s:DayState,seat:number):DayPrivate{
+ const p=s.players.find(p=>p.seat===seat),vote=s.vote,engine=s.engine?.players.find(e=>e.seat===seat);
+ return {turnId:s.turnId,seat,
+  canSignup:s.phase==='sheriff_signup'&&!!p?.alive,signup:s.signup[seat]??null,
+  canWithdraw:['sheriff_speech','sheriff_withdraw'].includes(s.phase)&&s.candidates.includes(seat),
+  canVote:s.phase==='voting'&&vote?.method==='phone'&&vote.eligible.includes(seat)&&!Object.hasOwn(vote.ballots,seat)||false,
+  voted:!!vote&&Object.hasOwn(vote.ballots,seat),myVote:vote?.ballots[seat]??null,canShoot:canShoot(s,seat),
+  canExplode:s.rules.explosionOrder!==null&&(s.rules.explosionLock==='during_vote'||!s.voteStarted)&&['sheriff_signup','sheriff_speech','sheriff_withdraw','day_speech','free_speech'].includes(s.phase)&&!(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.vote.candidates.includes(seat))&&!!p?.alive&&p.role==='wolf',
+  canEndSpeech:!s.interjection&&seat===(s.phase==='last_words'?s.currentDeath:s.speaker),canTransfer:s.phase==='badge_transfer'&&seat===s.currentDeath,
+  canInterject:canInterject(s,seat),canEndInterjection:s.interjection?.seat===seat,interjectionRemainingMs:interjectionRemaining(s,seat),
+  ...(p?.role==='mixer'&&engine?.model?{mixerModel:{seat:engine.model.seat}}:{})};
+}
 
 export function dayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayCommand,now:number,choose=(n:number)=>randomInt(n)){
  const before=JSON.stringify(s);applyDayCommand(s,actor,c,now,choose);if(JSON.stringify(s)!==before)s.events.push({type:'command',at:now,seat:actor.seat,command:{...c}});

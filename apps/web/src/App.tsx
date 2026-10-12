@@ -87,7 +87,7 @@ function LobbyApp(){
      </section>
 
     </div>
-    {previous.length>0&&<section className="recent"><h2>{account?'我的房间':'这台设备加入的房间'}</h2><div>{previous.map(r=><button className="recent-room" key={r.room.id} onClick={()=>void run(()=>api<LobbyView>(`/api/rooms/${r.room.id}`))}><strong>{r.room.code}</strong><span>12 人 · 预女猎白</span><span>返回 →</span></button>)}</div></section>}
+    {previous.length>0&&<section className="recent"><h2>{account?'我的房间':'这台设备加入的房间'}</h2><div>{previous.map(r=><button className="recent-room" key={r.room.id} onClick={()=>void run(()=>api<LobbyView>(`/api/rooms/${r.room.id}`))}><strong>{r.room.code}</strong><span>{r.room.board.composition.seatCount} 人 · {r.room.board.name}</span><span>返回 →</span></button>)}</div></section>}
     <FavoritesPanel key={`favorites:${sessionRevision}`}/>
     {account&&<MySharesPanel key={`shares:${sessionRevision}`}/>}
    </>}
