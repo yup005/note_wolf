@@ -84,7 +84,9 @@ Append a short entry below when the owner confirms a new rule, scope change or p
 
 ### Decision log
 
-- **2026-10-11 — Owner confirmation / BETA-004:** Future simulated-player test tools must require an administrator account, with both UI entry and server authorization checks. Confirmed requirement, not yet implemented; current development tools still use the environment gate and host authorization. Access remains limited to simulated actors and must never expose real players' secrets. Production helpers remain disabled; opening isolated test rooms on the Render trial requires an explicit environment-scope decision, still pending.
+- **2026-10-11 — Later owner confirmation / BETA-004 environment scope:** Permit future administrator-only test tools on the Render trial, exclusively in independent simulated test rooms. This resolves the earlier pending environment decision and creates a narrow exception to production-disabled-by-default guidance. Real-player rooms and other production environments are not authorized. Implement next time, with server/UI authorization and isolation verified before enabling; current runtime remains disabled. No implementation or deployment in this documentation task.
+
+- **2026-10-11 — Owner confirmation / BETA-004:** Future simulated-player test tools must require an administrator account, with both UI entry and server authorization checks. Confirmed requirement, not yet implemented; current development tools still use the environment gate and host authorization. Access remains limited to simulated actors and must never expose real players' secrets. At this confirmation the trial environment decision was pending; the later entry above resolves it. Current production helpers remain disabled until implementation and verification.
 
 - **2026-10-11 — Owner authorization / ADMIN-001 / BETA-009:** Initialize the online trial administrator using existing unique-admin startup behavior and Render secret environment configuration. Login and protected administrator endpoint passed; no credentials or player database published. [Deployment evidence](RENDER_TRIAL.md#最新管理员初始化2026-10-11).
 
