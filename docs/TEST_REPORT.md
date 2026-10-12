@@ -12,6 +12,8 @@
 
 代码在 `packages/storage/sharedFavorites.ts`、收藏名称迁移/列表/生命周期及4条HTTP路由，界面共用 `SharedRecordContent` / `useSharedRecord`，包含分享页收藏控制和首页分享收藏对话框。自动证据为 `tests/shared-favorites.test.ts` / `tests/e2e/sharing.spec.ts`。仅隔离合成数据；未部署或修改Render开关，真实iPhone Safari/声音/锁屏/弱网/真实多手机仍未验收；H-03/其他缺失规则不变。实施SHA同批跟进记录。
 
+实施提交：[209906e84234d073997d70cd5f79267e25d01b4e](https://github.com/yup005/note_wolf/commit/209906e84234d073997d70cd5f79267e25d01b4e)。本次SHA跟进仅文档，引用/差异检查通过，不重跑代码测试或部署；同批正常推送后另核对最终远端SHA。
+
 ## 最新：VIP收藏管理（2026-10-11，ACCOUNT-011–014）
 
 最终 `npm test` **339 pass /0 fail /0 skip**（新增8项favorite-library专项）、`npm run typecheck`、`npm run build`通过；`PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:e2e`全量 **48 pass /0 fail /0 skip（2.0m）**，新增2项收藏手机视口场景。按需加载收藏面板后主包496.71KB，未新增500KB构建提示；仅已有Zod PURE注释提示。
