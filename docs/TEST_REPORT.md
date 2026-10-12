@@ -1,5 +1,17 @@
 # 阶段验证记录
 
+## 最新：外部分享读者收藏（2026-10-11，ACCOUNT-009 / GAP-01）
+
+`npm test` **346 pass /0 fail /0 skip**（新增7项shared-favorites专项）、`npm run typecheck`、`npm run build`通过；主包498.49KB，无新增500KB提示，仅原有Zod PURE注释提示。完整 `PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:e2e` **51 pass /0 fail /0 skip（3.1m）**；高频夹具遵守限流等待后通过原断言。复审补充会话错误响应检查后，适用分享/语音浏览器场景 **14 pass /0 fail /0 skip（31.2s）**；仅测试夹具断言改变，产品代码与全量51项验证相同。
+
+真实HTTP/SQLite回归覆盖普通非参赛用户收藏、同链接幂等、独立收藏ID/不泄露分享凭据、他人读取/取消隔离、无参赛者/草稿/历史权限、严格输入及跨来源写入拒绝；原链接真实短期到期、撤回、禁用、撤销及重生成后逐次拒绝正文/搜索，恢复同一链接才可读。新链接需主动收藏，独立关系及空名称，旧名称保留失效。匿名状态无Cookie、游客写入拒绝、账户接管撤销旧会话、元数据/权限清实时房后重启、取消解除保护且官方档案保留、旧名称CHECK表迁移保留名称/版本墓碑均通过。
+
+6项针对性分享浏览器测试通过，3项新增场景覆盖分享页注册收藏/跨设备/旧链接失效与新链接独立收藏、VIP私有命名及前台失效清正文/正文搜索拒绝，以及503收藏状态失败独立重试。320/390/430px无横向溢出，合成截图人工检查通过。首次新增HTTP全404和两项UI失败后修复；审查状态重试缺口先复现缺按钮后修复，最终独立复审无阻塞项。
+
+首次全量50项39通过/11失败，跟踪确认分享夹具反复管理员登录触发既有注册/登录限流429；修正夹具复用已有效管理员会话，不变更产品授权或限流。后两轮完整51项各50通过/1失败，语音超时用例在读取会话/创建房夹具时收到通用429，未进入语音断言；不把此故障归为语音产品失败。测试夹具新增真实Retry-After等待、至多60s重试一次与相应测试时限延长，创建房使用同一requestId；重试后的会话错误先断言拒绝，不再误触发登录。原业务断言和产品限流/授权不变，最终复核结果单独记录。旧短期VIP夹具曾误传过去日期，改为合法短期到期并等待；不是放宽VIP检查。
+
+代码在 `packages/storage/sharedFavorites.ts`、收藏名称迁移/列表/生命周期及4条HTTP路由，界面共用 `SharedRecordContent` / `useSharedRecord`，包含分享页收藏控制和首页分享收藏对话框。自动证据为 `tests/shared-favorites.test.ts` / `tests/e2e/sharing.spec.ts`。仅隔离合成数据；未部署或修改Render开关，真实iPhone Safari/声音/锁屏/弱网/真实多手机仍未验收；H-03/其他缺失规则不变。实施SHA同批跟进记录。
+
 ## 最新：VIP收藏管理（2026-10-11，ACCOUNT-011–014）
 
 最终 `npm test` **339 pass /0 fail /0 skip**（新增8项favorite-library专项）、`npm run typecheck`、`npm run build`通过；`PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:e2e`全量 **48 pass /0 fail /0 skip（2.0m）**，新增2项收藏手机视口场景。按需加载收藏面板后主包496.71KB，未新增500KB构建提示；仅已有Zod PURE注释提示。

@@ -21,6 +21,7 @@ import {DayStore} from './day.js';
 import {firstDayRules,type FirstDayRules,type DayCommand} from '../contracts/day.js';
 import type {NightCommand} from '../contracts/night.js';
 import {TestPlayersStore} from './testPlayers.js';
+import {SharedFavoritesStore} from './sharedFavorites.js';
 import {FavoriteLibraryStore,type FavoriteSource} from './favorites.js';
 import type {FavoriteQuery,FavoriteName,FavoriteKind} from '../contracts/favorites.js';
 import type {RoomSettings,Role} from '../contracts/index.js';
@@ -32,6 +33,7 @@ export class LobbyStore {
  private preparation:PreparationStore;
  private testPlayers:TestPlayersStore;
  private favoriteLibraryStore:FavoriteLibraryStore;
+ private sharedFavoritesStore:SharedFavoritesStore;
  private night:NightStore;
  private day:DayStore;
  private control:ControlStore;
@@ -79,6 +81,7 @@ export class LobbyStore {
   this.records=new RecordsStore(this.db,this.auth,this.now,id=>this.readReplay(id));
   this.voice=new VoiceStore(this.db,this.now,(id,memberId)=>{const m=this.db.prepare('SELECT * FROM members WHERE room_id=? AND id=?').get(id,memberId) as MemberRow|undefined;return !!m&&this.control.canManage(id,m);});
   this.sharing=new SharingStore(this.db,this.auth,this.now);
+  this.sharedFavoritesStore=new SharedFavoritesStore(this.db,this.auth,this.sharing,this.now);
   this.favoriteLibraryStore=new FavoriteLibraryStore(this.db,this.auth,token=>this.favoriteSources(token));
   this.preparation=new PreparationStore(this.db,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats,id=>this.boards.configuration(id));
   this.retention=new RetentionStore(this.db,this.now,id=>this.records.preserveForRoomCleanup(id));
@@ -236,7 +239,7 @@ export class LobbyStore {
    let available=true,searchText='';try{searchText=JSON.stringify(this.recordPost(token,item.id).document);}catch(error){if(!(error instanceof LobbyError&&['RECORD_WITHDRAWN','PARTICIPANT_ONLY','NOT_FOUND','PHASE_LOCKED'].includes(error.code)))throw error;available=false;}
    return {kind:'record' as const,id:item.id,code:item.code,author:item.author,title:`房间 ${item.code} · ${item.official?'官方':item.author}`,savedAt:item.savedAt,board:item.board??null,available,detail:`版本 ${item.version} · ${available?'已发布':item.withdrawn?'作者已撤回，暂不可读':'暂不可读'}`,searchText};
   });
-  return [...games,...records];
+  return [...games,...records,...this.sharedFavoritesStore.sources(token)];
  }
  favoriteLibrary(token:string,query:Partial<FavoriteQuery>={}){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.view(token,query);}
  renameFavorite(token:string,kind:FavoriteKind,id:string,input:FavoriteName){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.rename(token,kind,id,input);}
@@ -252,6 +255,10 @@ export class LobbyStore {
  ownShares(token:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.sharing.list(token);}
  shareRecord(token:string,id:string,c:ShareCommand){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.sharing.command(token,id,c);}
  sharedRecord(token:string){return this.sharing.read(token);}
+ sharedFavoriteStatus(token:string|undefined,share:string){return this.sharedFavoritesStore.status(token&&this.hasSession(token)?token:undefined,share);}
+ saveSharedFavorite(token:string,share:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);const result=this.sharedFavoritesStore.save(token,share);const row=this.db.prepare('SELECT record_id FROM shared_record_favorites WHERE id=?').get(result.id) as {record_id:string};this.touchRecordRoom(row.record_id);return result;}
+ sharedFavorite(token:string,id:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.sharedFavoritesStore.read(token,id);}
+ removeSharedFavorite(token:string,id:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.db.transaction(()=>{const row=this.db.prepare('SELECT record_id FROM shared_record_favorites WHERE owner=? AND id=?').get(this.auth.owner(token),id) as {record_id:string}|undefined;const result=this.sharedFavoritesStore.remove(token,id);if(result.removed){this.favoriteLibraryStore.clearName(token,'share',id);if(row)this.touchRecordRoom(row.record_id);}return {saved:false};}).immediate();}
  saveRecordFavorite(token:string,id:string){return this.records.favorite(token,id);}
  recordFavorites(token:string){return this.records.favorites(token);}
  removeRecordFavorite(token:string,id:string){return this.db.transaction(()=>{const exists=this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(this.auth.owner(token),id);const result=this.records.removeFavorite(token,id);if(exists){this.favoriteLibraryStore.clearName(token,'record',id);this.touchRecordRoom(id);}return result;}).immediate();}

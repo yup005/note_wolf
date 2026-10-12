@@ -33,6 +33,7 @@ export class RetentionStore {
    const protections:string[]=[];
    if(tables.has('saved_replays'))protections.push('EXISTS (SELECT 1 FROM saved_replays s WHERE s.room_id=r.id)');
    if(tables.has('record_drafts')&&tables.has('record_favorites'))protections.push('EXISTS (SELECT 1 FROM record_favorites f JOIN record_drafts d ON d.id=f.record_id WHERE d.room_id=r.id)');
+   if(tables.has('record_drafts')&&tables.has('shared_record_favorites'))protections.push('EXISTS (SELECT 1 FROM shared_record_favorites f JOIN record_drafts d ON d.id=f.record_id WHERE d.room_id=r.id)');
    // A paused/withdrawn/expired/disabled-owner link may become readable again.
    // Only explicit revocation releases its retention protection.
    if(tables.has('record_drafts')&&tables.has('record_share_links'))protections.push('EXISTS (SELECT 1 FROM record_share_links l JOIN record_drafts d ON d.id=l.record_id WHERE d.room_id=r.id AND l.revoked=0)');

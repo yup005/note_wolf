@@ -5,7 +5,12 @@ import type {AuthStore} from './auth.js';
 export type FavoriteSource=Omit<FavoriteItem,'customName'|'nameRevision'>&{searchText:string};
 export class FavoriteLibraryStore{
  constructor(private db:Database.Database,private auth:AuthStore,private sources:(token:string)=>FavoriteSource[]){
-  db.exec('CREATE TABLE IF NOT EXISTS favorite_names(owner TEXT NOT NULL,kind TEXT NOT NULL CHECK(kind IN (\'game\',\'record\')),target_id TEXT NOT NULL,name TEXT NOT NULL,revision INTEGER NOT NULL,PRIMARY KEY(owner,kind,target_id));');
+  db.transaction(()=>{
+   const old=db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='favorite_names'").get() as {sql:string}|undefined;
+   if(old&&!old.sql.includes("'share'"))db.exec('ALTER TABLE favorite_names RENAME TO favorite_names_legacy');
+   db.exec("CREATE TABLE IF NOT EXISTS favorite_names(owner TEXT NOT NULL,kind TEXT NOT NULL CHECK(kind IN ('game','record','share')),target_id TEXT NOT NULL,name TEXT NOT NULL,revision INTEGER NOT NULL,PRIMARY KEY(owner,kind,target_id));");
+   if(old&&!old.sql.includes("'share'"))db.exec('INSERT INTO favorite_names SELECT * FROM favorite_names_legacy; DROP TABLE favorite_names_legacy');
+  }).immediate();
  }
  private vip(token:string){if(!this.auth.account(token)?.vip?.active)throw new LobbyError('VIP_ONLY',403);}
  private name(token:string,kind:FavoriteKind,id:string){return this.db.prepare('SELECT name,revision FROM favorite_names WHERE owner=? AND kind=? AND target_id=?').get(this.auth.owner(token),kind,id) as {name:string;revision:number}|undefined;}

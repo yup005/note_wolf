@@ -1,9 +1,11 @@
+import {SharedFavoriteDialog} from './SharedFavoriteDialog';
 import {useEffect,useRef,useState} from 'react';
 import type {FavoriteLibrary,FavoriteItem,FavoriteQuery} from '../../../packages/contracts/favorites';
 import {RecordPostDialog} from './RecordPostDialog';
 import {api,errorText} from './api';
 import {ReplayDialog} from './ReplayDialog';
 export function FavoritesPanel(){
+ const [shared,setShared]=useState<string>();
  const [library,setLibrary]=useState<FavoriteLibrary>();const [post,setPost]=useState<string>();const [open,setOpen]=useState<string>();
  const [loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const [search,setSearch]=useState(''),[board,setBoard]=useState(''),[author,setAuthor]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[sort,setSort]=useState<'saved-desc'|'saved-asc'>('saved-desc');
@@ -23,7 +25,7 @@ export function FavoritesPanel(){
   return {q:search,board,author,sort,from:from?midnight(from):undefined,to:end};
  }
  function clear(){setSearch('');setBoard('');setAuthor('');setFrom('');setTo('');setSort('saved-desc');void load({});}
- async function remove(item:FavoriteItem){if(locked.current)return;locked.current=true;setBusy(true);setError('');try{await api(`/api/${item.kind==='game'?'favorites':'record-favorites'}/${item.id}/remove`,{});await load();}catch(e){if(mounted.current)setError(errorText(e));}finally{locked.current=false;if(mounted.current)setBusy(false);}}
+ async function remove(item:FavoriteItem){if(locked.current)return;locked.current=true;setBusy(true);setError('');try{await api(`/api/${item.kind==='game'?'favorites':item.kind==='share'?'shared-favorites':'record-favorites'}/${item.id}/remove`,{});await load();}catch(e){if(mounted.current)setError(errorText(e));}finally{locked.current=false;if(mounted.current)setBusy(false);}}
  async function rename(){if(!editing||locked.current)return;locked.current=true;setBusy(true);setNameError('');try{await api(`/api/favorite-library/${editing.kind}/${editing.id}/name`,{name,revision:editing.nameRevision});if(mounted.current)setEditing(undefined);await load();}catch(e){if(mounted.current)setNameError(errorText(e));}finally{locked.current=false;if(mounted.current)setBusy(false);}}
  async function refreshName(){if(!editing||locked.current)return;locked.current=true;setBusy(true);try{const latest=await api<FavoriteLibrary>('/api/favorite-library');if(!mounted.current)return;setLibrary(latest);const item=latest.items.find(item=>item.kind===editing.kind&&item.id===editing.id);if(!item){setNameError('此收藏已取消，请关闭后重新查看。');return;}setEditing(item);setNameError(`当前名称：${item.title}。已保留你的输入，请核对后保存。`);}catch(e){if(mounted.current)setNameError(errorText(e));}finally{locked.current=false;if(mounted.current)setBusy(false);}}
  const filtered=Object.values(applied.current).some(value=>value!==undefined&&value!==''&&value!=='saved-desc');
@@ -38,10 +40,11 @@ export function FavoritesPanel(){
   </form>}
   {error&&<p role="alert">{error}<button className="text-button" disabled={busy||loading} onClick={()=>void load()}>重试</button></p>}
   {loading?<p className="helper" role="status">正在读取…</p>:!library?.items.length?<p className="helper">{filtered?'没有符合条件的收藏':'暂无收藏'}</p>:<div className="favorite-games">{library.items.map(item=><div className="favorite-game" key={`${item.kind}:${item.id}`}>
-   <button className="favorite-open" onClick={()=>item.kind==='game'?setOpen(item.id):setPost(item.id)}><strong>{item.title}</strong><span>{item.detail} · {new Date(item.savedAt).toLocaleDateString('zh-CN')}</span><span>{item.board?.name??'板子未记录'}</span></button>
+   <button className="favorite-open" onClick={()=>item.kind==='game'?setOpen(item.id):item.kind==='share'?setShared(item.id):setPost(item.id)}><strong>{item.title}</strong><span>{item.detail} · {new Date(item.savedAt).toLocaleDateString('zh-CN')}</span><span>{item.board?.name??'板子未记录'}</span></button>
    <div className="favorite-item-actions">{library.advanced&&<button className="text-button" disabled={busy} onClick={()=>{setEditing(item);setName(item.customName??'');setNameError('');}}>重命名</button>}
-    <button className="text-button" aria-label={item.kind==='game'?`取消收藏房间 ${item.code}`:undefined} disabled={busy} onClick={()=>void remove(item)}>{item.kind==='game'?'取消收藏':'取消收藏版本'}</button></div>
+    <button className="text-button" aria-label={item.kind==='game'?`取消收藏房间 ${item.code}`:undefined} disabled={busy} onClick={()=>void remove(item)}>{item.kind==='game'?'取消收藏':item.kind==='share'?'取消收藏分享':'取消收藏版本'}</button></div>
   </div>)}</div>}
   {editing&&<div className="modal-backdrop"><form className="card modal" role="dialog" aria-modal="true" aria-label="收藏名称" onSubmit={e=>{e.preventDefault();void rename();}}><h2>收藏名称</h2><label className="input-label">自定义名称<input autoFocus className="name-input" value={name} maxLength={80} disabled={busy} onChange={e=>setName(e.target.value)}/></label><p className="helper">最多80个字符，留空恢复默认名称。</p>{nameError&&<><p role="alert">{nameError}</p><button className="text-button full" type="button" disabled={busy} onClick={()=>void refreshName()}>读取最新名称</button></>}<button className="primary full" disabled={busy||library?.advanced===false}>保存名称</button><button className="text-button full" type="button" disabled={busy} onClick={()=>setEditing(undefined)}>取消</button></form></div>}
+  {shared&&<SharedFavoriteDialog key={shared} id={shared} onClose={()=>setShared(undefined)}/>}
   {post&&<RecordPostDialog id={post} onClose={()=>setPost(undefined)}/>} {open&&<ReplayDialog roomId={open} favorite onClose={()=>setOpen(undefined)}/>}</section>;
 }

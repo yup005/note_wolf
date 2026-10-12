@@ -1,5 +1,5 @@
 import {testRoomRoles} from './helpers/test-roles';
-import {loginTestAdmin} from './helpers/test-admin';
+import {loginTestAdmin,requestWithBackoff} from './helpers/test-admin';
 import {test,expect,type Page} from '@playwright/test';
 async function speechBoundary(page:Page,fail=false){await page.addInitScript(({fail})=>{
  const w=window as any;w.voiceSpoken=[];w.voiceCancelled=0;
@@ -7,7 +7,7 @@ async function speechBoundary(page:Page,fail=false){await page.addInitScript(({f
  Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Utterance,configurable:true});
  Object.defineProperty(window,'speechSynthesis',{value:{getVoices:()=>[],cancel:()=>{w.voiceCancelled++;},speak:(u:any)=>{w.voiceSpoken.push(u.text);queueMicrotask(()=>{if(fail)u.onerror?.({error:'not-allowed'});else{u.onstart?.();u.onend?.();}});}},configurable:true});
  },{fail});}
-async function setup(page:Page){await loginTestAdmin(page);await page.goto('/');await page.request.get('/api/session');const r=await (await page.request.post('/api/rooms',{data:{nickname:'语音房主',requestId:crypto.randomUUID()}})).json();const room=r.room,path=`/api/rooms/${room.id}`;for(const [a,b] of [['seat',{seat:1}],['test-players',{}],['ready',{ready:true,settingsRevision:0}],['deal',{}],['identity/confirm',{}],['start',{}],['night/enter',{}]] as const)expect((await page.request.post(path+'/'+a,{data:b})).ok()).toBe(true);await page.evaluate(id=>localStorage.setItem('wolf.room',id),room.id);await page.reload();return {room,path};}
+async function setup(page:Page){await loginTestAdmin(page);await page.goto('/');await page.request.get('/api/session');const createBody={nickname:'语音房主',requestId:crypto.randomUUID()},created=await requestWithBackoff(()=>page.request.post('/api/rooms',{data:createBody}));expect(created.ok()).toBe(true);const r=await created.json();const room=r.room,path=`/api/rooms/${room.id}`;for(const [a,b] of [['seat',{seat:1}],['test-players',{}],['ready',{ready:true,settingsRevision:0}],['deal',{}],['identity/confirm',{}],['start',{}],['night/enter',{}]] as const)expect((await page.request.post(path+'/'+a,{data:b})).ok()).toBe(true);await page.evaluate(id=>localStorage.setItem('wolf.room',id),room.id);await page.reload();return {room,path};}
 const spoken=(page:Page)=>page.evaluate(()=>(window as any).voiceSpoken as string[]);
 test('one manager tab speaks public night stages, skips duplicates after refresh, cancels hidden audio and preserves phone layout',async({page,context,browser})=>{
  await speechBoundary(page);const {room,path}=await setup(page);await page.getByRole('button',{name:'管理',exact:true}).click();await page.getByRole('button',{name:'开启公共播报',exact:true}).click();await expect.poll(()=>spoken(page)).toContain('第1夜，天黑请闭眼。狼人请睁眼，选择目标。');await expect(page.getByRole('button',{name:'关闭公共播报',exact:true})).toBeVisible();await page.getByRole('button',{name:'关闭',exact:true}).click();
