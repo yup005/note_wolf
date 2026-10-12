@@ -10,6 +10,8 @@
 
 仅隔离合成测试，不接触生产数据；没有部署或改变Render开关。当前管理范围是既有完整对局快照/参赛者复盘收藏，非参赛外部分享读者入口GAP-01仍待完成；不新增分享授权、不裁决H-03。真实iPhone Safari、实际声音/锁屏/弱网及真实多手机未验收，持久化和备份仍待完成。源文件包括 `packages/contracts/favorites.ts`、`packages/storage/favorites.ts`、`packages/storage/lobby.ts` / `records.ts`、`apps/server/app.ts` 和 `apps/web/src/FavoritesPanel.tsx`；自动证据为 `tests/favorite-library.test.ts`、`tests/e2e/favorite-library.spec.ts`。实施SHA在同批文档跟进中记录。
 
+实施提交：[c3da28e972673b4ac8cc5e92d1aeb4ae3952a095](https://github.com/yup005/note_wolf/commit/c3da28e972673b4ac8cc5e92d1aeb4ae3952a095)。本次SHA跟进仅文档，引用/差异检查通过，不重跑代码测试或部署；同批正常推送后另核对最终远端SHA。
+
 ## 最新：BETA-004管理员模拟测试房隔离（2026-10-11）
 
 `npm test` **331 pass /0 fail /0 skip**（含10项新增权限/隔离专项）、`npm run typecheck`和`npm run build`通过；`PLAYWRIGHT_CHROMIUM_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:e2e`全量 **46 pass /0 fail /0 skip（1.8m）**，包含2项新增管理员／普通账号浏览器场景。构建仅既有Zod PURE注释提示。
