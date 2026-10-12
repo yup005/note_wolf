@@ -1,3 +1,4 @@
+import {seedTestAdmin} from './helpers/test-admin.js';
 import Database from 'better-sqlite3';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,5 +25,5 @@ test('a complete multi-night game inherits deaths/drugs and protects stale turns
  }finally{db.close();rmSync(folder,{recursive:true,force:true});}
 });
 test('development visible test roles exclude other real players and never enter normal room views',()=>{
- const db=new LobbyStore(':memory:',()=>12,true);try{const host='a'.repeat(64),guest='b'.repeat(64);db.issueSession(host);db.issueSession(guest);const id=db.create(host,'测试房主').room.id;db.select(host,id,1);db.fillTestPlayers(host,id);db.setReady(host,id,true,0);db.deal(host,id);db.confirmIdentity(host,id);const room=db.snapshot(id);db.join(guest,room.code,'真实访客');const labels=db.testRoles(host,id);assert.equal(labels.roles.length,12);assert.ok(labels.roles.every(p=>p.memberId===db.view(host,id).me.id||room.seats.some(s=>s.isTestPlayer&&s.memberId===p.memberId)));assert.throws(()=>db.testRoles(guest,id),/HOST_ONLY/);assert.equal('roles' in db.view(host,id),false);assert.equal(room.seats.some(s=>'role' in s),false);}finally{db.close();}
+ const db=new LobbyStore(':memory:',()=>12,true);try{const host='a'.repeat(64),guest='b'.repeat(64);seedTestAdmin(db,host);db.issueSession(guest);const id=db.create(host,'测试房主').room.id;db.select(host,id,1);db.fillTestPlayers(host,id);db.setReady(host,id,true,0);db.deal(host,id);db.confirmIdentity(host,id);const room=db.snapshot(id);assert.throws(()=>db.join(guest,room.code,'真实访客'),/TEST_ROOM_PRIVATE/);const labels=db.testRoles(host,id);assert.equal(labels.roles.length,11);assert.ok(labels.roles.every(p=>p.memberId===db.view(host,id).me.id||room.seats.some(s=>s.isTestPlayer&&s.memberId===p.memberId)));assert.throws(()=>db.testRoles(guest,id),/ADMIN_ONLY/);assert.equal('roles' in db.view(host,id),false);assert.equal(room.seats.some(s=>'role' in s),false);}finally{db.close();}
 });

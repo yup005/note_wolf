@@ -1,3 +1,4 @@
+import {loginTestAdmin} from './helpers/test-admin';
 async function visibility(page:Page,visible:boolean){await page.evaluate(visible=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:visible?'visible':'hidden'});document.dispatchEvent(new Event('visibilitychange'));},visible);}
 import {test,expect,type Page} from '@playwright/test';
 async function fit(page:Page){
@@ -10,8 +11,9 @@ async function fit(page:Page){
  }
  await page.setViewportSize({width:390,height:844});
 }
+test.beforeEach(async({page})=>{await loginTestAdmin(page);});
 test('all first-night roles operate on one phone screen; privacy, clock, drugs and results survive correct boundaries',async({page})=>{
- await page.goto('/');await page.getByLabel('你的昵称').fill('夜间测试房主');await page.getByRole('button',{name:'创建房间',exact:true}).click();await page.getByRole('button',{name:'以游客身份继续'}).click();
+ await page.goto('/');await page.getByLabel('你的昵称').fill('夜间测试房主');await page.getByRole('button',{name:'创建房间',exact:true}).click();
  await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();await page.getByRole('button',{name:'补满测试玩家',exact:true}).click();await page.getByRole('button',{name:'准备',exact:true}).click();await page.getByRole('button',{name:'开始发牌',exact:true}).click();await page.getByRole('button',{name:'查看身份',exact:true}).click();await page.getByRole('button',{name:'确认身份',exact:true}).click();await page.getByRole('button',{name:'开始对局',exact:true}).click();
  const view=await page.evaluate(async()=> (await (await fetch('/api/session')).json()).rooms[0]);const path=`/api/rooms/${view.room.id}`;
  const roles:Record<string,number[]>={};for(const s of view.room.seats){const identity=await (await page.request.get(path+(s.number===1?'/identity':`/test-players/${s.memberId}/identity`))).json();(roles[identity.role]??=[]).push(s.number);}

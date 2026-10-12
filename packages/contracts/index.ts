@@ -34,7 +34,7 @@ export const emptySchema=z.object({}).strict();
 export interface PreparationState {settingsRevision:number;phase:'lobby'|'identity_collection'|'started';settings:RoomSettings;submittedCount:number;confirmedCount:number;validation:'waiting'|'valid'|'mismatch'}
 export interface PrivateIdentity {role:Role|null;confirmed:boolean;locked:boolean}
 Object.assign(messages,{
- TEST_PLAYERS_DISABLED:'测试功能未启用',NOT_TEST_PLAYER:'只能操作测试玩家',TEST_ROOM_NOT_EMPTY:'请创建只有你一人的新房间再添加测试玩家',TEST_ONLINE_ONLY:'测试玩家目前仅支持线上随机发牌',SETTINGS_CHANGED:'房主已更新设置，请查看后重新准备',HOST_ONLY:'只有房主可以执行此操作',HOST_NOT_SEATED:'房主必须入座参赛',ROOM_NOT_FULL:'请按本局人数全部入座',NOT_ALL_READY:'请等待所有玩家准备',
+ TEST_PLAYERS_DISABLED:'测试功能未启用',TEST_ROOM_PRIVATE:'测试房间仅限创建它的管理员使用',NOT_TEST_PLAYER:'只能操作测试玩家',TEST_ROOM_NOT_EMPTY:'请创建只有你一人的新房间再添加测试玩家',TEST_ONLINE_ONLY:'测试玩家目前仅支持线上随机发牌',SETTINGS_CHANGED:'房主已更新设置，请查看后重新准备',HOST_ONLY:'只有房主可以执行此操作',HOST_NOT_SEATED:'房主必须入座参赛',ROOM_NOT_FULL:'请按本局人数全部入座',NOT_ALL_READY:'请等待所有玩家准备',
  PHASE_LOCKED:'当前阶段不允许此操作',NOT_SEATED:'请先选择座位',IDENTITY_UNAVAILABLE:'身份尚未分配',IDENTITY_INCOMPLETE:'请等待所有玩家确认身份',
  ROLE_MISMATCH:'角色数量不匹配，请各自检查身份'
 });

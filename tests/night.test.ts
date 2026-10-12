@@ -1,3 +1,4 @@
+import {seedTestAdmin} from './helpers/test-admin.js';
 import {test} from 'node:test';
 import Database from 'better-sqlite3';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -36,7 +37,7 @@ test('seer only sees good or wolf during own window, cannot recheck, and absent 
  assert.throws(()=>nightCommand(s,10,{action:'seer',target:2,turnId},253000),/ALREADY_COMMITTED/);advanceNight(s,281000);assert.equal(privateNight(s,10).skillReceipt?.result,'wolf');assert.equal(privateNight(s,5).skillReceipt,undefined);advanceNight(s,286000);assert.deepEqual(privateNight(s,10),{turnId:s.turnId,kind:'waiting'});
  const virtual=game();virtual.players=virtual.players.map(p=>p.role==='seer'?{...p,role:'villager'}:p);advanceNight(virtual,251000);assert.equal(virtual.phase,'seer');assert.equal(virtual.deadline,281000);
 });
-function testRoom(db:LobbyStore){const {room}=db.create('host','房主');db.select('host',room.id,1);db.fillTestPlayers('host',room.id);db.setReady('host',room.id,true,0);db.deal('host',room.id);db.confirmIdentity('host',room.id);db.start('host',room.id);db.enterNight('host',room.id);return room.id;}
+function testRoom(db:LobbyStore){seedTestAdmin(db,'host');const {room}=db.create('host','房主');db.select('host',room.id,1);db.fillTestPlayers('host',room.id);db.setReady('host',room.id,true,0);db.deal('host',room.id);db.confirmIdentity('host',room.id);db.start('host',room.id);db.enterNight('host',room.id);return room.id;}
 test('store persists deadlines, rejects host role substitution, synthetic-only test control and phase retries',()=>{
  let now=1000;const db=new LobbyStore(':memory:',()=>42,true,()=>now);try{
   const id=testRoom(db);assert.equal(db.snapshot(id).night!.phase,'wolves');
@@ -51,7 +52,7 @@ test('store persists deadlines, rejects host role substitution, synthetic-only t
 test('HTTP night public messages exclude secrets; ordinary host cannot target another player and test routes stay gated',async()=>{
  let now=1000;const app=await createServer({dbPath:':memory:',allowTestPlayers:true,now:()=>now});try{
   await new Promise<void>(r=>app.http.listen(0,'127.0.0.1',r));const address=app.http.address();if(!address||typeof address==='string')throw Error('addr');const base=`http://127.0.0.1:${address.port}`;
-  const cookie=(await fetch(base+'/api/session')).headers.get('set-cookie')!.split(';')[0];const headers={cookie,'Content-Type':'application/json'};
+  const cookie=(await fetch(base+'/api/session')).headers.get('set-cookie')!.split(';')[0];seedTestAdmin(app.store,cookie.split('=')[1]);const headers={cookie,'Content-Type':'application/json'};
   const post=(path:string,data:unknown={})=>fetch(base+path,{method:'POST',headers,body:JSON.stringify(data)});
   const view=await (await post('/api/rooms',{nickname:'房主',requestId:crypto.randomUUID()})).json();const path='/api/rooms/'+view.room.id;
   await post(path+'/seat',{seat:1});await post(path+'/test-players');await post(path+'/ready',{ready:true,settingsRevision:0});await post(path+'/deal');await post(path+'/identity/confirm');await post(path+'/start');await post(path+'/night/enter');
@@ -118,7 +119,7 @@ test('development night actor recommendation follows the actionable role and is 
  const db=new LobbyStore(':memory:',()=>42,true,()=>1000);try{
   const id=testRoom(db);const wolf=db.testNightActor('host',id);assert.equal(typeof wolf.actorId,'string');
   const privateState=wolf.actorId===db.view('host',id).me.id?db.nightPrivate('host',id):db.testNightPrivate('host',id,wolf.actorId!);assert.equal(privateState.kind,'wolves');assert.equal(privateState.confirmer,db.snapshot(id).seats.find(s=>s.memberId===wolf.actorId)!.number);
-  db.join('guest',db.snapshot(id).code,'访客');assert.throws(()=>db.testNightActor('guest',id),/HOST_ONLY/);
+  db.issueSession('guest');assert.throws(()=>db.join('guest',db.snapshot(id).code,'访客'),/TEST_ROOM_PRIVATE/);assert.throws(()=>db.testNightActor('guest',id),/ADMIN_ONLY/);
   db.testNightAdvance('host',id);assert.equal(db.testNightActor('host',id).actorId,null);
   for(const expected of ['witch','seer','hunter']){
    db.testNightAdvance('host',id);const next=db.testNightActor('host',id);assert.equal((next.actorId===db.view('host',id).me.id?db.nightPrivate('host',id):db.testNightPrivate('host',id,next.actorId!)).kind,expected);db.testNightAdvance('host',id);

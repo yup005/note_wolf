@@ -15,8 +15,9 @@ import {nightCommandSchema,beginNightSchema} from '../../packages/contracts/nigh
 import {dayCommandSchema,type FirstDayRules} from '../../packages/contracts/day.js';
 import type {IncomingMessage} from 'node:http';
 import type {ZodType} from 'zod';
+import {testPlayersAllowed} from './testPlayerPolicy.js';
 
-export interface ServerOptions {dbPath:string;codeStart?:()=>number;secureCookie?:boolean;allowTestPlayers?:boolean;now?:()=>number;dayRulesFixture?:FirstDayRules}
+export interface ServerOptions {dbPath:string;codeStart?:()=>number;secureCookie?:boolean;allowTestPlayers?:boolean;testPlayerScope?:string;now?:()=>number;dayRulesFixture?:FirstDayRules}
 const cookieName='wolf_session';
 function cookieToken(req:IncomingMessage){
  const value=(req.headers.cookie??'').split(';').map(v=>v.trim()).find(v=>v.startsWith(cookieName+'='))?.slice(cookieName.length+1);
@@ -29,7 +30,7 @@ function validOrigin(req:IncomingMessage){
 }
 function parse<T>(schema:ZodType<T>,body:unknown):T{const result=schema.safeParse(body);if(!result.success)throw new LobbyError('INVALID_INPUT');return result.data;}
 export async function createServer(options:ServerOptions){
- const testPlayersEnabled=options.allowTestPlayers===true&&process.env.NODE_ENV!=='production';
+ const testPlayersEnabled=testPlayersAllowed(options.allowTestPlayers,options.testPlayerScope,process.env);
  const store=new LobbyStore(options.dbPath,options.codeStart,testPlayersEnabled,options.now,process.env.NODE_ENV==='production'?undefined:options.dayRulesFixture);
  const web=express();web.disable('x-powered-by');
  const http=createHttpServer(web);

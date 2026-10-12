@@ -1,3 +1,4 @@
+import {fillRealPlayers,confirmRealPlayers} from './helpers/real-players.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
@@ -6,7 +7,7 @@ import {createServer} from '../apps/server/app.js';
 const token=()=>randomBytes(32).toString('hex');
 test('new login revokes old HTTP secrets, commands and connected socket while preserving the exact game and player',async()=>{
  const app=await createServer({dbPath:':memory:',allowTestPlayers:true,now:()=>1000});const sockets:Socket[]=[];
- try{const first=token(),second=token();app.store.issueSession(first);app.store.issueSession(second);const registered=await app.store.auth.register(first,'takeover_user','correct-password','房主');const old=registered.token;const room=app.store.create(old,'房主').room;const id=room.id;app.store.select(old,id,1);app.store.fillTestPlayers(old,id);app.store.setReady(old,id,true,0);app.store.deal(old,id);app.store.confirmIdentity(old,id);app.store.start(old,id);app.store.enterNight(old,id);
+ try{const first=token(),second=token();app.store.issueSession(first);app.store.issueSession(second);const registered=await app.store.auth.register(first,'takeover_user','correct-password','房主');const old=registered.token;const room=app.store.create(old,'房主').room;const id=room.id;app.store.select(old,id,1);const players=fillRealPlayers(app.store,old,id);app.store.setReady(old,id,true,0);app.store.deal(old,id);confirmRealPlayers(app.store,id,players);app.store.confirmIdentity(old,id);app.store.start(old,id);app.store.enterNight(old,id);
  await new Promise<void>(r=>app.http.listen(0,'127.0.0.1',r));const addr=app.http.address();if(!addr||typeof addr==='string')throw Error('addr');const base=`http://127.0.0.1:${addr.port}`;
  const req=(t:string,path:string,body?:unknown)=>fetch(base+path,{method:body===undefined?'GET':'POST',headers:{cookie:`wolf_session=${t}`,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
  const socket=io(base,{transports:['websocket'],extraHeaders:{cookie:`wolf_session=${old}`},reconnection:false});sockets.push(socket);await new Promise<void>((r,j)=>{socket.once('connect',r);socket.once('connect_error',j);});await new Promise<void>(r=>socket.emit('room:subscribe',{roomId:id},()=>r()));

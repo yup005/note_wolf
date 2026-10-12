@@ -1,3 +1,4 @@
+import {seedTestAdmin} from './helpers/test-admin.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -32,7 +33,7 @@ test('private saved boards survive restart and room snapshots do not track later
 });
 
 test('three fixed templates cannot be overwritten, and host configuration validates both roles and revision',()=>{
- const store=new LobbyStore(':memory:',undefined,true);try{
+ const store=new LobbyStore(':memory:',undefined,true);try{seedTestAdmin(store,'h');
   const library=store.boardLibrary('h');assert.equal(library.presets.length,3);library.presets[0].composition.roles.wolf=99;
   assert.equal(store.boardLibrary('h').presets[0].composition.roles.wolf,4);
   assert.throws(()=>store.saveBoard('h',{id:'standard-12',revision:1,name:'overwrite',composition:boardPreset('standard-12')}),/INVALID_INPUT|BOARD_NOT_FOUND/);
@@ -59,7 +60,7 @@ test('guest template library follows account linkage and old session takeover ca
 });
 
 test('switching a development test room back to the original board retains automatic simulated readiness',()=>{
- const store=new LobbyStore(':memory:',undefined,true);try{
+ const store=new LobbyStore(':memory:',undefined,true);try{seedTestAdmin(store,'h');
   const room=store.create('h','Host').room;store.select('h',room.id,1);store.fillTestPlayers('h',room.id);
   store.configureBoard('h',room.id,{selection:{kind:'preset',id:'mechanical-12'},settingsRevision:0});
   store.configureBoard('h',room.id,{selection:{kind:'preset',id:'standard-12'},settingsRevision:1});

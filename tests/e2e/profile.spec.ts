@@ -1,3 +1,4 @@
+import {prepareOrdinaryRoom} from './helpers/real-players';
 import {test,expect,type Page} from '@playwright/test';
 import {randomUUID} from 'node:crypto';
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADUlEQVQImWOIqJz4HwAE8QJi/co1KgAAAABJRU5ErkJggg==','base64');
@@ -42,8 +43,8 @@ test('active VIP permits 2MB selection while expired VIP returns to 1MB and phon
  }finally{await admin.close();}
 });
 
-test('editing a seated account after cards are locked preserves private identity, session and room phase',async({page,context})=>{
- await registered(page);await page.getByRole('button',{name:'创建房间',exact:true}).click();await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();await page.getByRole('button',{name:'补满测试玩家',exact:true}).click();await page.getByRole('button',{name:'准备',exact:true}).click();await page.getByRole('button',{name:'开始发牌',exact:true}).click();await page.getByRole('button',{name:'查看身份',exact:true}).click();const role=await page.getByTestId('private-role').innerText();await page.getByRole('button',{name:'确认身份',exact:true}).click();await page.getByRole('button',{name:'开始对局',exact:true}).click();await expect(page.getByRole('heading',{name:'身份已锁定',exact:true})).toBeVisible();
+test('editing a seated account after cards are locked preserves private identity, session and room phase',async({page,context,browser})=>{
+ await registered(page);await page.getByRole('button',{name:'创建房间',exact:true}).click();await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();const initial=(await (await page.request.get('/api/session')).json()).rooms[0];await prepareOrdinaryRoom(browser,context,initial.room);await page.reload();await page.getByRole('button',{name:'查看身份',exact:true}).click();const role=await page.getByTestId('private-role').innerText();await page.getByRole('button',{name:'隐藏身份',exact:true}).click();await expect(page.getByRole('heading',{name:'身份已锁定',exact:true})).toBeVisible();
  const before=await (await page.request.get('/api/session')).json();const cookies=await context.cookies();const room=before.rooms[0];const identity=await (await page.request.get(`/api/rooms/${room.room.id}/identity`)).json();
  const dialog=await editor(page,'资料玩家');await dialog.getByLabel('昵称',{exact:true}).fill('局中资料玩家');await dialog.getByRole('button',{name:'保存昵称',exact:true}).click();await expect(dialog.getByRole('status')).toHaveText('昵称已保存');
  const after=await (await page.request.get('/api/session')).json();expect(after.rooms[0].me.id).toBe(room.me.id);expect(after.rooms[0].room.id).toBe(room.room.id);expect(after.rooms[0].room.preparation.phase).toBe(room.room.preparation.phase);expect((await context.cookies()).map(cookie=>({name:cookie.name,value:cookie.value}))).toEqual(cookies.map(cookie=>({name:cookie.name,value:cookie.value})));expect(await (await page.request.get(`/api/rooms/${room.room.id}/identity`)).json()).toEqual(identity);

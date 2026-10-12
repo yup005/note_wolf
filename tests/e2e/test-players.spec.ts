@@ -1,6 +1,8 @@
+import {loginTestAdmin} from './helpers/test-admin';
 import {test,expect} from '@playwright/test';
+test.beforeEach(async({page})=>{await loginTestAdmin(page);});
 test('host can fill a labelled test room and inspect each simulated role',async({page})=>{
- await page.goto('/');await page.getByLabel('你的昵称').fill('测试房主');await page.getByRole('button',{name:'创建房间',exact:true}).click();await page.getByRole('button',{name:'以游客身份继续'}).click();
+ await page.goto('/');await page.getByLabel('你的昵称').fill('测试房主');await page.getByRole('button',{name:'创建房间',exact:true}).click();
  await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();await page.getByRole('button',{name:'补满测试玩家',exact:true}).click();
  await expect(page.getByText('测试房间 · 模拟玩家')).toBeVisible();await expect(page.getByTestId('seated-count')).toHaveText('12 / 12');
  await expect(page.getByRole('button',{name:'准备',exact:true})).toBeEnabled();await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/room-seats-mobile.png',fullPage:true});

@@ -18,7 +18,7 @@ export function PreparationPanel({view,busy,connected,onAction}:Props){
     <label>发牌方式<select aria-label="发牌方式" value={p.settings.dealMethod} disabled={blocked||room.testRoom} onChange={e=>configure({...p.settings,dealMethod:e.target.value as RoomSettings['dealMethod']})}><option value="online">线上随机发牌</option><option value="physical">实体牌录入</option></select></label>
     <label>游戏模式<select aria-label="游戏模式" value={p.settings.gameMode} disabled={blocked} onChange={e=>configure({...p.settings,gameMode:e.target.value as RoomSettings['gameMode']})}><option value="automatic">自动法官</option><option value="manual">纯手动记录</option></select></label>
    </div><p className="helper">更改设置后需要重新准备。</p></details>:null}
-   {view.testPlayersEnabled&&me.isHost&&!room.testRoom&&playable&&<><button className="secondary full fill-test-players" disabled={blocked||!mine||p.settings.dealMethod!=='online'} onClick={()=>onAction('test-players')}>补满测试玩家</button><p className="helper">仅限房主一人的新房间，使用线上发牌。</p></>}
+   {view.testPlayersEnabled&&me.isHost&&!room.testRoom&&playable&&<><button className="secondary full fill-test-players" disabled={blocked||!mine||p.settings.dealMethod!=='online'} onClick={()=>onAction('test-players')}>补满测试玩家</button><p className="helper">仅限管理员独占的新房间，转换后其他玩家无法加入。</p></>}
   </>:<>
    {p.phase==='identity_collection'&&<>
     <p className="helper">{p.settings.dealMethod==='physical'?`已提交 ${p.submittedCount} / ${capacity}`:`已确认 ${p.confirmedCount} / ${capacity}`}</p>

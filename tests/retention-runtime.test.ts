@@ -1,3 +1,4 @@
+import {seedTestAdmin} from './helpers/test-admin.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
@@ -12,9 +13,9 @@ import type {NightState} from '../packages/domain/night.js';
 import {firstDayRules} from '../packages/contracts/day.js';
 
 const day=86400000,token='1'.repeat(64);
-async function fixture(){
+async function fixture(admin=true){
  const dir=mkdtempSync(join(tmpdir(),'wolf-retention-runtime-')),file=join(dir,'synthetic.sqlite');let now=1000;
- const app=await createServer({dbPath:file,allowTestPlayers:true,now:()=>now});app.store.issueSession(token);
+ const app=await createServer({dbPath:file,allowTestPlayers:true,now:()=>now});if(admin)seedTestAdmin(app.store,token);else app.store.issueSession(token);
  await new Promise<void>(resolve=>app.http.listen(0,'127.0.0.1',resolve));
  const address=app.http.address();if(!address||typeof address==='string')throw Error('address');
  const base=`http://127.0.0.1:${address.port}`,db=new Database(file);db.pragma('foreign_keys=ON');
@@ -29,7 +30,7 @@ function beginGame(f:Awaited<ReturnType<typeof fixture>>,id:string){
 }
 
 test('successful profile edits extend affected memberships but rejected edits do not',async()=>{
- const f=await fixture();try{
+ const f=await fixture(false);try{
   const room=await f.create();
   const registration=await f.request('/api/auth/register',{username:'retention_profile',password:'synthetic-password',nickname:'Profile'});
   assert.equal(registration.status,200);const cookie=registration.headers.get('set-cookie')!.split(';')[0];

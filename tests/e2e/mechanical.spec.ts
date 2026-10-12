@@ -1,12 +1,14 @@
+import {loginTestAdmin} from './helpers/test-admin';
 import {test,expect,type Page} from '@playwright/test';
 import type {LobbyView,Role} from '../../packages/contracts/index';
 import type {NightPrivate,NightPhase} from '../../packages/contracts/night';
 
 async function visibility(page:Page,visible:boolean){await page.evaluate(value=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:value?'visible':'hidden'});document.dispatchEvent(new Event('visibilitychange'));},visible);}
 
+test.beforeEach(async({page})=>{await loginTestAdmin(page);});
 test('saved 15-player board deals and privately learns a civilian before spirit-seer inspection',async({page})=>{
  test.setTimeout(60000);
- await page.goto('/');await page.getByLabel('你的昵称').fill('Mechanical browser host');await page.getByRole('button',{name:'创建房间',exact:true}).click();await page.getByRole('button',{name:'以游客身份继续'}).click();
+ await page.goto('/');await page.getByLabel('你的昵称').fill('Mechanical browser host');await page.getByRole('button',{name:'创建房间',exact:true}).click();
  await page.getByLabel('选择板子').selectOption('mechanical-12');await page.getByText('自定义调整',{exact:true}).click();
  await page.getByLabel('板子名称').fill('Saved mechanical 15');await page.getByLabel('玩家人数',{exact:true}).fill('15');await page.getByLabel('狼人人数',{exact:true}).fill('4');await page.getByLabel('村民人数',{exact:true}).fill('5');await page.getByLabel('白痴人数',{exact:true}).fill('1');await page.getByRole('button',{name:'另存板子',exact:true}).click();
  await expect(page.getByTestId('seated-count')).toHaveText('0 / 15');

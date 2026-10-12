@@ -1,10 +1,11 @@
+import {prepareOrdinaryRoom} from './helpers/real-players';
 import {test,expect,type Browser} from '@playwright/test';
 async function published(browser:Browser){
  const host=await browser.newContext({viewport:{width:390,height:844}}),admin=await browser.newContext();await host.request.get('/api/session');await admin.request.get('/api/session');expect((await admin.request.post('/api/auth/login',{data:{username:'test_admin',password:'test-admin-password'}})).ok()).toBe(true);
  const room=(await (await host.request.post('/api/rooms',{data:{nickname:'分享房主',requestId:crypto.randomUUID()}})).json()).room,path='/api/rooms/'+room.id;
- for(const [action,data] of [['seat',{seat:1}],['settings',{dealMethod:'online',gameMode:'manual'}],['test-players',{}],['ready',{ready:true,settingsRevision:1}],['deal',{}],['identity/confirm',{}],['start',{}]] as const)expect((await host.request.post(path+'/'+action,{data})).ok()).toBe(true);
+ const roles=await prepareOrdinaryRoom(browser,host,room,'manual');
  const username='share_'+crypto.randomUUID().slice(0,8),account=(await (await host.request.post('/api/auth/register',{data:{username,password:'share-test-password',nickname:'分享作者'}})).json()).account;expect((await admin.request.post(`/api/admin/users/${account.id}/vip`,{data:{enabled:true,expiresAt:null}})).ok()).toBe(true);
- const roles=(await (await host.request.get(path+'/test-roles')).json()).roles,doc={deaths:roles.filter((r:any)=>r.role==='wolf').map((r:any)=>({seat:r.seat,round:1,period:'night',cause:'unrecorded'})),badges:[],exiles:[],votes:[],notes:'公开初版复盘'};
+ const doc={deaths:roles.filter((r:any)=>r.role==='wolf').map((r:any)=>({seat:r.seat,round:1,period:'night',cause:'unrecorded'})),badges:[],exiles:[],votes:[],notes:'公开初版复盘'};
  const recordId=(await (await host.request.get(path+'/records')).json()).own.id;await host.request.post(path+'/record',{data:{revision:0,document:doc}});await host.request.post(path+'/manual/commit',{data:{revision:1}});await host.request.post(path+'/record/publish',{data:{revision:1}});await host.request.post(`/api/records/${recordId}/favorite`,{data:{}});return {host,admin,account,room,path,recordId,doc};
 }
 test('VIP author shares latest published content with an independent anonymous phone, regenerates and revokes without affecting private drafts',async({browser})=>{

@@ -1,3 +1,4 @@
+import {fillRealPlayers,confirmRealPlayers} from './helpers/real-players.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import * as authContracts from '../packages/contracts/auth.js';
@@ -38,7 +39,7 @@ test('profile nickname command trims display name and rejects ownership or unrel
 test('nickname updates every owned membership without changing seats, readiness or private game state',async()=>{
  const store=new LobbyStore(':memory:',undefined,true,()=>1000);try{
   const guest=token();store.issueSession(guest);const session=await store.auth.register(guest,'profile_store',password,'Initial');
-  const first=store.create(session.token,'Old room name').room;store.select(session.token,first.id,1);store.fillTestPlayers(session.token,first.id);store.setReady(session.token,first.id,true,0);store.deal(session.token,first.id);store.confirmIdentity(session.token,first.id);store.start(session.token,first.id);store.enterNight(session.token,first.id);
+  const first=store.create(session.token,'Old room name').room;store.select(session.token,first.id,1);const players=fillRealPlayers(store,session.token,first.id);store.setReady(session.token,first.id,true,0);store.deal(session.token,first.id);confirmRealPlayers(store,first.id,players);store.confirmIdentity(session.token,first.id);store.start(session.token,first.id);store.enterNight(session.token,first.id);
   const before=store.view(session.token,first.id),identity=store.identity(session.token,first.id),secret=store.nightPrivate(session.token,first.id);
   const ids=[first.id];for(let i=0;i<21;i++)ids.push(store.create(session.token,'Other room').room.id);
   const other=token();store.issueSession(other);store.join(other,first.code,'Unrelated');

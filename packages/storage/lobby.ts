@@ -70,7 +70,7 @@ export class LobbyStore {
   this.auth=new AuthStore(this.db);
   this.boards=new BoardsStore(this.db,token=>this.auth.owner(token));
   this.control=new ControlStore(this.db,this.now);
-  this.testPlayers=new TestPlayersStore(this.db,this.allowTestPlayers,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats);
+  this.testPlayers=new TestPlayersStore(this.db,this.allowTestPlayers,token=>{if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);this.auth.requireAdmin(token);},(token,id)=>this.member(token,id),id=>this.snapshot(id).seats);
   this.night=new NightStore(this.db,(token,id)=>this.member(token,id),this.now,this.control,id=>this.boards.snapshot(id));
   this.day=new DayStore(this.db,(token,id)=>this.member(token,id),id=>this.night.completedState(id),this.now,this.dayRules,this.control);
   this.records=new RecordsStore(this.db,this.auth,this.now,id=>this.readReplay(id));
@@ -91,6 +91,7 @@ export class LobbyStore {
    if(!this.db.prepare('SELECT 1 FROM rooms WHERE id=?').get(roomId))throw new LobbyError('ROOM_NOT_FOUND',404);
    throw new LobbyError('NOT_MEMBER',403);
   }
+  if(this.testPlayers.isTestRoom(roomId)&&(m.is_host!==1||this.auth.account(token)?.role!=='admin'))throw new LobbyError('TEST_ROOM_PRIVATE',403);
   m.is_manager=this.control.canManage(roomId,m);return m;
  }
  create(token:string,nickname:string,requestId:string=randomUUID()):LobbyView{
@@ -120,6 +121,10 @@ export class LobbyStore {
   return this.db.transaction(()=>{
    const r=this.db.prepare('SELECT * FROM rooms WHERE code=?').get(code) as RoomRow|undefined;
    if(!r)throw new LobbyError('ROOM_NOT_FOUND',404);
+   if(this.testPlayers.isTestRoom(r.id)){
+    const host=this.db.prepare('SELECT 1 FROM members WHERE room_id=? AND session_hash=? AND is_host=1').get(r.id,this.auth.owner(token));
+    if(!host||this.auth.account(token)?.role!=='admin')throw new LobbyError('TEST_ROOM_PRIVATE',403);
+   }
    if(!this.db.prepare('SELECT 1 FROM members WHERE room_id=? AND session_hash=?').get(r.id,this.auth.owner(token))){
     this.db.prepare('INSERT INTO members(id,room_id,session_hash,nickname) VALUES (?,?,?,?)').run(randomUUID(),r.id,this.auth.owner(token),name);
     this.db.prepare('UPDATE rooms SET revision=revision+1 WHERE id=?').run(r.id);
@@ -141,7 +146,7 @@ export class LobbyStore {
  }
  view(token:string,roomId:string):LobbyView{
   const m=this.member(token,roomId);
-  return {testPlayersEnabled:this.allowTestPlayers,room:this.snapshot(roomId),me:{id:m.id,nickname:m.nickname,isHost:m.is_host===1,seat:m.seat}};
+  return {testPlayersEnabled:this.allowTestPlayers&&this.auth.account(token)?.role==='admin'&&m.is_host===1&&this.testPlayers.isolated(roomId),room:this.snapshot(roomId),me:{id:m.id,nickname:m.nickname,isHost:m.is_host===1,seat:m.seat}};
  }
  snapshot(roomId:string):RoomSnapshot{
   const r=this.db.prepare('SELECT * FROM rooms WHERE id=?').get(roomId) as RoomRow|undefined;
@@ -158,12 +163,12 @@ export class LobbyStore {
    return this.view(token,roomId);
   }).immediate();
  }
- configure(token:string,id:string,settings:RoomSettings){return this.db.transaction(()=>{this.member(token,id);if(this.testPlayers.isTestRoom(id)&&settings.dealMethod!=='online')throw new LobbyError('TEST_ONLINE_ONLY',409);const oldRevision=this.preparation.snapshot(id).settingsRevision;this.preparation.configure(token,id,settings);if(this.preparation.snapshot(id).settingsRevision!==oldRevision)this.testPlayers.prepareActors(id);return this.view(token,id);}).immediate();}
+ configure(token:string,id:string,settings:RoomSettings){return this.db.transaction(()=>{this.member(token,id);if(this.testPlayers.isTestRoom(id)&&settings.dealMethod!=='online')throw new LobbyError('TEST_ONLINE_ONLY',409);const oldRevision=this.preparation.snapshot(id).settingsRevision;this.preparation.configure(token,id,settings);if(this.preparation.snapshot(id).settingsRevision!==oldRevision)this.testPlayers.prepareActors(token,id);return this.view(token,id);}).immediate();}
  boardLibrary(token:string){return this.boards.library(token);}
  saveBoard(token:string,input:BoardSave){return this.boards.save(token,input);}
- configureBoard(token:string,id:string,input:BoardConfigure){return this.db.transaction(()=>{const previous=this.preparation.snapshot(id).settingsRevision;this.boards.configure(token,id,input);if(this.preparation.snapshot(id).settingsRevision!==previous)this.testPlayers.prepareActors(id);return this.view(token,id);}).immediate();}
+ configureBoard(token:string,id:string,input:BoardConfigure){return this.db.transaction(()=>{const previous=this.preparation.snapshot(id).settingsRevision;this.boards.configure(token,id,input);if(this.preparation.snapshot(id).settingsRevision!==previous)this.testPlayers.prepareActors(token,id);return this.view(token,id);}).immediate();}
  setReady(token:string,id:string,ready:boolean,settingsRevision:number){this.preparation.setReady(token,id,ready,settingsRevision);return this.view(token,id);}
- deal(token:string,id:string){return this.db.transaction(()=>{this.preparation.deal(token,id);this.testPlayers.confirmActors(id);return this.view(token,id);}).immediate();}
+ deal(token:string,id:string){return this.db.transaction(()=>{this.preparation.deal(token,id);this.testPlayers.confirmActors(token,id);return this.view(token,id);}).immediate();}
  start(token:string,id:string){return this.db.transaction(()=>{this.preparation.start(token,id);this.records.start(id);return this.view(token,id);}).immediate();}
  identity(token:string,id:string){return this.preparation.identity(token,id);}
  submitIdentity(token:string,id:string,role:Role){return this.preparation.submitIdentity(token,id,role);}
@@ -199,8 +204,8 @@ export class LobbyStore {
  testNightCommand(token:string,id:string,actorId:string,c:NightCommand){this.testPlayers.actor(token,id,actorId);return this.testNightStore(actorId).command(token,id,c);}
  testNightAdvance(token:string,id:string){this.testPlayers.authorize(token,id);if(!this.testPlayers.isTestRoom(id))throw new LobbyError('NOT_TEST_PLAYER',403);this.night.testAdvance(id);return this.view(token,id);}
  testRoles(token:string,id:string){
-  const host=this.testPlayers.authorize(token,id);if(!this.testPlayers.isTestRoom(id))throw new LobbyError('NOT_TEST_PLAYER',403);
-  const roles=this.db.prepare('SELECT m.id AS memberId,m.seat,i.role FROM members m JOIN identities i ON i.member_id=m.id AND i.room_id=m.room_id WHERE m.room_id=? AND m.seat IS NOT NULL AND (m.id=? OR m.id IN (SELECT member_id FROM test_players)) ORDER BY m.seat').all(id,host.id) as {memberId:string;seat:number;role:Role}[];
+  this.testPlayers.authorize(token,id);
+  const roles=this.db.prepare('SELECT m.id AS memberId,m.seat,i.role FROM members m JOIN identities i ON i.member_id=m.id AND i.room_id=m.room_id JOIN test_players t ON t.member_id=m.id WHERE m.room_id=? AND m.seat IS NOT NULL ORDER BY m.seat').all(id) as {memberId:string;seat:number;role:Role}[];
   return {roles};
  }
  gameReplay(token:string,id:string):import('../contracts/game.js').GameReplay{
@@ -239,12 +244,12 @@ export class LobbyStore {
  resolveManual(token:string,id:string,version:number,hostRevision:number,accept:boolean){return this.records.resolve(token,id,version,hostRevision,accept);}
  manualHistory(token:string,id:string){return this.records.history(token,id);}
  roomsFor(token:string):LobbyView[]{
-  const rows=this.db.prepare('SELECT room_id FROM members WHERE session_hash=? ORDER BY rowid DESC LIMIT 20').all(this.auth.owner(token)) as {room_id:string}[];
-  return rows.map(r=>this.view(token,r.room_id));
+  const rows=this.db.prepare('SELECT room_id,is_host FROM members WHERE session_hash=? ORDER BY rowid DESC').all(this.auth.owner(token)) as {room_id:string;is_host:number}[];
+  return rows.filter(r=>!this.testPlayers.isTestRoom(r.room_id)||r.is_host===1&&this.auth.account(token)?.role==='admin').slice(0,20).map(r=>this.view(token,r.room_id));
  }
  private profileResult(token:string){
   const account=this.auth.requireAccount(token);
-  const rooms=(this.db.prepare('SELECT room_id FROM members WHERE session_hash=? ORDER BY rowid DESC').all('account:'+account.id) as {room_id:string}[]).map(({room_id})=>this.view(token,room_id));
+  const rooms=(this.db.prepare('SELECT room_id,is_host FROM members WHERE session_hash=? ORDER BY rowid DESC').all('account:'+account.id) as {room_id:string;is_host:number}[]).filter(r=>!this.testPlayers.isTestRoom(r.room_id)||r.is_host===1&&account.role==='admin').map(({room_id})=>this.view(token,room_id));
   this.retention.touch(rooms.map(room=>room.room.id));
   return {account,rooms};
  }
@@ -254,7 +259,7 @@ export class LobbyStore {
  avatar(accountId:string,revision?:string){return this.auth.avatar(accountId,revision);}
  issueSession(token:string){this.db.prepare('INSERT INTO sessions(session_hash,created_at) VALUES (?,?)').run(sessionKey(token),Date.now());}
  hasSession(token:string){return !!this.db.prepare("SELECT 1 FROM sessions s LEFT JOIN accounts a ON a.id=s.account_id WHERE s.session_hash=? AND (s.account_id IS NULL OR a.status='active')").get(sessionKey(token));}
- isDevelopmentTestHost(token:string){return this.allowTestPlayers&&!!this.db.prepare('SELECT 1 FROM members m JOIN test_rooms t ON t.room_id=m.room_id WHERE m.session_hash=? AND m.is_host=1 LIMIT 1').get(this.auth.owner(token));}
+ isDevelopmentTestHost(token:string){return this.allowTestPlayers&&this.auth.account(token)?.role==='admin'&&(this.db.prepare('SELECT m.room_id FROM members m JOIN test_rooms t ON t.room_id=m.room_id WHERE m.session_hash=? AND m.is_host=1').all(this.auth.owner(token)) as {room_id:string}[]).some(r=>this.testPlayers.isolated(r.room_id));}
  adminRooms(token:string){this.auth.requireAdmin(token);return (this.db.prepare('SELECT id FROM rooms ORDER BY created_at DESC LIMIT 200').all() as {id:string}[]).map(({id})=>this.snapshot(id));}
  adminReplay(token:string,id:string){this.auth.requireAdmin(token);return this.readReplay(id);}
  close(){this.db.close();}

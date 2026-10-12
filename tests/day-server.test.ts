@@ -1,3 +1,4 @@
+import {seedTestAdmin} from './helpers/test-admin.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -34,8 +35,8 @@ test('SQLite restart preserves first-day turn, votes and deadline; retries do no
 
 test('development day helpers authorize host, never act as a real player and are absent without enablement',async()=>{
  let now=1000;const app=await createServer({dbPath:':memory:',allowTestPlayers:true,now:()=>now});try{
-  const host='a'.repeat(64);app.store.issueSession(host);const room=app.store.create(host,'测试房主').room;app.store.select(host,room.id,1);app.store.fillTestPlayers(host,room.id);app.store.setReady(host,room.id,true,0);app.store.deal(host,room.id);app.store.confirmIdentity(host,room.id);app.store.start(host,room.id);app.store.enterNight(host,room.id);now=1000000;app.store.tickNights();app.store.enterDay(host,room.id);
-  const guest='b'.repeat(64);app.store.issueSession(guest);app.store.join(guest,room.code,'访客');assert.throws(()=>app.store.testDayActor(guest,room.id),/HOST_ONLY/);assert.throws(()=>app.store.testDayPrivate(host,room.id,app.store.view(host,room.id).me.id),/NOT_TEST_PLAYER/);
+  const host='a'.repeat(64);seedTestAdmin(app.store,host);const room=app.store.create(host,'测试房主').room;app.store.select(host,room.id,1);app.store.fillTestPlayers(host,room.id);app.store.setReady(host,room.id,true,0);app.store.deal(host,room.id);app.store.confirmIdentity(host,room.id);app.store.start(host,room.id);app.store.enterNight(host,room.id);now=1000000;app.store.tickNights();app.store.enterDay(host,room.id);
+  const guest='b'.repeat(64);app.store.issueSession(guest);assert.throws(()=>app.store.join(guest,room.code,'访客'),/TEST_ROOM_PRIVATE/);assert.throws(()=>app.store.testDayActor(guest,room.id),/ADMIN_ONLY/);assert.throws(()=>app.store.testDayPrivate(host,room.id,app.store.view(host,room.id).me.id),/NOT_TEST_PLAYER/);
   const bot=app.store.snapshot(room.id).seats.find(s=>s.isTestPlayer)!;const card=app.store.testDayPrivate(host,room.id,bot.memberId!);assert.equal(card.seat,bot.number);assert.throws(()=>app.store.testDayCommand(host,room.id,bot.memberId!,{action:'close_signup',turnId:card.turnId}),/HOST_ONLY/);assert.equal(app.store.testDayActor(host,room.id).actorId,app.store.view(host,room.id).me.id);
   app.store.dayCommand(host,room.id,{action:'signup',join:false,turnId:card.turnId});assert.equal(app.store.testDayActor(host,room.id).actorId,app.store.snapshot(room.id).seats[1].memberId);
   await new Promise<void>(r=>app.http.listen(0,'127.0.0.1',r));const address=app.http.address();if(!address||typeof address==='string')throw Error('addr');const base=`http://127.0.0.1:${address.port}`;
