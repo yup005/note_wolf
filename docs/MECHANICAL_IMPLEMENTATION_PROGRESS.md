@@ -1,6 +1,10 @@
 # Mechanical board implementation progress
 
-## 最新补充：狼刀权限确认15秒（2026-10-12）
+## 最新补充：夜间播报与标签配置（2026-10-13）
+
+入夜提示先于首角色，后续狼人不重复，白天全静音。角色标签配置自动求和，只有普通狼人/村民可以加数量，白痴规则按选择显隐；旧重复狼王能力和已保存配置保留。明确来源及执行证据见[当前规则](WEREWOLF_RULES_SPEC.md#night-only-and-role-tags-2026-10-13)、[交接](PROJECT_STATUS_FOR_CHATGPT.md)与[报告](TEST_REPORT.md)。未决玩法/实机/未部署边界不变。
+
+## 历史补充：狼刀权限确认15秒（2026-10-12）
 
 Owner本地测试直接确认权限确认阶段15秒；仅覆盖原该阶段30秒默认，随后5秒闭眼及其他行动时长保持。13–15席布局与预录公开语音同时修正，详细源/检查及未部署边界见[交接](PROJECT_STATUS_FOR_CHATGPT.md)和[报告](TEST_REPORT.md)。
 

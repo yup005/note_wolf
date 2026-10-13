@@ -5,10 +5,13 @@ import {fileURLToPath} from 'node:url';
 import {readFileSync,writeFileSync,mkdtempSync,rmSync,existsSync,statSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
+import {publicVoiceAudioManifest} from '../apps/web/src/publicVoiceAudioManifest.js';
 const root=fileURLToPath(new URL('../',import.meta.url)).replace(/\/$/,'');
 const source=ts.createSourceFile('voice.ts',readFileSync(root+'/packages/domain/voice.ts','utf8'),ts.ScriptTarget.Latest,true);
 const normalize=(s:string)=>s.replace(/[\s。，、？！；：,.!?;:]/g,'');
 const vocabulary=new Map<string,string>();
+// Retain committed public vocabulary for older clients and historical prompts.
+for(const word of Object.keys(publicVoiceAudioManifest))vocabulary.set(word,word);
 function visit(node:ts.Node){if(ts.isStringLiteral(node)||ts.isTemplateHead(node)||ts.isTemplateMiddle(node)||ts.isTemplateTail(node)||ts.isNoSubstitutionTemplateLiteral(node)){const text=node.text;if(/[\u4e00-\u9fff]/.test(text)){const key=normalize(text);if(key)vocabulary.set(key,text);}}ts.forEachChild(node,visit);}visit(source);visit(ts.createSourceFile('store.ts',readFileSync(root+'/packages/storage/voice.ts','utf8'),ts.ScriptTarget.Latest,true));
 for(const text of ['公共播报。','零','一','二','三','四','五','六','七','八','九','十','百','点','和'])vocabulary.set(normalize(text),text);
 const temporary=mkdtempSync('/private/tmp/wolf-voice-'),manifest:Record<string,string>={};

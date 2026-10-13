@@ -5,7 +5,7 @@ import type {VoiceCommand,VoiceResponse} from '../../../packages/contracts/voice
 import {voiceFrame} from '../../../packages/domain/voice';
 import {canManageGame} from './gameAccess';
 import {errorText,requestId} from './api';
-interface VoiceUi {nativeSupported:boolean;recorded:boolean;recordingsSupported:boolean;useRecordings:()=>void;useNative:()=>void;enabled:boolean;pending:boolean;supported:boolean;status:string;error:string;lastText:string;enable:()=>void;disable:()=>void;replay:()=>void}
+interface VoiceUi {available:boolean;active:boolean;nativeSupported:boolean;recorded:boolean;recordingsSupported:boolean;useRecordings:()=>void;useNative:()=>void;enabled:boolean;pending:boolean;supported:boolean;status:string;error:string;lastText:string;enable:()=>void;disable:()=>void;replay:()=>void}
 const VoiceContext=createContext<VoiceUi|null>(null);
 export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;connected:boolean;children:ReactNode}){
  const nativeSupported=typeof speechSynthesis!=='undefined'&&typeof SpeechSynthesisUtterance!=='undefined';
@@ -19,8 +19,9 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
  const clientId=useRef(requestId());const alive=useRef(true),on=useRef(false),generation=useRef(0),busy=useRef(false),audio=useRef(0),audioScope=useRef(''),expiry=useRef(0),watchdog=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),controller=useRef<AbortController|null>(null);
  const latest=useRef({view,connected});latest.current={view,connected};
  const automatic=view.room.preparation.settings.gameMode==='automatic'&&!view.room.manual;
- const allowed=connected&&canManageGame(view)&&automatic;
- const publicScope=voiceFrame(view.room,Date.now()).scope;
+ const publicFrame=voiceFrame(view.room,Date.now()),active=!!publicFrame.stage;
+ const allowed=connected&&canManageGame(view)&&automatic&&active;
+ const publicScope=publicFrame.scope;
  function cancel(){audio.current++;if(watchdog.current)clearTimeout(watchdog.current);if(nativeSupported){try{speechSynthesis.cancel();}catch{}}recordings.current?.cancel();audioScope.current='';}
  function release(id=clientId.current){void fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',credentials:'same-origin',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'release',clientId:id})}).catch(()=>{});}
  function stop(note='已关闭'){
@@ -33,7 +34,7 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
    const data=await res.json();if(!res.ok)throw Error(data.message??'播报连接失败');return {data:data as VoiceResponse,started};
   }catch(e){if(abort.signal.aborted)throw Error('播报连接超时，请重新开启。');throw e;}finally{clearTimeout(timeout);if(controller.current===abort)controller.current=null;}
  }
- function eligible(){const l=latest.current;return alive.current&&l.connected&&canManageGame(l.view)&&l.view.room.preparation.settings.gameMode==='automatic'&&!l.view.room.manual&&document.visibilityState==='visible';}
+ function eligible(){const l=latest.current;return alive.current&&l.connected&&canManageGame(l.view)&&l.view.room.preparation.settings.gameMode==='automatic'&&!l.view.room.manual&&!!voiceFrame(l.view.room,Date.now()).stage&&document.visibilityState==='visible';}
  function play(text:string,scope:string){
   cancel();if(!eligible())return;const seq=audio.current;audioScope.current=scope;setLastText(text);
   if(mode.current){
@@ -80,23 +81,23 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
   document.addEventListener('visibilitychange',hide);window.addEventListener('pagehide',pageHide);
   return()=>{alive.current=false;document.removeEventListener('visibilitychange',hide);window.removeEventListener('pagehide',pageHide);stop();void context.current?.close();context.current=null;recordings.current=null;};
  },[]);
- useEffect(()=>{if(!allowed&&(on.current||busy.current))stop(automatic?'连接或管理权限已变化':'已切换纯手动');},[allowed,automatic]);
+ useEffect(()=>{if(!allowed&&(on.current||busy.current))stop(!active?'白天不播报':automatic?'连接或管理权限已变化':'已切换纯手动');},[allowed,automatic,active]);
  useEffect(()=>{if(audioScope.current&&audioScope.current!==publicScope)cancel();if(enabled)void poll();},[publicScope,enabled]);
  useEffect(()=>{
   if(!enabled)return;const pollTimer=setInterval(()=>void poll(),2000);
   const expiryTimer=setInterval(()=>{if(on.current&&Date.now()>=expiry.current)stop('播报连接已过期');},250);
   return()=>{clearInterval(pollTimer);clearInterval(expiryTimer);};
  },[enabled]);
- const value:VoiceUi={nativeSupported,recorded,recordingsSupported,useRecordings:()=>selectMode(true),useNative:()=>selectMode(false),enabled,pending,supported,status,error,lastText,enable:()=>void enable(),disable:()=>stop(),replay:()=>void poll('replay')};
+ const value:VoiceUi={available:allowed,active,nativeSupported,recorded,recordingsSupported,useRecordings:()=>selectMode(true),useNative:()=>selectMode(false),enabled,pending,supported,status,error,lastText,enable:()=>void enable(),disable:()=>stop(),replay:()=>void poll('replay')};
  return <VoiceContext.Provider value={value}>{children}</VoiceContext.Provider>;
 }
 export function PublicVoiceControls(){
- const voice=useContext(VoiceContext);if(!voice)return null;
- return <section className="control-settings voice-controls" aria-label="公共语音播报"><h3>公共语音</h3><p role="status">{voice.supported?voice.status:'此浏览器不支持语音，请按页面提示主持。'}</p>{voice.error&&<p role="alert" className="night-error">{voice.error}</p>}<button className="secondary full" disabled={!voice.supported||voice.pending} onClick={voice.enabled?voice.disable:voice.enable}>{voice.pending?'正在开启…':voice.enabled?'关闭公共播报':'开启公共播报'}</button>{voice.enabled&&<button className="text-button full" onClick={voice.replay}>重播当前提示</button>}{voice.recordingsSupported&&<button className="text-button full" disabled={voice.pending||voice.recorded&&!voice.nativeSupported} onClick={voice.recorded?voice.useNative:voice.useRecordings}>{voice.recorded?'使用浏览器语音':'使用内置语音'}</button>}{voice.lastText&&<p className="voice-caption">{voice.lastText}</p>}<p className="helper">由本设备播报，请保持页面在前台。</p></section>;
+ const voice=useContext(VoiceContext);if(!voice||!voice.active)return null;
+ return <section className="control-settings voice-controls" aria-label="公共语音播报"><h3>公共语音</h3><p role="status">{voice.supported?voice.status:'此浏览器不支持语音，请按页面提示主持。'}</p>{voice.error&&<p role="alert" className="night-error">{voice.error}</p>}<button className="secondary full" disabled={!voice.available||!voice.supported||voice.pending} onClick={voice.enabled?voice.disable:voice.enable}>{voice.pending?'正在开启…':voice.enabled?'关闭公共播报':'开启公共播报'}</button>{voice.enabled&&<button className="text-button full" disabled={!voice.available||voice.pending} onClick={voice.replay}>重播当前提示</button>}{voice.recordingsSupported&&<button className="text-button full" disabled={!voice.available||voice.pending||voice.recorded&&!voice.nativeSupported} onClick={voice.recorded?voice.useNative:voice.useRecordings}>{voice.recorded?'使用浏览器语音':'使用内置语音'}</button>}{voice.lastText&&<p className="voice-caption">{voice.lastText}</p>}<p className="helper">由本设备播报，请保持页面在前台。</p></section>;
 }
 
 // The same device lease and gesture-based enable flow are used in both places.
 export function PublicVoiceShortcut(){
- const voice=useContext(VoiceContext);if(!voice)return null;
- return <button className="text-button voice-shortcut" title={voice.error||voice.status} disabled={!voice.supported||voice.pending} onClick={voice.enabled?voice.disable:voice.error&&!voice.recorded&&voice.recordingsSupported?voice.useRecordings:voice.enable}>{!voice.supported?'语音不支持':voice.pending?'开启中…':voice.enabled?'关闭播报':voice.error&&!voice.recorded&&voice.recordingsSupported?'内置播报':'开启播报'}</button>;
+ const voice=useContext(VoiceContext);if(!voice||!voice.active)return null;
+ return <button className="text-button voice-shortcut" title={voice.error||voice.status} disabled={!voice.available||!voice.supported||voice.pending} onClick={voice.enabled?voice.disable:voice.error&&!voice.recorded&&voice.recordingsSupported?voice.useRecordings:voice.enable}>{!voice.supported?'语音不支持':voice.pending?'开启中…':voice.enabled?'关闭播报':voice.error&&!voice.recorded&&voice.recordingsSupported?'内置播报':'开启播报'}</button>;
 }

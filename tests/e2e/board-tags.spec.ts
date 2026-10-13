@@ -1,0 +1,17 @@
+import {test,expect} from '@playwright/test';
+
+test('role tags derive player count, repeat only wolf/villager, and conditionally show idiot rules',async({page})=>{
+ await page.goto('/');await page.getByLabel('你的昵称').fill('Tags host');await page.getByRole('button',{name:'创建房间',exact:true}).click();await page.getByRole('button',{name:'以游客身份继续'}).click();await page.getByText('自定义调整',{exact:true}).click();
+ const editor=page.locator('.custom-board-editor'),total=page.getByTestId('draft-player-count');
+ await expect(editor.getByRole('spinbutton')).toHaveCount(0);await expect(total).toHaveText('共 12 人');
+ await expect(editor.getByRole('button',{name:'狼人',exact:true})).toHaveAccessibleDescription('狼人 4 名');
+ const seer=editor.getByRole('button',{name:'预言家',exact:true});await expect(seer).toHaveAttribute('aria-pressed','true');await seer.click();await expect(total).toHaveText('共 11 人');await expect(seer).toHaveAttribute('aria-pressed','false');await seer.click();await expect(total).toHaveText('共 12 人');await expect(seer).toHaveAttribute('data-role-count','1');await expect(editor.getByRole('button',{name:'增加预言家',exact:true})).toHaveCount(0);
+ await editor.getByRole('button',{name:'增加狼人',exact:true}).click();await expect(total).toHaveText('共 13 人');await editor.getByRole('button',{name:'减少狼人',exact:true}).click();await expect(total).toHaveText('共 12 人');
+ await editor.getByRole('button',{name:'增加村民',exact:true}).click();await editor.getByRole('button',{name:'增加村民',exact:true}).click();await expect(total).toHaveText('共 14 人');await page.getByLabel('白痴规则').selectOption('dual-category-14');
+ const idiot=editor.getByRole('button',{name:'白痴',exact:true});await idiot.click();await expect(page.getByLabel('白痴规则')).toHaveCount(0);await expect(total).toHaveText('共 13 人');await idiot.click();await expect(page.getByLabel('白痴规则')).toHaveValue('standard');
+ for(const label of ['黑狼王','白狼王','机械狼','装甲狼']){await expect(editor.getByRole('button',{name:'增加'+label,exact:true})).toHaveCount(0);await editor.getByRole('button',{name:label,exact:true}).click();await expect(editor.getByRole('button',{name:label,exact:true})).toHaveAttribute('data-role-count','1');await editor.getByRole('button',{name:label,exact:true}).click();}
+ await page.getByRole('button',{name:'应用本局配置',exact:true}).click();await expect(page.getByTestId('seated-count')).toHaveText('0 / 14');await page.reload();await page.getByText('自定义调整',{exact:true}).click();await expect(total).toHaveText('共 14 人');await expect(editor.getByRole('button',{name:'村民',exact:true})).toHaveAttribute('data-role-count','6');
+ for(const width of [320,390,430]){await page.setViewportSize({width,height:844});await expect(page.locator('body')).toHaveJSProperty('scrollWidth',width);const boxes=await editor.locator('.board-role-editor button').evaluateAll(buttons=>buttons.map(button=>button.getBoundingClientRect().height));expect(boxes.every(height=>height>=44)).toBe(true);}
+ await page.setViewportSize({width:390,height:844});await editor.scrollIntoViewIfNeeded();await page.screenshot({path:'/private/tmp/note-wolf-role-tags-mobile.png',fullPage:true,animations:'disabled'});await editor.screenshot({path:'/private/tmp/note-wolf-role-picker.png',animations:'disabled'});
+ for(const label of ['狼人','村民','预言家','女巫','猎人','白痴'])await editor.getByRole('button',{name:label,exact:true}).click();await expect(total).toHaveText('共 0 人');await expect(page.getByRole('button',{name:'应用本局配置',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'另存板子',exact:true})).toBeDisabled();
+});

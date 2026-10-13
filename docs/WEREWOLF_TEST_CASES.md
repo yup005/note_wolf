@@ -1,6 +1,21 @@
 # WEREWOLF_TEST_CASES.md
 
-## 扩展座位与预录播报验收（2026-10-12）
+## 仅夜间语音与角色标签验收（2026-10-13）
+
+来源：[当前规则](WEREWOLF_RULES_SPEC.md#night-only-and-role-tags-2026-10-13)。本节覆盖历史白天语音的自动验收期望；历史执行记录保留。
+
+| ID | 场景 | 当前期望 | 自动证据 |
+|---|---|---|---|
+| AUDIO-003/005 | 所有日间阶段、暂停/恢复、警长、警徽、自由发言、插话、死亡技能、终局 | 无提示/入口；白天接口拒绝，入日取消/释放，游戏继续正常运行 | night-only-voice、voice、voice-store、e2e/voice |
+| AUDIO-003/006 | 首夜守卫、次夜机械状态确认、标准板首狼人及后续狼人 | 入夜闭眼先于首角色；后续狼人不重复，当前夜提示可重播、重复轮询不重复 | night-only-voice、recorded-voice、e2e/voice |
+| CFG-001 | 标签加入/移除、狼人/村民加减、特殊角色标签 | 自动人数，无数值输入；只有狼人/村民重复，特殊角色新加入为1 | e2e/board-tags |
+| CFG-001 |14人双边白痴移除/重新加入及变为13人 | 白痴规则显隐准确，失效双边政策清除，重新加入默认规则 | e2e/board-tags、e2e/boards |
+| CFG-001 | 应用/另存/刷新、0人边界及320/390/430px | 配置和人数保留、模板不改、无横向溢出、标签及加减>=44px | e2e/board-tags、e2e/boards、e2e/mechanical |
+| CFG-001 | 既有重复黑/白狼王配置及完整技能流程 | 新标签不提供加数量，旧配置/API重复能力保留 | e2e/wolf-kings、wolf-kings、wolf-kings-runtime |
+
+<a id="扩展座位与预录播报验收2026-10-12"></a>
+
+## 历史：扩展座位与预录播报验收（2026-10-12）
 
 来源：[本批规则](WEREWOLF_RULES_SPEC.md#recorded-voice-and-authority-2026-10-12)。真实出声与实机边界见[报告](TEST_REPORT.md)。
 

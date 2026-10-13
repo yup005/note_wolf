@@ -21,7 +21,10 @@ export async function loginTestAdmin(page:Page){
   const response=await requestWithBackoff(()=>page.request.post('/api/auth/login',{data:{username:'test_admin',password:'test-admin-password'}}));expect(response.ok()).toBe(true);
   adminCookie=(await page.context().cookies()).find(c=>c.name==='wolf_session')!.value;
  }
- await page.goto('/');
+ // Consume the first navigation's bootstrap before registering the reload wait,
+ // otherwise a late response from the old page can hide the new page's429.
+ const warmup=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/session'&&response.request().method()==='GET');
+ await page.goto('/');await warmup;
  await page.evaluate(()=>{localStorage.removeItem('wolf.room');localStorage.removeItem('wolf.pending-create');});
  const bootstrap=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/session'&&response.request().method()==='GET');
  await page.reload();let browserSession=await bootstrap;

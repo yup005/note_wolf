@@ -8,7 +8,7 @@ import type {RoomSnapshot} from '../packages/contracts/index.js';
 import type {DayPhase} from '../packages/contracts/day.js';
 import type {NightPhase} from '../packages/contracts/night.js';
 
-test('all public night and day cues retain numeric facts and have static local audio',()=>{
+test('all active public night cues retain numeric facts and have static local audio',()=>{
  const base={id:'r',preparation:{settings:{gameMode:'automatic'}},control:{status:'running'},night:null,day:null} as unknown as RoomSnapshot;
  const night:NightPhase[]=['awaiting_host','mechanical_authority','guard','wolves','eyes_closed','witch','mechanical','armor','spiritSeer','mixer','seer','hunter','first_night_complete','rules_pending'];
  const day:DayPhase[]=['awaiting_host','sheriff_signup','sheriff_speech','sheriff_withdraw','vote_setup','voting','vote_result','night_announcement','death_skill','hunter_target','white_wolf_target','last_words','badge_transfer','day_direction','day_speech','free_speech','day_complete','ended','rules_pending'];
@@ -17,6 +17,13 @@ test('all public night and day cues retain numeric facts and have static local a
  for(const frame of frames)for(const cue of frame.cues){let parts:string[];try{parts=recordedVoiceParts(cue.text);}catch{assert.fail('Missing public audio vocabulary for '+cue.text);}assert.ok(parts.length>0,cue.text);for(const path of parts){assert.ok(existsSync('apps/web/public'+path),path);assert.ok(statSync('apps/web/public'+path).size>1000,path);}}
  assert.equal(chineseVoiceNumber('13'),'十三');assert.equal(chineseVoiceNumber('101'),'一百零一');assert.equal(chineseVoiceNumber('256'),'二百五十六');assert.equal(chineseVoiceNumber('1.5'),'一点五');
  assert.deepEqual(recordedVoiceParts('13'),['十','三'].map(word=>'/voice/'+publicVoiceAudioManifest[word as keyof typeof publicVoiceAudioManifest]));
+});
+
+test('recorded opening can precede guard or mechanical authority without repeating at wolves',()=>{
+ for(const action of ['守卫请睁眼，请进行操作。','机械狼请睁眼，请查看行动状态。','狼人请睁眼，选择目标。']){
+  assert.ok(recordedVoiceParts('第2夜，天黑请闭眼。'+action).length>0);
+  assert.ok(recordedVoiceParts(action).length>0);
+ }
 });
 
 test('unknown/private text is rejected rather than sent to a speech service',()=>{

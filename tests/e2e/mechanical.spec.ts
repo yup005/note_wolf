@@ -1,3 +1,4 @@
+import {setRoleCount} from './helpers/board-tags';
 import {loginTestAdmin} from './helpers/test-admin';
 import {test,expect,type Page} from '@playwright/test';
 import type {LobbyView,Role} from '../../packages/contracts/index';
@@ -10,7 +11,7 @@ test('saved 15-player board deals and privately learns a civilian before spirit-
  test.setTimeout(60000);
  await page.goto('/');await page.getByLabel('你的昵称').fill('Mechanical browser host');await page.getByRole('button',{name:'创建房间',exact:true}).click();
  await page.getByLabel('选择板子').selectOption('mechanical-12');await page.getByText('自定义调整',{exact:true}).click();
- await page.getByLabel('板子名称').fill('Saved mechanical 15');await page.getByLabel('玩家人数',{exact:true}).fill('15');await page.getByLabel('狼人人数',{exact:true}).fill('4');await page.getByLabel('村民人数',{exact:true}).fill('5');await page.getByLabel('白痴人数',{exact:true}).fill('1');await page.getByRole('button',{name:'另存板子',exact:true}).click();
+ await page.getByLabel('板子名称').fill('Saved mechanical 15');await setRoleCount(page,'狼人',Number('4'));await setRoleCount(page,'村民',Number('5'));await setRoleCount(page,'白痴',Number('1'));await page.getByRole('button',{name:'另存板子',exact:true}).click();
  await expect(page.getByTestId('seated-count')).toHaveText('0 / 15');
  await page.reload();await expect(page.getByLabel('选择板子')).toContainText('Saved mechanical 15');await expect(page.getByTestId('seated-count')).toHaveText('0 / 15');
  await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();await page.getByRole('button',{name:'补满测试玩家',exact:true}).click();await page.getByRole('button',{name:'准备',exact:true}).click();await page.getByRole('button',{name:'开始发牌',exact:true}).click();

@@ -21,26 +21,26 @@ test('dead divine roles keep the same public night prompts; pause and reconnect 
  const reconnecting={...room,control:{...room.control!,reconnecting:true}};assert.equal(text(voiceFrame(reconnecting,1000)),'系统连接异常，正在重新连接，请稍候。');
  }finally{s.close();}
 });
-test('day voice only announces published deaths and uniformly asks all deceased players about skills',()=>{
+test('published deaths, sheriff and victory remain silent during daytime',()=>{
  const {store:s,id,tokens:t,setNow}=voiceFixture();try{setNow(1000000);s.tickNights();s.enterDay(t[0],id);let room=s.snapshot(id);assert.doesNotMatch(text(voiceFrame(room,1000000)),/死讯|刀|毒/);
- for(const seat of [5,10,11,12]){room={...room,day:{...room.day!,phase:'death_skill',currentDeath:seat,turnId:'same'}};assert.equal(text(voiceFrame(room,1000000)),`${seat}号玩家是否发动技能？`);}
- room={...room,day:{...room.day!,phase:'night_announcement',announcement:[5,8],sheriff:3,badge:'elected'}};assert.match(text(voiceFrame(room,1000000)),/3号.*当选警长/);assert.match(text(voiceFrame(room,1000000)),/5、8号.*死亡/);assert.doesNotMatch(text(voiceFrame(room,1000000)),/狼刀|毒杀/);
- room={...room,day:{...room.day!,phase:'ended',winner:'wolves',reason:'神职全部死亡'}};assert.match(text(voiceFrame(room,1000000)),/狼人获胜/);assert.doesNotMatch(text(voiceFrame(room,1000000)),/发动技能|睁眼/);
+ for(const seat of [5,10,11,12]){room={...room,day:{...room.day!,phase:'death_skill',currentDeath:seat,turnId:'same'}};assert.equal(text(voiceFrame(room,1000000)),'');}
+ room={...room,day:{...room.day!,phase:'night_announcement',announcement:[5,8],sheriff:3,badge:'elected'}};assert.equal(text(voiceFrame(room,1000000)),'');assert.doesNotMatch(text(voiceFrame(room,1000000)),/狼刀|毒杀/);
+ room={...room,day:{...room.day!,phase:'ended',winner:'wolves',reason:'神职全部死亡'}};assert.equal(text(voiceFrame(room,1000000)),'');assert.doesNotMatch(text(voiceFrame(room,1000000)),/发动技能|睁眼/);
  }finally{s.close();}
 });
 test('manual mode has no automated voice even when old automatic states remain',()=>{
  const {store:s,id}=voiceFixture();try{const r=s.snapshot(id);assert.equal(voiceFrame({...r,preparation:{...r.preparation,settings:{...r.preparation.settings,gameMode:'manual'}}},1000).cues.length,0);}finally{s.close();}
 });
-test('public voice follows an interjecting idiot and returns to the paused speaker without exposing true role',()=>{
+test('daytime interjection and its restored speaker stay silent without changing gameplay timing',()=>{
  const {store:s,id}=voiceFixture();try{
   const night=createNight([{seat:1,role:'wolf'},{seat:2,role:'villager'},{seat:3,role:'mechanicalWolf'},{seat:4,role:'hunter'}],0);night.phase='first_night_complete';
   const day=createDay(night,firstDayRules,0);day.phase='day_speech';day.speaker=2;day.speakers=[4];day.deadline=90000;day.players[2].alive=false;day.flippedIdiots=[3];
   const room=s.snapshot(id),frame=(now:number)=>voiceFrame({...room,night:null,day:publicDay(day,now)},now);
-  const original=frame(0);assert.match(text(original),/2号玩家发言/);
+  const original=frame(0);assert.equal(text(original),'');
   dayCommand(day,{seat:3,isHost:false},{action:'interject',turnId:day.turnId},1000);
-  const interjecting=frame(1000);assert.match(text(interjecting),/3号.*插话/);assert.doesNotMatch(text(interjecting),/2号玩家发言|机械|狼人|额外夜/);assert.notEqual(interjecting.stage,original.stage);
+  const interjecting=frame(1000);assert.equal(text(interjecting),'');assert.doesNotMatch(text(interjecting),/2号玩家发言|机械|狼人|额外夜/);assert.notEqual(day.turnId,'same');
   for(const control of [{...room.control!,status:'paused' as const},{...room.control!,status:'resuming' as const},{...room.control!,reconnecting:true}])assert.doesNotMatch(text(voiceFrame({...room,night:null,day:publicDay(day,1000),control},1000)),/3号|插话/);
   dayCommand(day,{seat:3,isHost:false},{action:'end_interjection',turnId:day.turnId},4000);
-  const resumed=frame(4000);assert.match(text(resumed),/2号玩家发言/);assert.notEqual(resumed.stage,interjecting.stage);assert.equal(day.deadline,93000);
+  const resumed=frame(4000);assert.equal(text(resumed),'');assert.equal(day.interjection,null);assert.equal(day.deadline,93000);
  }finally{s.close();}
 });

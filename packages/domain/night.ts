@@ -92,7 +92,7 @@ export function nightCommand(s:NightState,seat:number,c:NightCommand,now:number,
  if(c.action==='hunter_seen'&&s.phase==='hunter'){if(s.hunterSpent)throw new LobbyError('NOT_YOUR_TURN',403);if(!s.hunterSeen)s.events.push({type:'hunter_seen',at:now,seat});s.hunterSeen=true;s.hunterTurnId=c.turnId;finishRole(s,now,choose);return;}
  throw new LobbyError('NOT_YOUR_TURN',403);
 }
-export function publicNight(s:NightState,now:number):NightPublic{return {night:s.night,phase:s.phase,turnId:s.turnId,deadline:s.deadline,serverNow:now,alive:s.players.filter(p=>p.alive!==false).map(p=>p.seat)};}
+export function publicNight(s:NightState,now:number):NightPublic{return {opening:s.mechanical?s.mechanical.index===0&&s.phase===s.mechanical.schedule[0]:s.phase==='wolves',night:s.night,phase:s.phase,turnId:s.turnId,deadline:s.deadline,serverNow:now,alive:s.players.filter(p=>p.alive!==false).map(p=>p.seat)};}
 export function privateNight(s:NightState,seat:number):NightPrivate{
  if(s.engine)return privateMechanicalNight(s,seat);
  const out:NightPrivate={turnId:s.turnId,kind:'waiting'};const player=s.players.find(p=>p.seat===seat);const role=player?.role;

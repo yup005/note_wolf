@@ -1,8 +1,18 @@
 # 笔记狼人杀 — 产品决定与对话同步记录
 
-> Updated: 2026-10-12 (America/Los_Angeles)  
+> Updated: 2026-10-13 (America/Los_Angeles)
 > This document records **product-relevant confirmed decisions and current planning**, not the raw ChatGPT conversation.  
 > **Source note:** The 2026-10-10 product status below was provided by the project owner as a handoff summary. It is **not** verified against the older GitHub `main` snapshot or by re-running tests.
+
+<a id="night-only-and-role-tags-2026-10-13"></a>
+
+## 仅夜间播报与按钮式角色配置（2026-10-13，直接补充）
+
+Owner先要求警長当选只在竞选和警徽移交后各播一次，随后明确更新为“白天的内容其实都不需要语音播报，只有夜间需要语音播报功能”；最新要求覆盖此前白天竞选/当选、投票、死讯、技能询问、遗言、警徽、自由发言、插话及胜负的自动语音。白天页面与游戏事实继续保留，语音入口不显示，进入白天停止当前音源及租约。Owner另确认“天黑请闭眼”在刚入夜、机械狼确认状态之前播报，狼人行动阶段不重复；标准板首阶段就是狼人时仍先播入夜提示再喊狼人。
+
+Owner要求自定义调整改为角色标签按钮：点击加入/再次点击移除；仅普通狼人和村民有加减数量，其他标签最多加入1名，人数自动求和。白痴规则仅在包含白痴时出现；移除白痴或不再满足14人双边条件时恢复默认。该新增入口规则不删除旧已保存的重复黑/白狼王配置，也不改已确认的重复狼王引擎/档案能力；旧数量显示准确，点击标签移除后重新加入为1名。不新增其它板子、评论或权限。
+
+详细规格见[本批规则](WEREWOLF_RULES_SPEC.md#night-only-and-role-tags-2026-10-13)，自动与实机证据见[交接](PROJECT_STATUS_FOR_CHATGPT.md)和[报告](TEST_REPORT.md)。前49项及旧确认原文保留，不部署。
 
 <a id="recorded-voice-and-authority-2026-10-12"></a>
 

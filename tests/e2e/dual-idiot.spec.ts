@@ -1,3 +1,4 @@
+import {setRoleCount} from './helpers/board-tags';
 import {test,expect} from '@playwright/test';
 import {loginTestAdmin} from './helpers/test-admin';
 import type {LobbyView} from '../../packages/contracts/index';
@@ -6,7 +7,7 @@ type Command<T>=T extends unknown?Omit<T,'turnId'>:never;
 
 test('dual flip remains a night target after refresh and has no next-day player controls',async({page})=>{
  test.setTimeout(60000);await loginTestAdmin(page);await page.getByLabel('你的昵称').fill('Dual simulation host');await page.getByRole('button',{name:'创建房间',exact:true}).click();
- await page.getByText('自定义调整',{exact:true}).click();await page.getByLabel('玩家人数',{exact:true}).fill('14');await page.getByLabel('村民人数',{exact:true}).fill('6');await page.getByLabel('白痴规则').selectOption('dual-category-14');await page.getByRole('button',{name:'应用本局配置',exact:true}).click();
+ await page.getByText('自定义调整',{exact:true}).click();await setRoleCount(page,'村民',Number('6'));await page.getByLabel('白痴规则').selectOption('dual-category-14');await page.getByRole('button',{name:'应用本局配置',exact:true}).click();
  await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();await page.getByRole('button',{name:'补满测试玩家',exact:true}).click();await page.getByRole('button',{name:'准备',exact:true}).click();await page.getByRole('button',{name:'开始发牌',exact:true}).click();await page.getByRole('button',{name:'查看身份',exact:true}).click();await page.getByRole('button',{name:'确认身份',exact:true}).click();await page.getByRole('button',{name:'开始对局',exact:true}).click();
  const session=await(await page.request.get('/api/session')).json();const initial:LobbyView=session.rooms[0];const path=`/api/rooms/${initial.room.id}`;
  const state=async():Promise<LobbyView>=>{const r=await page.request.get(path);expect(r.ok()).toBe(true);return r.json();};

@@ -1,6 +1,6 @@
 import {z} from 'zod';
 export type NightPhase='awaiting_host'|'wolves'|'eyes_closed'|'witch'|'seer'|'hunter'|'first_night_complete'|'mechanical_authority'|'guard'|'mechanical'|'armor'|'spiritSeer'|'mixer'|'rules_pending';
-export interface NightPublic {night:number;phase:NightPhase;turnId:string;deadline:number|null;serverNow:number;alive:number[]}
+export interface NightPublic {opening?:boolean;night:number;phase:NightPhase;turnId:string;deadline:number|null;serverNow:number;alive:number[]}
 export interface NightPrivate {
  turnId:string;kind:'waiting'|'wolves'|'witch'|'seer'|'hunter'|'mechanical_authority'|'guard'|'mechanical'|'armor'|'spiritSeer'|'mixer';
  canLearn?:boolean;learnedRole?:import('./index.js').Role|null;inheritedKnife?:boolean;

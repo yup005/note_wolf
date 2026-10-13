@@ -6,8 +6,9 @@ type Command<T>=T extends unknown?Omit<T,'turnId'>:never;
 
 test('repeatable kings use public carry and black gun controls after refresh',async({page})=>{
  test.setTimeout(90000);await loginTestAdmin(page);await page.getByLabel('你的昵称').fill('Kings simulation');await page.getByRole('button',{name:'创建房间',exact:true}).click();
- await page.getByText('自定义调整',{exact:true}).click();await expect(page.getByLabel('黑狼王人数')).toHaveAttribute('max','256');await expect(page.getByLabel('白狼王人数')).toHaveAttribute('max','256');
- await page.getByLabel('狼人人数',{exact:true}).fill('0');await page.getByLabel('黑狼王人数').fill('2');await page.getByLabel('白狼王人数').fill('2');await page.getByRole('button',{name:'应用本局配置',exact:true}).click();
+ // Repeated kings remain a supported saved/API composition; the new editor has singleton tags.
+ const configured=(await(await page.request.get('/api/session')).json()).rooms[0] as LobbyView;
+ const boardResponse=await page.request.post(`/api/rooms/${configured.room.id}/board`,{data:{settingsRevision:configured.room.preparation.settingsRevision,selection:{kind:'composition',composition:{seatCount:12,roles:{wolf:0,blackWolf:2,whiteWolf:2,villager:4,seer:1,witch:1,hunter:1,idiot:1}}}}});expect(boardResponse.ok(),await boardResponse.text()).toBe(true);
  await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();await page.getByRole('button',{name:'补满测试玩家',exact:true}).click();await page.getByRole('button',{name:'准备',exact:true}).click();await page.getByRole('button',{name:'开始发牌',exact:true}).click();await page.getByRole('button',{name:'查看身份',exact:true}).click();await page.getByRole('button',{name:'确认身份',exact:true}).click();await page.getByRole('button',{name:'开始对局',exact:true}).click();
  const session=await(await page.request.get('/api/session')).json(),initial:LobbyView=session.rooms[0],path=`/api/rooms/${initial.room.id}`;
  const state=async():Promise<LobbyView>=>(await page.request.get(path)).json();const post=async(endpoint:string,data:unknown={})=>{const r=await page.request.post(path+endpoint,{data});expect(r.ok(),await r.text()).toBe(true);};const command=async(c:Command<DayCommand>)=>post('/day/command',{...c,turnId:(await state()).room.day!.turnId});
