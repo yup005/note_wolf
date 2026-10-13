@@ -12,6 +12,8 @@
 
 真实iPhone Safari、实际听感、后台锁屏、弱网及真实多手机仍未验收；未部署、未改线上开关。文档复查10份、221个本地引用/锚点及差异通过，旧确认/49项问卷与166项稳定需求ID/汇总保留，实施SHA同批记录。
 
+实施提交：[11cb0f8f92a51dcece8ea0fe208b5bae261c4bd7](https://github.com/yup005/note_wolf/commit/11cb0f8f92a51dcece8ea0fe208b5bae261c4bd7)。本次SHA跟进仅文档，引用/差异检查通过，代码检查未重跑；同批正常推送后核对最终远端SHA。
+
 ## 历史：扩展座位与预录公共播报（2026-10-13交付；2026-10-12确认）
 
 范围及来源见[当前交接](PROJECT_STATUS_FOR_CHATGPT.md)、[直接确认](PRODUCT_DECISIONS.md#recorded-voice-and-authority-2026-10-12)和[规则/边界](WEREWOLF_RULES_SPEC.md#recorded-voice-and-authority-2026-10-12)。仅独立合成房间和本地静态公共音频，不部署，不读取真人秘密或使用麦克风。
