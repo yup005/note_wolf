@@ -53,4 +53,4 @@
 - [x] Add minimal English-code/Chinese-UI controls with mobile layout and existing confirmations; review React hooks/accessibility.
 - [x] Run full npm test, typecheck, build, and full E2E; inspect synthetic screenshots and use one fresh read-only code reviewer.
 - [x] Fix concrete review findings with failing regressions; update rules, IDs and honest verification/remaining scope.
-- [ ] Review scoped docs/diff, commit the completed batch plus implementation-SHA follow-up, fetch, non-force push main and verify remote SHA.
+- [x] Review scoped docs/diff, commit the completed batch plus implementation-SHA follow-up, fetch, non-force push main and verify remote SHA.
