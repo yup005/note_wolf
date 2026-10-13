@@ -5,7 +5,7 @@ const positive=z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const charges=z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).nullable();
 export const useSchema=z.object({requestId:z.string().min(1),night:positive,target:positive.nullable()}).strict();
 export const skillSchema=z.object({
- id:z.string().min(1),kind:z.enum(['poison','antidote','guard','inspect','shot','extra-knife']),
+ id:z.string().min(1),kind:z.enum(['poison','antidote','guard','inspect','shot','extra-knife','explode-take']),
  capacity:charges,remaining:charges,availableFromNight:positive,
  parameters:z.record(z.string(),z.json()),lastTarget:positive.nullable().optional(),
  copiedFrom:z.object({seat:positive,skillId:z.string().min(1),night:positive}).strict().nullable(),

@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {ShareControls} from './ShareControls';
 import type {LobbyView} from '../../../packages/contracts/index';
+import {isWolfRole,type BoardRole} from '../../../packages/contracts/board';
 import {deathCauses,type RecordDocument,type RecordList,type RecordDraft,type OfficialRevision} from '../../../packages/contracts/records';
 import {RecordContent,RecordPostDialog,outcomeLabel} from './RecordPostDialog';
 import {api,errorText} from './api';
@@ -14,7 +15,7 @@ export function RecordsPanel({view,onClose,onRefresh}:{view:LobbyView;onClose:()
  const [leaving,setLeaving]=useState(false);
  const [post,setPost]=useState<string>();const [history,setHistory]=useState<OfficialRevision[]>();const [confirm,setConfirm]=useState<'commit'|'switch'|'accept'|'adjudicate'|'finish-record'|null>(null);const [request,setRequest]=useState<{version:number;request:{author:string;document:RecordDocument}|null}>();
  const [ruling,setRuling]=useState<'wolves'|'good'|''>('');
- const recordOnly=!room.board.composition.roleCounts.wolf&&!room.board.composition.roleCounts.mechanicalWolf&&!room.board.composition.roleCounts.armoredWolf;
+ const recordOnly=!Object.entries(room.board.composition.roleCounts).some(([role,count])=>count!>0&&isWolfRole(role as BoardRole));
  const hasManualConflict=!!room.board.composition.roleCounts.mixer||!!room.board.composition.roleCounts.mechanicalWolf&&!!room.board.composition.roleCounts.idiot;
  const ended=room.manual?.status==='ended'||room.day?.phase==='ended';const editable=!!list?.canRecord;const dirty=!!document&&!!draft&&JSON.stringify(document)!==JSON.stringify(draft.document);
  async function load(){const r=await api<RecordList>(base+'/records');setList(r);setDraft(r.own??undefined);setDocument(r.own?.document);if(me.isHost&&room.manual)setRequest(await api(base+'/manual/request'));}

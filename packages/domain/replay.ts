@@ -74,16 +74,17 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
    for(const action of e){if(action.type==='command'&&action.command?.action==='signup'){if(action.command.join===true)applicants.add(action.seat!);else applicants.delete(action.seat!);}if(action.type==='command'&&action.command?.action==='withdraw'||action.type==='death_explosion')applicants.delete(action.seat!);if(action.type==='vote_outcome'&&action.result?.purpose.startsWith('sheriff')){applicants.clear();for(const seat of action.result.leaders)applicants.add(seat);}}
    if(e.some(x=>x.type.startsWith('sheriff_')||x.command?.action==='signup'||x.command?.action==='withdraw')&&applicants.size)lines.push(`留警：${seats([...applicants].sort((a,b)=>a-b))}`);
    lines.push(...legacyVotes(e,round.outcome?.result));
-   const shotTargets=new Set(e.filter(x=>x.type==='hunter_shot').map(x=>x.target));
+   const shotTargets=new Set(e.filter(x=>x.type==='hunter_shot'||x.type==='white_wolf_take').map(x=>x.target));
    for(const action of e){
     if(action.type==='vote_outcome'&&action.result)lines.push(describeVote(action.result));
     if(action.type==='sheriff_elected'){sheriff=action.seat!;lines.push(`${sheriff} 号当选警长`);}
     if(action.type==='idiot_flip')lines.push(`${action.seat} 号白痴翻牌，神边出局、民边存活`);
     if(action.type.startsWith('death_')){
-     const who=`${action.seat} 号`;const reason=action.type.slice(6);if(reason==='shot'&&shotTargets.has(action.seat))continue;
-     const description:Record<string,string>={knife:'被狼刀杀死',poison:'被毒死',shot:'被猎人开枪带走',exile:roles.get(action.seat!)==='idiot'?'被放逐，白痴翻牌死亡':'被放逐',explosion:'狼人自爆'};
+     const who=`${action.seat} 号`;const reason=action.type.slice(6);if(['shot','white-wolf'].includes(reason)&&shotTargets.has(action.seat))continue;
+     const description:Record<string,string>={knife:'被狼刀杀死',poison:'被毒死',shot:'被开枪带走',exile:roles.get(action.seat!)==='idiot'?'被放逐，白痴翻牌死亡':'被放逐',explosion:'狼人自爆','white-wolf':'被白狼王带走'};
      if(description[reason])lines.push(`${who}${description[reason]}${roles.get(action.seat!)==='hunter'&&(reason==='poison'||hunterSpent.has(action.seat!))?'（技能不可发动）':''}`);
     }
+    if(action.type==='white_wolf_take')lines.push(`${action.seat} 号白狼王自爆，带走 ${action.target} 号`);
     if(action.type==='hunter_shot'){lines.push(`${action.seat} 号${boardRoleLabels[roles.get(action.seat!)??'hunter']}开枪，带走 ${action.target} 号`);hunterSpent.add(action.seat!);}
     if(action.type==='command'&&action.command?.action==='transfer_badge'){const target=action.command.target;sheriff=typeof target==='number'?target:null;lines.push(sheriff===null?`${action.seat} 号撕掉警徽`:`${action.seat} 号将警徽移交给 ${sheriff} 号`);}
    }

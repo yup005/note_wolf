@@ -5,8 +5,9 @@ import type {GameEvent} from '../contracts/game.js';
 import type {NightState} from './night.js';
 import {evaluateVictory} from './victory.js';
 import type {EngineState} from '../contracts/engine.js';
+import {isWolfRole,isSharedWolfRole} from '../contracts/board.js';
 import {useSkill} from './skills.js';
-type DeathReason='knife'|'poison'|'shot'|'exile'|'explosion';
+type DeathReason='knife'|'poison'|'shot'|'exile'|'explosion'|'white-wolf';
 type Task={seat:number;step:'skill'|'words'|'badge'};
 export interface DayState {
  engine?:EngineState;extraNightSeat?:number|null;flippedIdiots?:number[];
@@ -23,7 +24,7 @@ const error=(code='PHASE_LOCKED',status=409):never=>{throw new LobbyError(code,s
 const living=(s:DayState)=>s.players.filter(p=>p.alive).map(p=>p.seat);
 const dualFlipped=(s:DayState,seat:number)=>s.engine?.board.composition.idiotPolicy==='dual-category-14'&&s.players.some(p=>p.seat===seat&&p.role==='idiot')&&!!s.flippedIdiots?.includes(seat);
 const participants=(s:DayState)=>living(s).filter(seat=>!dualFlipped(s,seat));
-function phase(s:DayState,p:DayPhase,now:number,seconds?:number){s.interjection=null;s.interjectionUsed={};s.phase=p;s.turnId=randomUUID();s.deadline=seconds===undefined?null:now+seconds*1000;s.events.push({type:p,at:now,...(p==='sheriff_speech'||p==='day_speech'?{seat:s.speaker!}:['death_skill','last_words','badge_transfer','hunter_target'].includes(p)?{seat:s.currentDeath!}:{})});}
+function phase(s:DayState,p:DayPhase,now:number,seconds?:number){s.interjection=null;s.interjectionUsed={};s.phase=p;s.turnId=randomUUID();s.deadline=seconds===undefined?null:now+seconds*1000;s.events.push({type:p,at:now,...(p==='sheriff_speech'||p==='day_speech'?{seat:s.speaker!}:['death_skill','last_words','badge_transfer','hunter_target','white_wolf_target'].includes(p)?{seat:s.currentDeath!}:{})});}
 export function createDay(n:NightState,rules:FirstDayRules,now:number,previous?:DayState):DayState{
  if(n.phase!=='first_night_complete')error();
  const pendingDeaths:DayState['pendingDeaths']=[];
@@ -67,7 +68,7 @@ function kill(s:DayState,seat:number,reason:DeathReason,now:number){
  if(reason==='exile'&&(p.role==='idiot'||mechanicalIdiot)){
   reveal(s,seat,'idiot');s.flippedIdiots??=[];if(!s.flippedIdiots.includes(seat))s.flippedIdiots.push(seat);
   if(engine){engine.publicState.revealedRole='idiot';engine.publicState.canInterject=true;}
-  if(mechanicalIdiot&&!s.players.some(other=>other.alive&&['wolf','mechanicalWolf','armoredWolf'].includes(other.role)))s.extraNightSeat=seat;
+  if(mechanicalIdiot&&!s.players.some(other=>other.alive&&isWolfRole(other.role)))s.extraNightSeat=seat;
  }
  return true;
 }
@@ -116,8 +117,12 @@ function canShoot(s:DayState,seat:number){
  if(s.phase!=='death_skill'||seat!==s.currentDeath||s.winner!==null)return false;
  const p=s.players.find(p=>p.seat===seat),death=s.deaths.find(d=>d.seat===seat);
  if(!p||p.alive||!death||death.reason==='poison')return false;
- if(s.engine){const skill=s.engine.players.find(p=>p.seat===seat)?.abilities.skills.find(a=>a.kind==='shot');return !!skill&&skill.remaining!==0&&skill.availableFromNight<=s.day&&(p.role==='hunter'||['knife','exile'].includes(death.reason));}
+ if(s.engine){const skill=s.engine.players.find(p=>p.seat===seat)?.abilities.skills.find(a=>a.kind==='shot');return !!skill&&skill.remaining!==0&&skill.availableFromNight<=s.day&&(skill.parameters.damage==='black-wolf-shot'?['knife','exile','shot','white-wolf'].includes(death.reason):p.role==='hunter'||['knife','exile'].includes(death.reason));}
  return p.role==='hunter'&&!s.hunterSpent;
+}
+function canExplode(s:DayState,seat:number){
+ const p=s.players.find(p=>p.seat===seat),ability=s.engine?.players.find(p=>p.seat===seat)?.abilities.skills.find(a=>a.kind==='explode-take');
+ return s.winner===null&&s.rules.explosionOrder!==null&&(s.rules.explosionLock==='during_vote'||!s.voteStarted)&&['sheriff_signup','sheriff_speech','sheriff_withdraw','day_speech','free_speech'].includes(s.phase)&&!(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.vote.candidates.includes(seat))&&!!p?.alive&&(isSharedWolfRole(p.role)||!!ability&&ability.remaining!==0&&ability.availableFromNight<=s.day);
 }
 function interjectionRemaining(s:DayState,seat:number){return Math.max(0,15000-(s.interjectionUsed?.[seat]??0));}
 function canInterject(s:DayState,seat:number){
@@ -177,21 +182,23 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
   need('death_skill');if(!canShoot(s,seat))error('NOT_YOUR_TURN',403);
   const engine=s.engine?.players.find(e=>e.seat===seat),shot=engine?.abilities.skills.find(a=>a.kind==='shot');
   if(engine&&shot)engine.abilities=useSkill(engine.abilities,shot.id,{requestId:s.turnId,night:s.day,target:null});
-  if(p!.role==='hunter')s.hunterSpent=true;reveal(s,seat,'hunter');if(engine)engine.publicState.revealedRole='hunter';phase(s,'hunter_target',now);return;
+  if(p!.role==='hunter')s.hunterSpent=true;const shown=shot?.parameters.damage==='black-wolf-shot'?'blackWolf':'hunter';reveal(s,seat,shown);if(engine)engine.publicState.revealedRole=shown;phase(s,'hunter_target',now);return;
  }
  if(c.action==='record_shot'){host();need('hunter_target');if(!living(s).includes(c.target))error('INVALID_INPUT');kill(s,c.target,'shot',now);s.events.push({type:'hunter_shot',at:now,seat:s.currentDeath!,target:c.target});if(checkWin(s,now))return;s.tasks=[...deathTasks(s,c.target,s.tasks.some(t=>t.seat===s.currentDeath&&t.step==='words')),...s.tasks];nextTask(s,now);return;}
+ if(c.action==='record_take'){host();need('white_wolf_target');if(!living(s).includes(c.target))error('INVALID_INPUT');kill(s,c.target,'white-wolf',now);s.events.push({type:'white_wolf_take',at:now,seat:s.currentDeath!,target:c.target});if(checkWin(s,now))return;s.tasks=[...deathTasks(s,c.target,false),...s.tasks];nextTask(s,now);return;}
  if(c.action==='transfer_badge'){need('badge_transfer');if(seat!==s.currentDeath&&(!actor.isHost||c.takeover!==true))error('NOT_YOUR_TURN',403);if(c.target!==null&&!participants(s).includes(c.target))error('INVALID_INPUT');s.sheriff=c.target;s.badge=c.target===null?'lost':'elected';nextTask(s,now);return;}
  if(c.action==='speech_mode'){host();need('day_direction');s.speechMode=c.mode==='ordered'?'phone':c.mode;if(s.sheriff===null)s.direction='ascending';startDaySpeech(s,now,choose);return;}
  if(c.action==='direction'){need('day_direction');if(seat!==s.sheriff)error('NOT_YOUR_TURN',403);if(c.start!==undefined&&!participants(s).includes(c.start))error('INVALID_INPUT');s.speechStart=c.start??null;s.direction=c.direction;startDaySpeech(s,now,choose);return;}
  if(c.action==='explode'){
-  if(s.rules.explosionOrder===null||(s.voteStarted&&s.rules.explosionLock===null))error('DAY_RULE_UNRESOLVED');if(s.voteStarted&&s.rules.explosionLock==='after_any_vote')error('PHASE_LOCKED');if(!['sheriff_signup','sheriff_speech','sheriff_withdraw','day_speech','free_speech'].includes(s.phase)||!p!.alive||p!.role!=='wolf')error('NOT_YOUR_TURN',403);
+  if(s.rules.explosionOrder===null||(s.voteStarted&&s.rules.explosionLock===null))error('DAY_RULE_UNRESOLVED');if(s.voteStarted&&s.rules.explosionLock==='after_any_vote')error('PHASE_LOCKED');if(!canExplode(s,seat))error('NOT_YOUR_TURN',403);
   if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.vote.candidates.includes(seat))error('NOT_YOUR_TURN',403);
   const sheriffPk=['sheriff_speech','sheriff_withdraw'].includes(s.phase)&&(s.vote?.purpose==='sheriff_pk'||s.electionPurpose==='sheriff_pk');if(sheriffPk&&s.candidates.includes(seat)){s.candidates=s.candidates.filter(p=>p!==seat);if(s.candidates.length===1){electSheriff(s,s.candidates[0],now);}}
   const poisoned=s.pendingDeaths.some(d=>d.seat===seat&&d.reason==='poison');const onSheriff=['sheriff_signup','sheriff_speech','sheriff_withdraw'].includes(s.phase);const swallowing=onSheriff&&poisoned;
   if(onSheriff&&s.sheriff===null){s.electionPurpose=s.vote?.purpose==='sheriff_pk'?'sheriff_pk':s.electionPurpose??'sheriff';s.explosions++;s.badge=s.explosions>=2?'lost':'deferred';}
-  kill(s,seat,'explosion',now);reveal(s,seat,'wolf');s.priorityWolf=!swallowing&&s.players.some(p=>p.alive&&p.role==='wolf')?seat:null;
+  const engine=s.engine?.players.find(e=>e.seat===seat),take=engine?.abilities.skills.find(a=>a.kind==='explode-take');
+  kill(s,seat,'explosion',now);const shown=take?'whiteWolf':p!.role;reveal(s,seat,shown);if(engine)engine.publicState.revealedRole=shown;s.priorityWolf=!swallowing&&isSharedWolfRole(p!.role)&&s.players.some(p=>p.alive&&isSharedWolfRole(p.role))?seat:null;
   s.afterDeaths='night';const pending=s.pendingDeaths.filter(p=>p.seat!==seat);for(const death of pending)kill(s,death.seat,death.reason,now);s.announcement=[...new Set([seat,...pending.map(d=>d.seat)])].sort((a,b)=>a-b);s.pendingDeaths=[];if(checkWin(s,now))return;
-  s.tasks=shuffle([...pending.map(p=>p.seat),seat],choose).flatMap(dead=>deathTasks(s,dead,dead===seat?swallowing&&s.day===1:s.day===1));s.vote=null;s.speaker=null;phase(s,'night_announcement',now);return;
+  s.tasks=shuffle([...pending.map(p=>p.seat),seat],choose).flatMap(dead=>deathTasks(s,dead,dead===seat?swallowing&&s.day===1:s.day===1));s.vote=null;s.speaker=null;if(engine&&take&&!swallowing){engine.abilities=useSkill(engine.abilities,take.id,{requestId:s.turnId,night:s.day,target:null});s.currentDeath=seat;phase(s,'white_wolf_target',now);}else phase(s,'night_announcement',now);return;
  }
  error();
 }
@@ -213,7 +220,7 @@ export function privateDay(s:DayState,seat:number):DayPrivate{
   canWithdraw:['sheriff_speech','sheriff_withdraw'].includes(s.phase)&&s.candidates.includes(seat),
   canVote:s.phase==='voting'&&vote?.method==='phone'&&vote.eligible.includes(seat)&&!Object.hasOwn(vote.ballots,seat)||false,
   voted:!!vote&&Object.hasOwn(vote.ballots,seat),myVote:vote?.ballots[seat]??null,canShoot:canShoot(s,seat),
-  canExplode:s.rules.explosionOrder!==null&&(s.rules.explosionLock==='during_vote'||!s.voteStarted)&&['sheriff_signup','sheriff_speech','sheriff_withdraw','day_speech','free_speech'].includes(s.phase)&&!(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.vote.candidates.includes(seat))&&!!p?.alive&&p.role==='wolf',
+  canExplode:canExplode(s,seat),
   canEndSpeech:!s.interjection&&seat===(s.phase==='last_words'?s.currentDeath:s.speaker),canTransfer:s.phase==='badge_transfer'&&seat===s.currentDeath,
   canInterject:canInterject(s,seat),canEndInterjection:s.interjection?.seat===seat,interjectionRemainingMs:interjectionRemaining(s,seat),
   ...(p?.role==='mixer'&&engine?.model?{mixerModel:{seat:engine.model.seat}}:{})};

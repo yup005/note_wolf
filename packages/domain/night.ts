@@ -2,7 +2,7 @@ import {randomInt,randomUUID} from 'node:crypto';
 import {LobbyError,type Role} from '../contracts/index.js';
 import type {NightCommand,NightPhase,NightPrivate,NightPublic} from '../contracts/night.js';
 import type {EngineState} from '../contracts/engine.js';
-import type {RoomBoardSnapshot} from '../contracts/board.js';
+import {type RoomBoardSnapshot,isSharedWolfRole} from '../contracts/board.js';
 import {initializeMechanicalNight,beginMechanicalNight,advanceMechanicalNight,mechanicalNightCommand,privateMechanicalNight} from './mechanicalNight.js';
 export interface NightPlayer {seat:number;role:Role;alive?:boolean}
 export interface NightCarry {night:number;antidote:boolean;poison:boolean;hunterSpent:boolean;priorityWolf:number|null;engine?:EngineState;extraNightSeat?:number|null}
@@ -18,8 +18,8 @@ export interface NightState {
 const duration={wolves:180000,witch:60000,seer:30000,hunter:30000,eyes_closed:5000};
 export function createNight(players:NightPlayer[],now:number,carry?:NightCarry,board?:RoomBoardSnapshot):NightState{
  const roster=players.map(p=>({...p,alive:p.alive!==false}));
- const priority=roster.find(p=>p.seat===carry?.priorityWolf&&p.role==='wolf'&&!p.alive);
- const priorityWolf=priority&&roster.some(p=>p.role==='wolf'&&p.alive)?priority.seat:null;
+ const priority=roster.find(p=>p.seat===carry?.priorityWolf&&isSharedWolfRole(p.role)&&!p.alive);
+ const priorityWolf=priority&&roster.some(p=>isSharedWolfRole(p.role)&&p.alive)?priority.seat:null;
  const state:NightState={night:carry?.night??1,phase:'awaiting_host',turnId:randomUUID(),deadline:null,nextRole:null,players:roster,votes:{},confirmer:null,knife:null,antidote:carry?.antidote??true,poison:carry?.poison??true,witchChoice:null,witchTurnId:null,seerCheck:null,hunterSeen:false,hunterSpent:carry?.hunterSpent??false,priorityWolf,priorityTarget:null,priorityCommitted:false,events:[{type:'night_created',at:now}]};
  if(board&&board.composition.ruleset!=='standard'||carry?.engine)initializeMechanicalNight(state,board??carry!.engine!.board,carry);
  return state;
@@ -28,13 +28,13 @@ function phase(s:NightState,p:NightPhase,now:number){s.phase=p;s.turnId=randomUU
 export function beginNight(s:NightState,now:number,choose=(n:number)=>randomInt(n)){
  if(s.engine)return beginMechanicalNight(s,now,choose);
  if(s.phase!=='awaiting_host')throw new LobbyError('STALE_TURN',409);
- const wolves=s.players.filter(p=>p.role==='wolf'&&p.alive!==false);s.confirmer=wolves.length?wolves[choose(wolves.length)].seat:null;phase(s,'wolves',now);
+ const wolves=s.players.filter(p=>isSharedWolfRole(p.role)&&p.alive!==false);s.confirmer=wolves.length?wolves[choose(wolves.length)].seat:null;phase(s,'wolves',now);
 }
 function finishRole(s:NightState,now:number,choose:(n:number)=>number){
  if(s.phase==='wolves'){
   if(s.priorityCommitted)s.knife=s.priorityTarget;
   else {
-   const counts=new Map<number,number>();for(const [seat,v] of Object.entries(s.votes))if(v!==null&&s.players.some(p=>p.seat===Number(seat)&&p.role==='wolf'&&p.alive!==false))counts.set(v,(counts.get(v)??0)+1);
+   const counts=new Map<number,number>();for(const [seat,v] of Object.entries(s.votes))if(v!==null&&s.players.some(p=>p.seat===Number(seat)&&isSharedWolfRole(p.role)&&p.alive!==false))counts.set(v,(counts.get(v)??0)+1);
    const max=Math.max(0,...counts.values());const tied=[...counts].filter(([,n])=>n===max).map(([target])=>target);s.knife=tied.length?tied[choose(tied.length)]:null;
   }
   s.events.push({type:'knife_resolved',at:now,target:s.knife});s.nextRole='witch';
@@ -100,7 +100,7 @@ export function privateNight(s:NightState,seat:number):NightPrivate{
  if(!player||(player.alive===false&&!(s.phase==='wolves'&&s.priorityWolf===seat))||(role==='hunter'&&s.hunterSpent))return out;
  if(role==='seer'&&s.seerCheck&&s.phase==='eyes_closed'&&s.nextRole==='hunter')return {...out,...s.seerCheck,skillReceipt:{role:'seer',...s.seerCheck}};
  if(role==='hunter'&&s.hunterSeen&&s.phase==='first_night_complete')return {...out,skillReceipt:{role:'hunter',canShoot:!s.hunterSpent&&!(s.witchChoice?.choice==='poison'&&s.witchChoice.target===seat)}};
- if(s.phase==='wolves'&&role==='wolf')return {...out,kind:'wolves',wolves:s.players.filter(p=>p.role==='wolf'&&p.alive!==false).map(p=>p.seat),votes:Object.entries(s.votes).map(([seat,target])=>({seat:Number(seat),target})),confirmer:s.confirmer!,myVote:s.priorityWolf===seat?s.priorityTarget:s.votes[seat]??null,priorityWolf:s.priorityWolf??null,priorityTarget:s.priorityTarget??null,priorityCommitted:s.priorityCommitted??false};
+ if(s.phase==='wolves'&&role==='wolf')return {...out,kind:'wolves',wolves:s.players.filter(p=>isSharedWolfRole(p.role)&&p.alive!==false).map(p=>p.seat),votes:Object.entries(s.votes).map(([seat,target])=>({seat:Number(seat),target})),confirmer:s.confirmer!,myVote:s.priorityWolf===seat?s.priorityTarget:s.votes[seat]??null,priorityWolf:s.priorityWolf??null,priorityTarget:s.priorityTarget??null,priorityCommitted:s.priorityCommitted??false};
  if(s.phase==='witch'&&role==='witch')return {...out,kind:'witch',...(s.antidote||s.witchChoice?.choice==='save'?{knife:s.knife}:{}),antidote:s.antidote,poison:s.poison,committed:!!s.witchChoice,...(s.witchChoice??{})};
  if(s.phase==='seer'&&role==='seer')return {...out,kind:'seer',committed:!!s.seerCheck,...(s.seerCheck??{})};
  if(s.phase==='hunter'&&role==='hunter')return {...out,kind:'hunter',canShoot:!s.hunterSpent&&!(s.witchChoice?.choice==='poison'&&s.witchChoice.target===seat),seen:s.hunterSeen};

@@ -61,7 +61,7 @@ export function validateEngineState(input:unknown):EngineState{
    if(!learning||!source||skill.copiedFrom!.seat!==learning.sourceSeat||skill.copiedFrom!.night!==learning.night||
     skill.id!==`${learning.copyId}:${source.id}`||skill.kind!==source.kind||skill.capacity!==source.capacity||
     JSON.stringify(skill.parameters)!==JSON.stringify(source.parameters)||skill.availableFromNight<learning.night||
-    learning.copyProfileSnapshot&&skill.availableFromNight!==learning.night+(['shot','extra-knife'].includes(skill.kind)?0:1))throw new LobbyError('INVALID_ENGINE_STATE');
+    learning.copyProfileSnapshot&&skill.availableFromNight!==learning.night+(['shot','extra-knife','explode-take'].includes(skill.kind)?0:1))throw new LobbyError('INVALID_ENGINE_STATE');
   }
  }
  for(const action of state.actions){

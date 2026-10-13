@@ -1,5 +1,19 @@
 # WEREWOLF_TEST_CASES.md
 
+## 黑白狼王验收（2026-10-12）
+
+来源：[现行狼王规则](WEREWOLF_RULES_SPEC.md#wolf-kings-2026-10-12)；执行结果见[报告](TEST_REPORT.md)。本节不是实机验收。
+
+| ID | 场景 | 当前期望 | 自动证据 |
+|---|---|---|---|
+| CFG-05 / CFG-001 | 两黑两白配置、共享刀组、继承与重复特殊角色 | 狼王可重复、真正狼阵营、共享刀组未清空不继承；其他特殊身份仍唯一、标准12不改 | wolf-kings、e2e/wolf-kings |
+| COPY-001 | 机械/装甲学习两狼王、首次白天、能力库存、夜间伪调用 | 满次数独立冻结；复制白狼王首个白天可自爆；未学习不可自爆；夜晚不能执行枪/带人 | wolf-kings、wolf-kings-day、wolf-kings-runtime |
+| WIN-001 | 黑狼王的狼刀/放逐/枪杀/被带走/毒杀/自爆；复制猎人对比 | 黑枪完整触发，毒/自爆拒绝；复制猎人触发不扩大；最后一狼先判胜且终局停止 | wolf-kings-day |
+| WIN-001 | 白狼王及复制白狼王警上吞毒，最后一狼及其他待公告夜死 | 不能带人、无私有毒信息；自爆与待公告死亡先结算，终局停止 | wolf-kings-day |
+| CFG-05 / WIN-001 | 白带黑/猎人死亡技能链、带死警长、多白独立库存、夜间守护 | 按资格处理技能/警徽，独立次数；普通/无敌守护不护白天带人和开枪 | wolf-kings-day、wolf-kings-runtime |
+| COPY-001 / SEC-01 | 公开目标阶段、权限/暂停/重启/旧turnId、真实HTTP/Socket | 持久化且只执行一次；公开投影无复制/私有中毒事实，未终局复盘仍锁定 | wolf-kings-runtime |
+| RECAP-006 | 正式终局带人与枪杀、局中草稿导入、手机目标录入 | 终局复盘及记录留一次正确死因；局中导入不泄露私密；刷新与320/390/430px可用 | wolf-kings-runtime、e2e/wolf-kings |
+
 ## 双边白痴与配牌边界验收（2026-10-12）
 
 来源：[B-002 v3 / CFG-001](WEREWOLF_RULES_SPEC.md#双边白痴与配牌边界2026-10-12)、[本批确认](PRODUCT_DECISIONS.md#dual-idiot-delivery-2026-10-12)。执行结果见 [验证报告](TEST_REPORT.md)；以下场景不代表实机通过。

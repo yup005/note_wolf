@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import type {Role} from './index.js';
-export type DayPhase='awaiting_host'|'sheriff_signup'|'sheriff_speech'|'sheriff_withdraw'|'vote_setup'|'voting'|'vote_result'|'night_announcement'|'death_skill'|'hunter_target'|'last_words'|'badge_transfer'|'day_direction'|'day_speech'|'free_speech'|'day_complete'|'ended'|'rules_pending';
+export type DayPhase='awaiting_host'|'sheriff_signup'|'sheriff_speech'|'sheriff_withdraw'|'vote_setup'|'voting'|'vote_result'|'night_announcement'|'death_skill'|'hunter_target'|'white_wolf_target'|'last_words'|'badge_transfer'|'day_direction'|'day_speech'|'free_speech'|'day_complete'|'ended'|'rules_pending';
 export type VotePurpose='sheriff'|'sheriff_pk'|'exile'|'exile_pk';
 export interface DayVoteResult {purpose:VotePurpose;counts:{seat:number;votes:number}[];ballots?:{seat:number;target:number|null}[];leaders:number[]}
 export interface DayPublic {
@@ -32,6 +32,7 @@ export const dayCommandSchema=z.discriminatedUnion('action',[
  z.object({action:z.literal('continue'),turnId:turn}).strict(),
  z.object({action:z.literal('shoot'),turnId:turn}).strict(),
  z.object({action:z.literal('record_shot'),turnId:turn,target:seat}).strict(),
+ z.object({action:z.literal('record_take'),turnId:turn,target:seat}).strict(),
  z.object({action:z.literal('transfer_badge'),turnId:turn,target:seat.nullable(),takeover:z.boolean().optional()}).strict(),
  z.object({action:z.literal('speech_mode'),turnId:turn,mode:z.enum(['phone','free','ordered'])}).strict(),
  z.object({action:z.literal('direction'),turnId:turn,direction:z.enum(['ascending','descending']),start:seat.optional()}).strict(),

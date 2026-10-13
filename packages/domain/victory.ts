@@ -1,12 +1,11 @@
 import {LobbyError} from '../contracts/index.js';
-import {boardRoleSchema,rulesetSchema,standardRoleCounts,idiotPolicySchema,type IdiotPolicy,type BoardRole,type Ruleset} from '../contracts/board.js';
+import {boardRoleSchema,rulesetSchema,standardRoleCounts,idiotPolicySchema,isWolfRole,type IdiotPolicy,type BoardRole,type Ruleset} from '../contracts/board.js';
 
 export interface VictoryPlayer {seat:number;role:BoardRole;alive:boolean;idiotFlipped?:boolean;learnedRole?:BoardRole;modelSeat?:number;modelCamp?:'wolves'|'good'}
 export type VictoryResult={status:'playing'}|{status:'ended';winner:'wolves'|'good';reason:'all-villagers-dead'|'all-gods-dead'|'all-wolves-dead'|'mixer-dead-one-villager'|'mixer-last-civilian';personalResults?:{seat:number;won:boolean}[]}|{status:'unresolved';questionId:string};
-const wolves=new Set<BoardRole>(['wolf','mechanicalWolf','armoredWolf']);
 const gods=new Set<BoardRole>(['seer','witch','hunter','idiot','spiritSeer','guard']);
 export function playerCamp(role:BoardRole):'wolves'|'good'|null{
- return wolves.has(role)?'wolves':gods.has(role)||role==='villager'?'good':null;
+ return isWolfRole(role)?'wolves':gods.has(role)||role==='villager'?'good':null;
 }
 
 // Input must reflect the entire settled night batch or one ordered daytime death.
@@ -36,7 +35,7 @@ export function evaluateVictory(players:readonly VictoryPlayer[],ruleset:Ruleset
  const godAlive=(p:VictoryPlayer)=>gods.has(p.role)&&!(dual&&p.role==='idiot'&&p.idiotFlipped);
  const noVillagers=players.some(civilian)&&!alive.some(civilian);
  const noGods=players.some(p=>gods.has(p.role))&&!alive.some(godAlive);
- const noWolves=players.some(p=>wolves.has(p.role))&&!alive.some(p=>wolves.has(p.role));
+ const noWolves=players.some(p=>isWolfRole(p.role))&&!alive.some(p=>isWolfRole(p.role));
  const mixerThreshold=!standardMixer&&!!mixer&&!mixer.alive&&players.some(p=>p.role==='villager')&&alive.filter(p=>p.role==='villager').length===1;
  const mixerLastCivilian=!standardMixer&&!!mixer&&mixer.alive&&!alive.some(civilian);
  // All confirmed rulesets give wolves priority when both sides finish in the same batch.

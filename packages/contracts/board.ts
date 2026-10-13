@@ -1,8 +1,11 @@
 import {z} from 'zod';
 
 // This catalog is for the new domain foundation, not the public playable Role contract.
-export const boardRoleSchema=z.enum(['wolf','villager','seer','witch','hunter','idiot','spiritSeer','guard','mechanicalWolf','armoredWolf','mixer']);
+export const boardRoleSchema=z.enum(['wolf','villager','seer','witch','hunter','idiot','spiritSeer','guard','mechanicalWolf','armoredWolf','mixer','blackWolf','whiteWolf']);
 export type BoardRole=z.infer<typeof boardRoleSchema>;
+export const isSharedWolfRole=(role:BoardRole)=>role==='wolf'||role==='blackWolf'||role==='whiteWolf';
+export const isWolfRole=(role:BoardRole)=>isSharedWolfRole(role)||role==='mechanicalWolf'||role==='armoredWolf';
+export const isRepeatableRole=(role:BoardRole)=>isSharedWolfRole(role)||role==='villager';
 export const rulesetSchema=z.enum(['standard','mechanical-seer','mechanical-armor']);
 export type Ruleset=z.infer<typeof rulesetSchema>;
 export const idiotPolicySchema=z.enum(['standard','dual-category-14']);
@@ -13,7 +16,7 @@ export const boardCompositionSchema=z.object({
  roles:z.partialRecord(boardRoleSchema,z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)),
  idiotPolicy:idiotPolicySchema.optional()
 }).strict().refine(config=>Object.values(config.roles).reduce((sum,count)=>sum+count,0)===config.seatCount)
- .refine(config=>Object.entries(config.roles).every(([role,count])=>role==='wolf'||role==='villager'||count!<=1))
+ .refine(config=>Object.entries(config.roles).every(([role,count])=>isRepeatableRole(role as BoardRole)||count!<=1))
  .refine(config=>config.idiotPolicy!=='dual-category-14'||config.seatCount===14&&config.roles.idiot===1);
 export type BoardComposition=z.infer<typeof boardCompositionSchema>;
 export interface BoardConfiguration extends BoardComposition {ruleset:Ruleset;playable:boolean}
@@ -35,4 +38,4 @@ export type BoardConfigure=z.infer<typeof boardConfigureSchema>;
 export interface BoardTemplate {id:string;name:string;revision:number;ruleVersion:typeof boardRuleVersion;composition:BoardConfiguration}
 export interface BoardLibrary {presets:BoardTemplate[];custom:BoardTemplate[]}
 export interface RoomBoardSnapshot {id:string;name:string;ruleVersion:typeof boardRuleVersion;composition:{seatCount:number;roleCounts:BoardComposition['roles'];ruleset:Ruleset;playable:boolean;idiotPolicy?:IdiotPolicy}}
-export const boardRoleLabels:Record<BoardRole,string>={wolf:'狼人',villager:'村民',seer:'预言家',witch:'女巫',hunter:'猎人',idiot:'白痴',spiritSeer:'通灵师',guard:'守卫',mechanicalWolf:'机械狼',armoredWolf:'装甲狼',mixer:'混血儿'};
+export const boardRoleLabels:Record<BoardRole,string>={wolf:'狼人',villager:'村民',seer:'预言家',witch:'女巫',hunter:'猎人',idiot:'白痴',spiritSeer:'通灵师',guard:'守卫',mechanicalWolf:'机械狼',armoredWolf:'装甲狼',mixer:'混血儿',blackWolf:'黑狼王',whiteWolf:'白狼王'};

@@ -2,7 +2,7 @@ import {randomInt,randomUUID} from 'node:crypto';
 import {LobbyError} from '../contracts/index.js';
 import type {NightCommand,NightPhase,NightPrivate} from '../contracts/night.js';
 import type {NightState,NightCarry} from './night.js';
-import type {RoomBoardSnapshot} from '../contracts/board.js';
+import {type RoomBoardSnapshot,isSharedWolfRole} from '../contracts/board.js';
 import type {EngineState} from '../contracts/engine.js';
 import {createConfirmedEngineState,validateConfirmedEngineState,learnConfirmedEngineAbility,appendConfirmedEngineAction} from './mechanicalEngine.js';
 import {settleEngineNight} from './engine.js';
@@ -28,7 +28,7 @@ export function initializeMechanicalNight(s:NightState,board:RoomBoardSnapshot,c
  let e:EngineState;
  if(carry?.engine){e=structuredClone(carry.engine);e.night=s.night;e.stage='collecting';e.actions=[];e.resolution=null;e.victory={status:'playing'};
   for(const p of e.players){p.alive=s.players.find(x=>x.seat===p.seat)!.alive!==false;p.publicState.canVote=p.alive&&p.publicState.revealedRole!=='idiot';}
- }else e=createConfirmedEngineState(board,s.players.map(p=>({seat:p.seat,role:p.role,knifeGroup:p.role==='wolf'?'shared':p.role==='mechanicalWolf'?'mechanical':p.role==='armoredWolf'?'armor':'none'})),s.night);
+ }else e=createConfirmedEngineState(board,s.players.map(p=>({seat:p.seat,role:p.role,knifeGroup:isSharedWolfRole(p.role)?'shared':p.role==='mechanicalWolf'?'mechanical':p.role==='armoredWolf'?'armor':'none'})),s.night);
  s.engine=validateConfirmedEngineState(e);s.extraNightSeat=carry?.extraNightSeat??null;
  const authority=knifeAuthorityAtNightStart(e.players.map(p=>({seat:p.seat,alive:p.alive||p.seat===s.extraNightSeat,knifeGroup:p.knifeGroup})));
  const counts=board.composition.roleCounts;const schedule:NightPhase[]=[];

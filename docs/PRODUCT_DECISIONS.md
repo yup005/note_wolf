@@ -4,6 +4,12 @@
 > This document records **product-relevant confirmed decisions and current planning**, not the raw ChatGPT conversation.  
 > **Source note:** The 2026-10-10 product status below was provided by the project owner as a handoff summary. It is **not** verified against the older GitHub `main` snapshot or by re-running tests.
 
+<a id="wolf-kings-delivery-2026-10-12"></a>
+
+## 黑白狼王实施范围（2026-10-12）
+
+Owner在双边白痴批次完成后回复“继续”，按既定下一批实现第20、28–36、44–45项已经确认的黑/白狼王及机械/装甲复制能力；沿用此前“都允许，你别问我了”的连续执行指示，不重复询问已回答规则。角色目录、重复配置、共享刀组、真实阵营、完整黑枪触发、胜利优先白带人及吞毒不能带人按原确认落地。正式规则见[狼王规格](WEREWOLF_RULES_SPEC.md#wolf-kings-2026-10-12)，实施/执行证据见[交接](PROJECT_STATUS_FOR_CHATGPT.md)与[报告](TEST_REPORT.md)。历史问卷原文保留；第37项普通预言家复制反馈、法官/手动切回、未定义未来交互不随此标为完成。不部署、不声明实机验收。
+
 <a id="dual-idiot-delivery-2026-10-12"></a>
 
 ## 14 人双边白痴与配牌边界实施确认（2026-10-12）

@@ -33,7 +33,8 @@ export function createNativeAbilityProfile(role:BoardRole,seat:number,ruleset:Ru
  if(role==='witch')skills=[skill(seat,'antidote',1,{healing:'ordinary-wolf-knife'}),skill(seat,'poison',1,{damage:'witch-poison'})];
  if(role==='guard')skills=[skill(seat,'guard',null,{protection:'ordinary'})];
  if(role==='spiritSeer'||role==='seer')skills=[skill(seat,'inspect',null,{inspection:role==='spiritSeer'?'exact-role':'camp'})];
- if(role==='hunter')skills=[skill(seat,'shot',1,{damage:'hunter-shot'})];
+ if(role==='hunter'||role==='blackWolf')skills=[skill(seat,'shot',1,{damage:role==='blackWolf'?'black-wolf-shot':'hunter-shot'})];
+ if(role==='whiteWolf')skills=[skill(seat,'explode-take',1,{damage:'white-wolf-take'})];
  return profile(role,seat,skills);
 }
 /** Reconstructible projection: never trust a caller-supplied copied capability profile. */
@@ -47,7 +48,7 @@ export function projectMechanicalCopyProfile(source:SkillSnapshot,ownerRole:Boar
  // Only the armor→already-learned mechanical chain is confirmed. Its profile is
  // frozen verbatim; consumption resets in copySkills, including nested provenance.
  if(ownerRole==='armoredWolf'&&snapshot.originalRole==='mechanicalWolf'&&snapshot.mimickedRole!==null)return snapshot;
- if(snapshot.mimickedRole!==null)return blocked('MA-COPY-UNDEFINED-CHAIN');
+ if(snapshot.mimickedRole!==null){if(['blackWolf','whiteWolf'].includes(role)&&['mechanicalWolf','armoredWolf'].includes(snapshot.originalRole))return snapshot;return blocked('MA-COPY-UNDEFINED-CHAIN');}
  const projected=structuredClone(snapshot);
  if(role==='witch')projected.skills=projected.skills.filter(s=>s.kind==='poison');
  else if(role==='guard')projected.skills=projected.skills.map(s=>s.kind==='guard'?{...s,parameters:{protection:ruleset==='mechanical-armor'?'invincible':'mechanical-reflect'}}:s);
@@ -69,7 +70,7 @@ export function learnMechanicalAbility(players:readonly AbilityPlayer[],ownerSea
  const copyProfileSnapshot=projectMechanicalCopyProfile(sourceSnapshot,owner.role,metadata.ruleset);
  if('status' in copyProfileSnapshot)return copyProfileSnapshot;
  const abilities=copySkills(copyProfileSnapshot,{copyId:metadata.copyId,ownerSeat,originalRole:owner.role,night:metadata.night,availableFromNight:metadata.night+1});
- for(const instance of abilities.skills)if(instance.kind==='shot'||instance.kind==='extra-knife')instance.availableFromNight=metadata.night;
+ for(const instance of abilities.skills)if(['shot','extra-knife','explode-take'].includes(instance.kind))instance.availableFromNight=metadata.night;
  const role=abilities.mimickedRole!;
  const feedback:LearningFeedback={status:'private',role,
   ...(role==='villager'?{civilianEasterEgg:{text:'你就是个「普通村民」！',emphasis:'普通村民',color:'red' as const}}:{})};
@@ -86,7 +87,7 @@ export function visibleInspectionRole(player:AbilityPlayer):Extract<InspectionRe
 export interface ConfirmedAbilityContext{
  ruleset:Ruleset;players:readonly AbilityPlayer[];inheritedWolfKnife?:boolean;
  /** Must be the verdict after all relevant deaths have settled, never a pre-death prediction. */
- settledVictory?:VictoryResult;deathCauses?:readonly ('wolf-knife'|'extra-knife'|'poison'|'exile'|'shot')[];
+ settledVictory?:VictoryResult;deathCauses?:readonly ('wolf-knife'|'extra-knife'|'poison'|'exile'|'shot'|'white-wolf'|'explosion')[];
  /** Only the ordinary wolf-stage target; hidden extra attacks cannot supply this. */
  witchKnifeTarget?:number|null;
 }
@@ -102,9 +103,10 @@ export function useConfirmedAbility(input:SkillSnapshot,skillId:string,command:S
  if(previous&&(previous.target!==use.target||previous.night!==use.night))throw new LobbyError('ALREADY_COMMITTED',409);
  if(!previous&&instance.uses.some(u=>u.night===use.night))throw new LobbyError('ALREADY_COMMITTED',409);
  if(!previous&&instance.uses.some(u=>u.night>use.night))throw new LobbyError('INVALID_SKILL_STATE');
+ if(instance.kind==='explode-take')throw new LobbyError('DAY_SKILL_ONLY',409);
  if(instance.kind==='shot'){
   if(context.settledVictory?.status==='unresolved')return blocked(context.settledVictory.questionId);
-  if(actor.alive||context.settledVictory?.status!=='playing'||!context.deathCauses?.some(c=>c==='wolf-knife'||c==='extra-knife'||c==='exile')||context.deathCauses.some(c=>c==='poison')||use.target===actor.seat)throw new LobbyError('SHOT_NOT_AUTHORIZED',409);
+  if(actor.alive||context.settledVictory?.status!=='playing'||!context.deathCauses?.some(c=>c==='wolf-knife'||c==='extra-knife'||c==='exile'||instance.parameters.damage==='black-wolf-shot'&&(c==='shot'||c==='white-wolf'))||context.deathCauses.some(c=>c==='poison'||c==='explosion')||use.target===actor.seat)throw new LobbyError('SHOT_NOT_AUTHORIZED',409);
  }else if(!actor.alive)throw new LobbyError('INVALID_TARGET');
  if(instance.kind==='inspect'&&use.target===actor.seat)throw new LobbyError('INVALID_TARGET');
  if(instance.kind==='guard'&&!previous&&use.target!==null&&instance.uses.some(u=>u.night===use.night-1&&u.target===use.target))throw new LobbyError('GUARD_CONSECUTIVE_TARGET',409);

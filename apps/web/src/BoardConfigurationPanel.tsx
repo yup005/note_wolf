@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react';
 import {api,errorText} from './api';
-import {boardRoleSchema,boardRoleLabels,serviceCompositionSchema,type BoardLibrary,type BoardTemplate,type BoardComposition,type RoomBoardSnapshot} from '../../../packages/contracts/board';
+import {boardRoleSchema,boardRoleLabels,isRepeatableRole,serviceCompositionSchema,type BoardLibrary,type BoardTemplate,type BoardComposition,type RoomBoardSnapshot} from '../../../packages/contracts/board';
 import {createBoardConfiguration} from '../../../packages/domain/boardConfig';
 interface Props {board:RoomBoardSnapshot;settingsRevision:number;blocked:boolean;onAction:(action:string,body?:unknown)=>void}
 export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction}:Props){
@@ -31,7 +31,7 @@ export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction
    <p className="helper">复制配置并另存，系统模板保持不变。</p>
    <label>名称<input aria-label="板子名称" maxLength={60} value={name} disabled={blocked||saving} onChange={e=>setName(e.target.value)}/></label>
    <label>人数<input aria-label="玩家人数" type="number" min={1} max={256} value={draft.seatCount} disabled={blocked||saving} onChange={e=>setDraft({...draft,seatCount:Number(e.target.value)})}/></label>
-   <div className="board-role-editor">{boardRoleSchema.options.map(role=><label key={role}>{boardRoleLabels[role]}<input aria-label={boardRoleLabels[role]+'人数'} type="number" min={0} max={role==='wolf'||role==='villager'?256:1} value={draft.roles[role]??0} disabled={blocked||saving} onChange={e=>setDraft({...draft,roles:{...draft.roles,[role]:Number(e.target.value)}})}/></label>)}</div>
+   <div className="board-role-editor">{boardRoleSchema.options.map(role=><label key={role}>{boardRoleLabels[role]}<input aria-label={boardRoleLabels[role]+'人数'} type="number" min={0} max={isRepeatableRole(role)?256:1} value={draft.roles[role]??0} disabled={blocked||saving} onChange={e=>setDraft({...draft,roles:{...draft.roles,[role]:Number(e.target.value)}})}/></label>)}</div>
    <label>白痴规则<select aria-label="白痴规则" value={draft.idiotPolicy??'standard'} disabled={blocked||saving} onChange={e=>{const {idiotPolicy:_,...base}=draft;setDraft(e.target.value==='dual-category-14'?{...base,idiotPolicy:'dual-category-14'}:base);}}><option value="standard">默认规则</option><option value="dual-category-14" disabled={draft.seatCount!==14||draft.roles.idiot!==1}>14 人双边白痴</option></select></label>
    {draft.idiotPolicy==='dual-category-14'&&<p className="helper">须为 14 人且有一名白痴。翻牌后无发言、插嘴或投票权，仍可被刀或毒杀。</p>}
    <p className="helper">角色合计 {total} / {draft.seatCount}{config?` · ${config.ruleset==='mechanical-armor'?'机械装甲':config.ruleset==='standard'?'预女猎白':'机械狼通灵师'}`:' · 请检查人数和特殊角色唯一性'}</p>

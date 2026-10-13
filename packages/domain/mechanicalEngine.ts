@@ -1,6 +1,6 @@
 import {LobbyError} from '../contracts/index.js';
 import {nightActionCommandSchema,type EngineState,type EngineSeed,type NightActionCommand} from '../contracts/engine.js';
-import type {RoomBoardSnapshot} from '../contracts/board.js';
+import {type RoomBoardSnapshot,isSharedWolfRole} from '../contracts/board.js';
 import {createEngineState,validateEngineState,appendNightAction} from './engine.js';
 import {createNativeAbilityProfile,learnMechanicalAbility,useConfirmedAbility,type ProductDecisionBlocked,type LearningFeedback,type InspectionResult} from './mechanicalAbilities.js';
 import {knifeAuthorityAtNightStart} from './knifeAuthority.js';
@@ -19,7 +19,7 @@ export function validateConfirmedEngineState(input:unknown):EngineState{
  const state=validateEngineState(input),ruleset=state.board.composition.ruleset;
  if(ruleset==='standard')throw new LobbyError('ENGINE_RULESET_MISMATCH',409);
  for(const player of state.players){
-  const group=player.role==='wolf'?'shared':player.role==='mechanicalWolf'?'mechanical':player.role==='armoredWolf'?'armor':'none';
+  const group=isSharedWolfRole(player.role)?'shared':player.role==='mechanicalWolf'?'mechanical':player.role==='armoredWolf'?'armor':'none';
   if(player.knifeGroup!==group)throw new LobbyError('INVALID_ENGINE_STATE');
   const snapshot=player.abilities;
   if(player.learning){
@@ -80,6 +80,7 @@ export function appendConfirmedEngineAction(input:EngineState,command:NightActio
  if(state.actions.some(a=>a.id===c.id||a.casterId===c.casterId&&a.abilityType===c.abilityType||a.abilityType==='wolf-knife'&&c.abilityType==='wolf-knife'))throw new LobbyError('ALREADY_COMMITTED',409);
  if(c.abilityType==='wolf-knife')return {status:'committed',state:validateConfirmedEngineState(appendNightAction(state,c))};
  // Shot requires a separate, already-settled death/victory window, outside night collection.
+ if(c.abilityType==='explode-take')throw new LobbyError('DAY_SKILL_ONLY',409);
  if(c.abilityType==='shot')throw new LobbyError('SHOT_NOT_AUTHORIZED',409);
  const actor=state.players.find(p=>p.seat===c.casterId);if(!actor)throw new LobbyError('INVALID_TARGET');
  const skill=actor.abilities.skills.find(s=>s.id===c.abilityId&&s.kind===c.abilityType);if(!skill)throw new LobbyError('SKILL_NOT_FOUND',409);

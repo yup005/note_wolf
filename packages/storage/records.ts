@@ -4,7 +4,7 @@ import {LobbyError,type Role} from '../contracts/index.js';
 import {emptyRecord,recordDocumentSchema,manualAdjudicateSchema,manualFinishSchema,type ManualAdjudicate,type ManualFinish,type RecordOutcomeSource,type RecordDocument,type RecordDraft,type RecordList,type RecordPost,type RecordPostSummary,type RecordFavorite,type ManualPublic,type OfficialRevision} from '../contracts/records.js';
 import {manualDecision,type ManualVictoryFact} from '../domain/manual.js';
 import type {EngineState} from '../contracts/engine.js';
-import type {BoardComposition,IdiotPolicy} from '../contracts/board.js';
+import {type BoardComposition,type IdiotPolicy,isWolfRole} from '../contracts/board.js';
 import {summarizeReplay} from '../domain/replay.js';
 import type {DayState} from '../domain/day.js';
 import type {GameReplay} from '../contracts/game.js';
@@ -161,7 +161,7 @@ export class RecordsStore {
   const parsed=manualFinishSchema.safeParse(input);if(!parsed.success)throw new LobbyError('INVALID_INPUT');
   return this.db.transaction(()=>{
    const {a}=this.host(token,id),m=this.manual(id),c=parsed.data;
-   if((JSON.parse(a.roles) as {role:Role}[]).some(p=>['wolf','mechanicalWolf','armoredWolf'].includes(p.role)))throw new LobbyError('INVALID_INPUT');
+   if((JSON.parse(a.roles) as {role:Role}[]).some(p=>isWolfRole(p.role)))throw new LobbyError('INVALID_INPUT');
    if(m.status==='ended')throw new LobbyError('PHASE_LOCKED',409);
    if(m.version!==c.version)throw new LobbyError('STALE_RECORD',409);
    const draft=this.expected(this.row(token,id,true),c.revision),document=JSON.parse(draft.draft) as RecordDocument;this.validateRoster(document,a);

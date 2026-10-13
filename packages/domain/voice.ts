@@ -34,6 +34,7 @@ export function voiceFrame(room:RoomSnapshot,now:number):VoiceFrame{
    const deaths=d.announcement===null?'请房主公布夜间死讯。':d.announcement.length?`${d.announcement.join('、')}号玩家死亡。`:'昨夜平安夜。';add(`第${d.day}天。${badge}${deaths}`);break;
   }
   case 'death_skill':if(seat!==null)add(`${seat}号玩家是否发动技能？`);break;
+  case 'white_wolf_target':add(`白狼王自爆。${d.announcement?.length?d.announcement.join('、')+'号玩家死亡。':''}请线下指定目标，由房主录入。`);break;
   case 'hunter_target':add('技能已发动，请线下指定目标，由房主录入。');break;
   case 'last_words':if(seat!==null)add(`请${seat}号玩家发表遗言。`);break;
   case 'badge_transfer':if(seat!==null)add(`请${seat}号玩家移交或撕掉警徽。`);break;

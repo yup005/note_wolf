@@ -1,5 +1,5 @@
 import {LobbyError} from '../contracts/index.js';
-import {boardCompositionSchema,standardRoleCounts,type BoardComposition,type BoardConfiguration} from '../contracts/board.js';
+import {boardCompositionSchema,standardRoleCounts,isWolfRole,type BoardRole,type BoardComposition,type BoardConfiguration} from '../contracts/board.js';
 
 const mechanicalRoles={wolf:3,villager:4,spiritSeer:1,witch:1,hunter:1,guard:1,mechanicalWolf:1};
 const presets={
@@ -17,7 +17,7 @@ export function createBoardConfiguration(input:unknown):BoardConfiguration{
  const roles=Object.fromEntries(Object.entries(parsed.data.roles).filter(([,count])=>count!>0)) as BoardComposition['roles'];
  const standard=parsed.data.seatCount===12&&Object.keys(roles).length===6&&
   Object.entries(standardRoleCounts).every(([role,count])=>roles[role as keyof typeof standardRoleCounts]===count);
- const wolfCount=(roles.wolf??0)+(roles.mechanicalWolf??0)+(roles.armoredWolf??0);
+ const wolfCount=Object.entries(roles).reduce((sum,[role,count])=>sum+(isWolfRole(role as BoardRole)?count!:0),0);
  return {seatCount:parsed.data.seatCount,roles,...(parsed.data.idiotPolicy?{idiotPolicy:parsed.data.idiotPolicy}:{}),ruleset:roles.armoredWolf?'mechanical-armor':standard?'standard':'mechanical-seer',playable:parsed.data.seatCount<=256&&wolfCount>0&&wolfCount<parsed.data.seatCount};
 }
 
@@ -29,7 +29,7 @@ export function boardPreset(id:BoardPresetId):BoardConfiguration{
 // Recompute eligibility; caller-provided flags cannot authorize an unfinished board.
 export function boardStartError(config:BoardConfiguration,mode:'automatic'|'manual'='automatic'):string|null{
  if(config.seatCount>256)return 'BOARD_NOT_IMPLEMENTED';
- const wolves=(config.roles.wolf??0)+(config.roles.mechanicalWolf??0)+(config.roles.armoredWolf??0);
+ const wolves=Object.entries(config.roles).reduce((sum,[role,count])=>sum+(isWolfRole(role as BoardRole)?count!:0),0);
  if(wolves===config.seatCount)return 'INVALID_BOARD_FACTIONS';
  if(!wolves&&mode!=='manual')return 'WOLF_FREE_MANUAL_ONLY';
  return null;
