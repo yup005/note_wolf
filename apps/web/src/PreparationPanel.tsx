@@ -27,6 +27,7 @@ export function PreparationPanel({view,busy,connected,onAction}:Props){
   </>:<>
    {p.phase==='identity_collection'&&<>
     <p className="helper">{p.settings.dealMethod==='physical'?`已提交 ${p.submittedCount} / ${capacity}`:`已确认 ${p.confirmedCount} / ${capacity}`}</p>
+    {p.settings.dealMethod==='online'&&<p className="helper">请先查看并确认自己的身份，房主也需要确认。</p>}
     {p.validation==='mismatch'&&<p className="validation-warning" role="alert">角色数量不匹配，请各自检查身份</p>}
     {me.isHost?<button className="primary full" disabled={blocked||p.validation!=='valid'||p.confirmedCount!==capacity} onClick={()=>onAction('start')}>开始对局</button>:<p className="helper">等待全员确认后由房主开局。</p>}
    </>}

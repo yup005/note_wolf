@@ -4,6 +4,14 @@
 > This document records **product-relevant confirmed decisions and current planning**, not the raw ChatGPT conversation.  
 > **Source note:** The 2026-10-10 product status below was provided by the project owner as a handoff summary. It is **not** verified against the older GitHub `main` snapshot or by re-running tests.
 
+<a id="recorded-voice-and-authority-2026-10-12"></a>
+
+## 预录中文语音与权限确认时长（2026-10-12，直接补充）
+
+Owner在本地测试反馈13号卡片末行较小、身份确认停在12/13及实际没有声音，并明确要求预先录制系统语音，之后直接调用录音、不每次生成；音量已最大。Owner另确认“狼刀权限确认”15秒即可，覆盖该阶段原30秒代码默认；不改其他夜晚时长或5秒闭眼间隔。前49项问卷原条目保留，此为后续直接确认。
+
+因此默认使用预录中文公开提示与可重用数字片段，设备手势开启、静态本地资源解码缓存/拼接；保留原浏览器语音作为显式替代。没有第三方生成服务、麦克风或运行时秘密文本录音。房主/有效临时房主与单标签租约不变，后台/失权/旧阶段停止。13席确认仍要求真实房主本人确认，测试玩家的自动确认不替代房主；补充清晰提示并修正扩展行等高。规则见[本批规格](WEREWOLF_RULES_SPEC.md#recorded-voice-and-authority-2026-10-12)，实际检查及实机边界见[交接](PROJECT_STATUS_FOR_CHATGPT.md)和[报告](TEST_REPORT.md)。不部署。
+
 <a id="wolf-kings-delivery-2026-10-12"></a>
 
 ## 黑白狼王实施范围（2026-10-12）

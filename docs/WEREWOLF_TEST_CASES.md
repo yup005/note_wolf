@@ -1,5 +1,18 @@
 # WEREWOLF_TEST_CASES.md
 
+## 扩展座位与预录播报验收（2026-10-12）
+
+来源：[本批规则](WEREWOLF_RULES_SPEC.md#recorded-voice-and-authority-2026-10-12)。真实出声与实机边界见[报告](TEST_REPORT.md)。
+
+| ID | 场景 | 期望 | 自动证据 |
+|---|---|---|---|
+| CFG-001 | 13/14/15人模拟玩家N-1确认，房主本人查看/确认/开局 | N/N后可开局，不把房主算作自动确认 | e2e/expanded-seats |
+| CFG-001 | 扩展行的夜间与白天，320×568/390×844/430×932/1040×900 | 所有卡片同高且>=44px，无横向溢出，标准12不改 | e2e/expanded-seats |
+| COPY-001 | 第二夜权限确认第14999/15000ms边界及随后守卫 |15秒确认结束，再5秒闭眼，守卫30秒 | mechanical-night-runtime |
+| AUDIO-003/006 | 所有公开夜/日提示、半票、1与3/13与14死亡列表、未知文本 | 预录文件有效，数字不得合并；未知文本拒绝，无第三方生成 | recorded-voice |
+| AUDIO-004/005 | 无浏览器语音API/旧偏好，真实录音解码与启动、重播、后台停止 | 录音仍可播放非零样本，保留租约；停止旧源，不播旧阶段 | e2e/recorded-voice、recorded-voice |
+| AUDIO-005 | 音频加载中取消、源启动失败、原浏览器分支竞争 | 不晚播、不破坏关闭/释放；原失败/租约断言保留 | recorded-voice、e2e/voice |
+
 ## 黑白狼王验收（2026-10-12）
 
 来源：[现行狼王规则](WEREWOLF_RULES_SPEC.md#wolf-kings-2026-10-12)；执行结果见[报告](TEST_REPORT.md)。本节不是实机验收。

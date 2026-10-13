@@ -20,7 +20,7 @@ const fail=(code:string,status=409):never=>{throw new LobbyError(code,status);};
 function engine(s:NightState):EngineState{return s.engine!;}
 function runtime(s:NightState){return s.mechanical!;}
 function turn(s:NightState,p:NightPhase,now:number){
- s.phase=p;s.turnId=randomUUID();const seconds=p==='wolves'?180:p==='eyes_closed'?5:p==='witch'&&s.night===1?60:30;
+ s.phase=p;s.turnId=randomUUID();const seconds=p==='wolves'?180:p==='eyes_closed'?5:p==='mechanical_authority'?15:p==='witch'&&s.night===1?60:30;
  s.deadline=['first_night_complete','rules_pending','awaiting_host'].includes(p)?null:now+seconds*1000;
  s.events.push({type:p,at:now});
 }

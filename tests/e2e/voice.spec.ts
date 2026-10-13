@@ -6,6 +6,7 @@ import {test,expect,type Page} from '@playwright/test';
 // a held/aborted browser claim and change the race's request ordering.
 test.beforeAll(async()=>{test.setTimeout(65000);await new Promise(resolve=>setTimeout(resolve,60000));});
 async function speechBoundary(page:Page,fail=false){await page.addInitScript(({fail})=>{
+ localStorage.setItem('wolf.voice.mode','native');
  const w=window as any;w.voiceSpoken=[];w.voiceCancelled=0;
  class Utterance {text:string;lang='';voice=null;rate=1;onstart:any;onend:any;onerror:any;constructor(text:string){this.text=text;}}
  Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Utterance,configurable:true});

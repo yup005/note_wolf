@@ -85,3 +85,7 @@ test('knife-authority acknowledgement does not acknowledge a later copied inspec
  assert.equal(privateNight(next,12).seen,false);const finish={action:'ability_finish',turnId:next.turnId} as const;
  nightCommand(next,12,finish,next.deadline!-4);assert.equal(privateNight(next,12).seen,true);assert.doesNotThrow(()=>nightCommand(next,12,finish,next.deadline!-3));
 });
+
+test('knife authority confirmation lasts 15 seconds without changing guard timing',()=>{
+ const first=fixture();beginNight(first,0,()=>0);move(first,'first_night_complete');const start=500000,next=createNight(first.players,start,{night:2,antidote:first.antidote,poison:first.poison,hunterSpent:false,priorityWolf:null,engine:first.engine},first.engine!.board);beginNight(next,start,()=>0);assert.equal(next.phase,'mechanical_authority');assert.equal(next.deadline,start+15000);advanceNight(next,start+14999);assert.equal(next.phase,'mechanical_authority');advanceNight(next,start+15000);assert.equal(next.phase,'eyes_closed');assert.equal(next.deadline,start+20000);advanceNight(next,start+20000);assert.equal(next.phase,'guard');assert.equal(next.deadline,start+50000);
+});
