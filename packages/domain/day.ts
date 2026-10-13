@@ -21,6 +21,8 @@ export interface DayState {
 }
 const error=(code='PHASE_LOCKED',status=409):never=>{throw new LobbyError(code,status);};
 const living=(s:DayState)=>s.players.filter(p=>p.alive).map(p=>p.seat);
+const dualFlipped=(s:DayState,seat:number)=>s.engine?.board.composition.idiotPolicy==='dual-category-14'&&s.players.some(p=>p.seat===seat&&p.role==='idiot')&&!!s.flippedIdiots?.includes(seat);
+const participants=(s:DayState)=>living(s).filter(seat=>!dualFlipped(s,seat));
 function phase(s:DayState,p:DayPhase,now:number,seconds?:number){s.interjection=null;s.interjectionUsed={};s.phase=p;s.turnId=randomUUID();s.deadline=seconds===undefined?null:now+seconds*1000;s.events.push({type:p,at:now,...(p==='sheriff_speech'||p==='day_speech'?{seat:s.speaker!}:['death_skill','last_words','badge_transfer','hunter_target'].includes(p)?{seat:s.currentDeath!}:{})});}
 export function createDay(n:NightState,rules:FirstDayRules,now:number,previous?:DayState):DayState{
  if(n.phase!=='first_night_complete')error();
@@ -38,9 +40,9 @@ export function createDay(n:NightState,rules:FirstDayRules,now:number,previous?:
  return {...(n.engine?{engine:structuredClone(n.engine)}:{}),extraNightSeat:n.extraNightSeat??null,flippedIdiots:[...(previous?.flippedIdiots??n.engine?.players.filter(p=>p.publicState.revealedRole==='idiot'&&!p.publicState.canVote).map(p=>p.seat)??[])],interjection:null,interjectionUsed:{},day:n.night,nightDeaths:pendingDeaths.map(d=>d.seat),hunterSpent:previous?.hunterSpent??false,speechStart:null,phase:'awaiting_host',turnId:randomUUID(),deadline:null,players:n.players.map(p=>({...p,alive:previous?.players.find(old=>old.seat===p.seat)?.alive??p.alive??true})),rules:{...rules},pendingDeaths,deaths:previous?.deaths.map(d=>({...d}))??[],tasks:[],currentDeath:null,sheriff:previous?.sheriff??null,badge:previous?.badge??'available',signup:previous?.badge==='deferred'?{...previous.signup}:{},originalCandidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.originalCandidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],candidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.candidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],speakers:[],speaker:null,vote:null,result:null,announcement:null,revealed:previous?.revealed.map(p=>({...p}))??[],winner:null,reason:null,electionPurpose:previous?.badge==='deferred'?(previous.electionPurpose??(previous.vote?.purpose==='sheriff_pk'||previous.result?.purpose==='sheriff'&&previous.result.leaders.length>1?'sheriff_pk':'sheriff')):'sheriff',voteStarted:false,speechMode:null,direction:null,afterDeaths:'day',explosions:previous?.explosions??0,priorityWolf:null,events:[{type:'day_created',at:now}]};
 }
 function checkWin(s:DayState,now:number){
- const roster=s.players.map(p=>{const engine=s.engine?.players.find(e=>e.seat===p.seat);return {...p,...(engine?.abilities.mimickedRole?{learnedRole:engine.abilities.mimickedRole}:{}),...(engine?.model?{modelSeat:engine.model.seat,modelCamp:engine.model.camp}:{})};});
- const result=evaluateVictory(roster,s.engine?.board.composition.ruleset??'standard');
- if(s.engine){s.engine.victory=result;for(const p of s.players){const engine=s.engine.players.find(e=>e.seat===p.seat);if(engine){engine.alive=p.alive;engine.publicState.canVote=p.alive;}}}
+ const roster=s.players.map(p=>{const engine=s.engine?.players.find(e=>e.seat===p.seat);return {...p,...(dualFlipped(s,p.seat)?{idiotFlipped:true}:{}),...(engine?.abilities.mimickedRole?{learnedRole:engine.abilities.mimickedRole}:{}),...(engine?.model?{modelSeat:engine.model.seat,modelCamp:engine.model.camp}:{})};});
+ const result=evaluateVictory(roster,s.engine?.board.composition.ruleset??'standard',s.engine?.board.composition.idiotPolicy);
+ if(s.engine){s.engine.victory=result;for(const p of s.players){const engine=s.engine.players.find(e=>e.seat===p.seat);if(engine){engine.alive=p.alive;engine.publicState.canVote=p.alive&&!dualFlipped(s,p.seat);}}}
  if(result.status==='unresolved'){rulePending(s,'规则待确认',now);return true;}
  const winner=result.status==='ended'?result.winner:null;
  // Last mechanical idiot only postpones a good verdict on exile. Wolves win first.
@@ -51,7 +53,14 @@ function checkWin(s:DayState,now:number){
 }
 function reveal(s:DayState,seat:number,role:Role){if(!s.revealed.some(p=>p.seat===seat))s.revealed.push({seat,role});}
 function kill(s:DayState,seat:number,reason:DeathReason,now:number){
- const p=s.players.find(p=>p.seat===seat);if(!p||!p.alive)return false;p.alive=false;s.deaths.push({seat,reason});s.events.push({type:`death_${reason}`,seat,at:now});
+ const p=s.players.find(p=>p.seat===seat);if(!p||!p.alive)return false;
+ if(reason==='exile'&&p.role==='idiot'&&s.engine?.board.composition.idiotPolicy==='dual-category-14'){
+  if(dualFlipped(s,seat))return error('INVALID_INPUT');
+  reveal(s,seat,'idiot');s.flippedIdiots??=[];s.flippedIdiots.push(seat);
+  const engine=s.engine.players.find(e=>e.seat===seat)!;engine.publicState={revealedRole:'idiot',canVote:false,canInterject:false};
+  s.events.push({type:'idiot_flip',seat,at:now});return true;
+ }
+ p.alive=false;s.deaths.push({seat,reason});s.events.push({type:`death_${reason}`,seat,at:now});
  const engine=s.engine?.players.find(e=>e.seat===seat);
  if(engine){engine.alive=false;engine.publicState.canVote=false;}
  const mechanicalIdiot=p.role==='mechanicalWolf'&&engine?.abilities.mimickedRole==='idiot';
@@ -62,7 +71,7 @@ function kill(s:DayState,seat:number,reason:DeathReason,now:number){
  }
  return true;
 }
-function deathTasks(s:DayState,seat:number,words=true):Task[]{return [{seat,step:'skill'},...(words?[{seat,step:'words' as const}]:[]),...(s.sheriff===seat?[{seat,step:'badge' as const}]:[])];}
+function deathTasks(s:DayState,seat:number,words=true):Task[]{return [...(s.players.find(p=>p.seat===seat)?.alive?[]:[{seat,step:'skill' as const}]),...(words&&!dualFlipped(s,seat)?[{seat,step:'words' as const}]:[]),...(s.sheriff===seat?[{seat,step:'badge' as const}]:[])];}
 function nextTask(s:DayState,now:number){const task=s.tasks.shift();s.currentDeath=task?.seat??null;if(!task){if(s.afterDeaths==='night')phase(s,'day_complete',now);else phase(s,'day_direction',now);return;}phase(s,task.step==='skill'?'death_skill':task.step==='words'?'last_words':'badge_transfer',now,task.step==='skill'?10:task.step==='words'?90:undefined);}
 function shuffle<T>(items:T[],choose:(n:number)=>number){const out=[...items];for(let i=out.length-1;i>0;i--){const j=choose(i+1);[out[i],out[j]]=[out[j],out[i]];}return out;}
 function announce(s:DayState,now:number,choose:(n:number)=>number){
@@ -70,12 +79,12 @@ function announce(s:DayState,now:number,choose:(n:number)=>number){
  if(s.extraNightSeat!==null&&s.extraNightSeat!==undefined)s.extraNightSeat=null;
  if(checkWin(s,now))return;s.tasks=shuffle(s.announcement,choose).flatMap(seat=>deathTasks(s,seat,s.day===1));phase(s,'night_announcement',now);
 }
-function startSpeeches(s:DayState,seats:number[],p:'sheriff_speech'|'day_speech',now:number){s.speakers=[...seats];s.speaker=s.speakers.shift()??null;if(s.speaker!==null)phase(s,p,now,90);else if(p==='sheriff_speech')phase(s,'sheriff_withdraw',now);else setupVote(s,'exile',living(s),living(s),now);}
-function nextSpeaker(s:DayState,now:number){s.speaker=s.speakers.shift()??null;if(s.speaker!==null)phase(s,s.phase,now,90);else if(s.phase==='sheriff_speech'){if(s.vote?.purpose==='sheriff_pk')setupVote(s,'sheriff_pk',s.candidates,living(s).filter(p=>!s.candidates.includes(p)),now);else phase(s,'sheriff_withdraw',now);}else setupVote(s,'exile',living(s),living(s),now);}
+function startSpeeches(s:DayState,seats:number[],p:'sheriff_speech'|'day_speech',now:number){s.speakers=[...seats];s.speaker=s.speakers.shift()??null;if(s.speaker!==null)phase(s,p,now,90);else if(p==='sheriff_speech')phase(s,'sheriff_withdraw',now);else setupVote(s,'exile',participants(s),participants(s),now);}
+function nextSpeaker(s:DayState,now:number){s.speaker=s.speakers.shift()??null;if(s.speaker!==null)phase(s,s.phase,now,90);else if(s.phase==='sheriff_speech'){if(s.vote?.purpose==='sheriff_pk')setupVote(s,'sheriff_pk',s.candidates,participants(s).filter(p=>!s.candidates.includes(p)),now);else phase(s,'sheriff_withdraw',now);}else setupVote(s,'exile',participants(s),participants(s),now);}
 function setupVote(s:DayState,purpose:VotePurpose,candidates:number[],eligible:number[],now:number){s.vote={purpose,candidates:[...candidates],eligible:[...eligible],ballots:{},method:'phone',visibility:'individual'};s.result=null;phase(s,'vote_setup',now);}
 function electSheriff(s:DayState,seat:number,now:number){s.sheriff=seat;s.badge='elected';s.events.push({type:'sheriff_elected',seat,at:now});}
 function electionFinished(s:DayState,now:number){s.speaker=null;s.speakers=[];phase(s,'night_announcement',now);}
-function closeElection(s:DayState,now:number){if(s.candidates.length===0){s.badge='lost';electionFinished(s,now);}else if(s.candidates.length===1){electSheriff(s,s.candidates[0],now);electionFinished(s,now);}else {const purpose=s.electionPurpose??'sheriff';setupVote(s,purpose,s.candidates,living(s).filter(p=>!(purpose==='sheriff_pk'?s.candidates:s.originalCandidates).includes(p)),now);}}
+function closeElection(s:DayState,now:number){if(s.candidates.length===0){s.badge='lost';electionFinished(s,now);}else if(s.candidates.length===1){electSheriff(s,s.candidates[0],now);electionFinished(s,now);}else {const purpose=s.electionPurpose??'sheriff';setupVote(s,purpose,s.candidates,participants(s).filter(p=>!(purpose==='sheriff_pk'?s.candidates:s.originalCandidates).includes(p)),now);}}
 function tally(s:DayState,now:number){const v=s.vote!;const counts=v.candidates.map(seat=>({seat,votes:0}));for(const seat of v.eligible){const target=v.ballots[seat];const count=counts.find(c=>c.seat===target);if(count)count.votes+=(v.purpose.startsWith('exile')&&s.sheriff===seat?1.5:1);}
  const max=Math.max(0,...counts.map(c=>c.votes));s.result={purpose:v.purpose,counts,leaders:max?counts.filter(c=>c.votes===max).map(c=>c.seat):[],...(v.visibility==='individual'?{ballots:v.eligible.map(seat=>({seat,target:v.ballots[seat]??null}))}:{} )};s.events.push({type:'vote_outcome',at:now,result:structuredClone(s.result!)});phase(s,'vote_result',now);
 }
@@ -85,18 +94,18 @@ function continueResult(s:DayState,now:number,choose:(n:number)=>number){
   if(r.leaders.length===1){electSheriff(s,r.leaders[0],now);electionFinished(s,now);}
   else if(!r.leaders.length){if(s.rules.zeroVotes==='no_result'){s.badge='lost';electionFinished(s,now);}else rulePending(s,'全员弃票时的警长选举规则待确认',now);}
   else if(r.purpose==='sheriff_pk'){s.badge='lost';electionFinished(s,now);}
-  else{s.candidates=[...r.leaders];s.vote={...s.vote!,purpose:'sheriff_pk',candidates:s.candidates,eligible:living(s).filter(p=>!s.candidates.includes(p)),ballots:{}};startSpeeches(s,shuffle(s.candidates,choose),'sheriff_speech',now);}
+  else{s.candidates=[...r.leaders];s.vote={...s.vote!,purpose:'sheriff_pk',candidates:s.candidates,eligible:participants(s).filter(p=>!s.candidates.includes(p)),ballots:{}};startSpeeches(s,shuffle(s.candidates,choose),'sheriff_speech',now);}
  }else{
   if(r.leaders.length===1){const seat=r.leaders[0];kill(s,seat,'exile',now);if(checkWin(s,now))return;s.afterDeaths='night';s.tasks=deathTasks(s,seat);nextTask(s,now);}
   else if(!r.leaders.length){if(s.rules.zeroVotes==='no_result')phase(s,'day_complete',now);else rulePending(s,'全员弃票时的放逐规则待确认',now);}
   else if(r.purpose==='exile_pk'){phase(s,'day_complete',now);}
-  else{if(s.rules.exilePkEligibility===null){rulePending(s,'放逐 PK 投票资格待确认',now);return;}s.candidates=[...r.leaders];s.speakers=shuffle(s.candidates,choose);s.speaker=s.speakers.shift()!;s.vote={...s.vote!,purpose:'exile_pk',candidates:s.candidates,eligible:living(s).filter(p=>s.rules.exilePkEligibility==='all_alive'||!s.candidates.includes(p)),ballots:{}};phase(s,'day_speech',now,90);}
+  else{if(s.rules.exilePkEligibility===null){rulePending(s,'放逐 PK 投票资格待确认',now);return;}s.candidates=[...r.leaders];s.speakers=shuffle(s.candidates,choose);s.speaker=s.speakers.shift()!;s.vote={...s.vote!,purpose:'exile_pk',candidates:s.candidates,eligible:participants(s).filter(p=>s.rules.exilePkEligibility==='all_alive'||!s.candidates.includes(p)),ballots:{}};phase(s,'day_speech',now,90);}
  }
 }
 function startDaySpeech(s:DayState,now:number,choose:(n:number)=>number){
  if(s.speechMode==='free'){s.speaker=null;s.speakers=[];phase(s,'free_speech',now);return;}
  if(s.speechMode===null||s.direction===null)return;
- const seats=living(s).sort((a,b)=>s.direction==='ascending'?a-b:b-a);
+ const seats=participants(s).sort((a,b)=>s.direction==='ascending'?a-b:b-a);
  const anchor=s.nightDeaths.length===1?s.nightDeaths[0]:s.sheriff;
  let start=s.speechStart;
  if(start===null&&anchor!==null)start=seats.find(p=>s.direction==='ascending'?p>anchor:p<anchor)??seats[0];
@@ -112,7 +121,7 @@ function canShoot(s:DayState,seat:number){
 }
 function interjectionRemaining(s:DayState,seat:number){return Math.max(0,15000-(s.interjectionUsed?.[seat]??0));}
 function canInterject(s:DayState,seat:number){
- return !!s.flippedIdiots?.includes(seat)&&['sheriff_speech','day_speech','last_words'].includes(s.phase)&&
+ return !dualFlipped(s,seat)&&!!s.flippedIdiots?.includes(seat)&&['sheriff_speech','day_speech','last_words'].includes(s.phase)&&
   seat!==(s.phase==='last_words'?s.currentDeath:s.speaker)&&s.deadline!==null&&!s.interjection&&interjectionRemaining(s,seat)>0;
 }
 function finishInterjection(s:DayState,now:number){
@@ -137,11 +146,11 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
   s.interjection={seat,startedAt:now,remainingSpeechMs:Math.max(0,s.deadline!-now)};s.deadline=now+interjectionRemaining(s,seat);s.turnId=randomUUID();s.events.push({type:'interjection_started',seat,at:now});return;
  }
 
- if(c.action==='start'){host();need('awaiting_host');if(s.rules.winTiming===null||s.rules.preAnnouncementEligibility===null)error('DAY_RULE_UNRESOLVED');if(s.rules.winTiming==='before_election')error('DAY_RULE_UNRESOLVED');if(s.badge==='deferred'){s.candidates=s.candidates.filter(seat=>living(s).includes(seat));s.speaker=null;s.speakers=[];if(s.candidates.length<=1)closeElection(s,now);else phase(s,'sheriff_withdraw',now);}else phase(s,s.day===1?'sheriff_signup':'night_announcement',now);return;}
- if(c.action==='signup'){need('sheriff_signup');if(!p!.alive)error('NOT_YOUR_TURN',403);s.signup[seat]=c.join;return;}
- if(c.action==='close_signup'){host();need('sheriff_signup');s.originalCandidates=living(s).filter(seat=>s.signup[seat]);s.candidates=[...s.originalCandidates];if(s.candidates.length===living(s).length||s.candidates.length===0){s.badge='lost';electionFinished(s,now);}else if(s.candidates.length===1)closeElection(s,now);else{const seats=[...s.candidates].sort((a,b)=>a-b);const start=choose(seats.length);startSpeeches(s,[...seats.slice(start),...seats.slice(0,start)],'sheriff_speech',now);}return;}
- if(c.action==='withdraw'){if(!['sheriff_speech','sheriff_withdraw'].includes(s.phase)||!s.candidates.includes(seat))error();s.candidates=s.candidates.filter(p=>p!==seat);s.speakers=s.speakers.filter(p=>p!==seat);if(s.vote?.purpose==='sheriff_pk'){s.vote.candidates=[...s.candidates];s.vote.eligible=living(s).filter(p=>!s.candidates.includes(p));}if(s.candidates.length<=1){closeElection(s,now);announce(s,now,choose);return;}if(s.speaker===seat){if(s.interjection)finishInterjection(s,now);nextSpeaker(s,now);}return;}
- if(c.action==='end_speech'){if(!['sheriff_speech','day_speech','last_words','free_speech'].includes(s.phase))error();if(!actor.isHost&&seat!==(s.phase==='last_words'?s.currentDeath:s.speaker))error('NOT_YOUR_TURN',403);if(s.phase==='last_words')nextTask(s,now);else if(s.phase==='free_speech'){host();setupVote(s,'exile',living(s),living(s),now);}else if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.speakers.length===0){s.speaker=null;setupVote(s,'exile_pk',s.vote.candidates,s.vote.eligible,now);}else nextSpeaker(s,now);return;}
+ if(c.action==='start'){host();need('awaiting_host');if(s.rules.winTiming===null||s.rules.preAnnouncementEligibility===null)error('DAY_RULE_UNRESOLVED');if(s.rules.winTiming==='before_election')error('DAY_RULE_UNRESOLVED');if(s.badge==='deferred'){s.candidates=s.candidates.filter(seat=>participants(s).includes(seat));s.speaker=null;s.speakers=[];if(s.candidates.length<=1)closeElection(s,now);else phase(s,'sheriff_withdraw',now);}else phase(s,s.day===1?'sheriff_signup':'night_announcement',now);return;}
+ if(c.action==='signup'){need('sheriff_signup');if(!p!.alive||dualFlipped(s,seat))error('NOT_YOUR_TURN',403);s.signup[seat]=c.join;return;}
+ if(c.action==='close_signup'){host();need('sheriff_signup');s.originalCandidates=participants(s).filter(seat=>s.signup[seat]);s.candidates=[...s.originalCandidates];if(s.candidates.length===participants(s).length||s.candidates.length===0){s.badge='lost';electionFinished(s,now);}else if(s.candidates.length===1)closeElection(s,now);else{const seats=[...s.candidates].sort((a,b)=>a-b);const start=choose(seats.length);startSpeeches(s,[...seats.slice(start),...seats.slice(0,start)],'sheriff_speech',now);}return;}
+ if(c.action==='withdraw'){if(!['sheriff_speech','sheriff_withdraw'].includes(s.phase)||!s.candidates.includes(seat))error();s.candidates=s.candidates.filter(p=>p!==seat);s.speakers=s.speakers.filter(p=>p!==seat);if(s.vote?.purpose==='sheriff_pk'){s.vote.candidates=[...s.candidates];s.vote.eligible=participants(s).filter(p=>!s.candidates.includes(p));}if(s.candidates.length<=1){closeElection(s,now);announce(s,now,choose);return;}if(s.speaker===seat){if(s.interjection)finishInterjection(s,now);nextSpeaker(s,now);}return;}
+ if(c.action==='end_speech'){if(!['sheriff_speech','day_speech','last_words','free_speech'].includes(s.phase))error();if(!actor.isHost&&seat!==(s.phase==='last_words'?s.currentDeath:s.speaker))error('NOT_YOUR_TURN',403);if(s.phase==='last_words')nextTask(s,now);else if(s.phase==='free_speech'){host();setupVote(s,'exile',participants(s),participants(s),now);}else if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.speakers.length===0){s.speaker=null;setupVote(s,'exile_pk',s.vote.candidates,s.vote.eligible,now);}else nextSpeaker(s,now);return;}
  if(c.action==='close_withdraw'){host();need('sheriff_withdraw');closeElection(s,now);return;}
  if(c.action==='start_vote'){host();need('vote_setup');s.voteStarted=true;s.vote!.method=c.method;s.vote!.visibility=c.visibility;phase(s,'voting',now,c.method==='phone'?c.seconds:undefined);return;}
  if(c.action==='vote'||c.action==='offline_vote'){
@@ -171,9 +180,9 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
   if(p!.role==='hunter')s.hunterSpent=true;reveal(s,seat,'hunter');if(engine)engine.publicState.revealedRole='hunter';phase(s,'hunter_target',now);return;
  }
  if(c.action==='record_shot'){host();need('hunter_target');if(!living(s).includes(c.target))error('INVALID_INPUT');kill(s,c.target,'shot',now);s.events.push({type:'hunter_shot',at:now,seat:s.currentDeath!,target:c.target});if(checkWin(s,now))return;s.tasks=[...deathTasks(s,c.target,s.tasks.some(t=>t.seat===s.currentDeath&&t.step==='words')),...s.tasks];nextTask(s,now);return;}
- if(c.action==='transfer_badge'){need('badge_transfer');if(seat!==s.currentDeath&&(!actor.isHost||c.takeover!==true))error('NOT_YOUR_TURN',403);if(c.target!==null&&!living(s).includes(c.target))error('INVALID_INPUT');s.sheriff=c.target;s.badge=c.target===null?'lost':'elected';nextTask(s,now);return;}
+ if(c.action==='transfer_badge'){need('badge_transfer');if(seat!==s.currentDeath&&(!actor.isHost||c.takeover!==true))error('NOT_YOUR_TURN',403);if(c.target!==null&&!participants(s).includes(c.target))error('INVALID_INPUT');s.sheriff=c.target;s.badge=c.target===null?'lost':'elected';nextTask(s,now);return;}
  if(c.action==='speech_mode'){host();need('day_direction');s.speechMode=c.mode==='ordered'?'phone':c.mode;if(s.sheriff===null)s.direction='ascending';startDaySpeech(s,now,choose);return;}
- if(c.action==='direction'){need('day_direction');if(seat!==s.sheriff)error('NOT_YOUR_TURN',403);if(c.start!==undefined&&!living(s).includes(c.start))error('INVALID_INPUT');s.speechStart=c.start??null;s.direction=c.direction;startDaySpeech(s,now,choose);return;}
+ if(c.action==='direction'){need('day_direction');if(seat!==s.sheriff)error('NOT_YOUR_TURN',403);if(c.start!==undefined&&!participants(s).includes(c.start))error('INVALID_INPUT');s.speechStart=c.start??null;s.direction=c.direction;startDaySpeech(s,now,choose);return;}
  if(c.action==='explode'){
   if(s.rules.explosionOrder===null||(s.voteStarted&&s.rules.explosionLock===null))error('DAY_RULE_UNRESOLVED');if(s.voteStarted&&s.rules.explosionLock==='after_any_vote')error('PHASE_LOCKED');if(!['sheriff_signup','sheriff_speech','sheriff_withdraw','day_speech','free_speech'].includes(s.phase)||!p!.alive||p!.role!=='wolf')error('NOT_YOUR_TURN',403);
   if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.vote.candidates.includes(seat))error('NOT_YOUR_TURN',403);
@@ -200,7 +209,7 @@ export function publicDay(s:DayState,now:number):DayPublic{return {skillResults:
 export function privateDay(s:DayState,seat:number):DayPrivate{
  const p=s.players.find(p=>p.seat===seat),vote=s.vote,engine=s.engine?.players.find(e=>e.seat===seat);
  return {turnId:s.turnId,seat,
-  canSignup:s.phase==='sheriff_signup'&&!!p?.alive,signup:s.signup[seat]??null,
+  canSignup:s.phase==='sheriff_signup'&&!!p?.alive&&!dualFlipped(s,seat),signup:s.signup[seat]??null,
   canWithdraw:['sheriff_speech','sheriff_withdraw'].includes(s.phase)&&s.candidates.includes(seat),
   canVote:s.phase==='voting'&&vote?.method==='phone'&&vote.eligible.includes(seat)&&!Object.hasOwn(vote.ballots,seat)||false,
   voted:!!vote&&Object.hasOwn(vote.ballots,seat),myVote:vote?.ballots[seat]??null,canShoot:canShoot(s,seat),

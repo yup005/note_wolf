@@ -20,7 +20,9 @@ export const manualSwitchSchema=z.object({confirmed:z.literal(true)}).strict();
 export const manualResolveSchema=z.object({version:z.number().int().min(0),hostRevision:z.number().int().min(0),accept:z.boolean()}).strict();
 export const manualAdjudicateSchema=z.object({confirmed:z.literal(true),version:z.number().int().min(0),revision:z.number().int().min(0),winner:z.enum(['wolves','good'])}).strict();
 export type ManualAdjudicate=z.infer<typeof manualAdjudicateSchema>;
-export type RecordOutcomeSource='computed'|'host-adjudicated';
+export const manualFinishSchema=z.object({confirmed:z.literal(true),version:z.number().int().min(0),revision:z.number().int().min(0)}).strict();
+export type ManualFinish=z.infer<typeof manualFinishSchema>;
+export type RecordOutcomeSource='computed'|'host-adjudicated'|'record-only';
 export type RecordOutcome='wolves'|'good'|null;
 export interface RecordDraft {id:string;revision:number;document:RecordDocument;publishedVersion:number|null;withdrawn:boolean;official:boolean;shareManage:boolean}
 export interface RecordPostSummary {id:string;code:string;author:string;official:boolean;version:number;withdrawn:boolean;publishedAt:number}

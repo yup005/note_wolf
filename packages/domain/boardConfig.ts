@@ -17,7 +17,8 @@ export function createBoardConfiguration(input:unknown):BoardConfiguration{
  const roles=Object.fromEntries(Object.entries(parsed.data.roles).filter(([,count])=>count!>0)) as BoardComposition['roles'];
  const standard=parsed.data.seatCount===12&&Object.keys(roles).length===6&&
   Object.entries(standardRoleCounts).every(([role,count])=>roles[role as keyof typeof standardRoleCounts]===count);
- return {seatCount:parsed.data.seatCount,roles,ruleset:roles.armoredWolf?'mechanical-armor':standard?'standard':'mechanical-seer',playable:parsed.data.seatCount<=256};
+ const wolfCount=(roles.wolf??0)+(roles.mechanicalWolf??0)+(roles.armoredWolf??0);
+ return {seatCount:parsed.data.seatCount,roles,...(parsed.data.idiotPolicy?{idiotPolicy:parsed.data.idiotPolicy}:{}),ruleset:roles.armoredWolf?'mechanical-armor':standard?'standard':'mechanical-seer',playable:parsed.data.seatCount<=256&&wolfCount>0&&wolfCount<parsed.data.seatCount};
 }
 
 export function boardPreset(id:BoardPresetId):BoardConfiguration{
@@ -26,8 +27,15 @@ export function boardPreset(id:BoardPresetId):BoardConfiguration{
 }
 
 // Recompute eligibility; caller-provided flags cannot authorize an unfinished board.
-export function assertPlayableBoard(config:BoardConfiguration):BoardConfiguration{
- const validated=createBoardConfiguration({seatCount:config.seatCount,roles:config.roles});
- if(!validated.playable)throw new LobbyError('BOARD_NOT_IMPLEMENTED',409);
+export function boardStartError(config:BoardConfiguration,mode:'automatic'|'manual'='automatic'):string|null{
+ if(config.seatCount>256)return 'BOARD_NOT_IMPLEMENTED';
+ const wolves=(config.roles.wolf??0)+(config.roles.mechanicalWolf??0)+(config.roles.armoredWolf??0);
+ if(wolves===config.seatCount)return 'INVALID_BOARD_FACTIONS';
+ if(!wolves&&mode!=='manual')return 'WOLF_FREE_MANUAL_ONLY';
+ return null;
+}
+export function assertPlayableBoard(config:BoardConfiguration,mode:'automatic'|'manual'='automatic'):BoardConfiguration{
+ const validated=createBoardConfiguration({seatCount:config.seatCount,roles:config.roles,...(config.idiotPolicy?{idiotPolicy:config.idiotPolicy}:{})});
+ const reason=boardStartError(validated,mode);if(reason)throw new LobbyError(reason,409);
  return validated;
 }

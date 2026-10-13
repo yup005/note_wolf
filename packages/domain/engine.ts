@@ -13,7 +13,7 @@ export interface ResolutionStrategy {ruleset:Ruleset;ruleVersion:typeof boardRul
 export function validateEngineState(input:unknown):EngineState{
  if(typeof input==='object'&&input!==null&&'formatVersion' in input&&input.formatVersion!==1)throw new LobbyError('ENGINE_VERSION_UNSUPPORTED',409);
  const parsed=engineStateSchema.safeParse(input);if(!parsed.success)throw new LobbyError('INVALID_ENGINE_STATE');const state=parsed.data;
- const b=state.board.composition;const derived=createBoardConfiguration({seatCount:b.seatCount,roles:b.roleCounts});
+ const b=state.board.composition;const derived=createBoardConfiguration({seatCount:b.seatCount,roles:b.roleCounts,...(b.idiotPolicy?{idiotPolicy:b.idiotPolicy}:{})});
  // playable is release/UI metadata. Old internal snapshots retain their original
  // flag; gameplay authority always derives from the current validated composition.
  if(derived.ruleset!==b.ruleset||state.players.length!==b.seatCount||
@@ -142,8 +142,9 @@ function deathEvidence(effects:readonly NightEffect[]){
 }
 function victoryFor(state:EngineState){
  return evaluateVictory(state.players.map(p=>({seat:p.seat,role:p.role,alive:p.alive,
+  ...(state.board.composition.idiotPolicy==='dual-category-14'&&p.role==='idiot'?{idiotFlipped:p.publicState.revealedRole==='idiot'}:{}),
   ...(p.abilities.mimickedRole?{learnedRole:p.abilities.mimickedRole}:{}),
-  ...(p.model?{modelSeat:p.model.seat,modelCamp:p.model.camp}:{})})),state.board.composition.ruleset);
+  ...(p.model?{modelSeat:p.model.seat,modelCamp:p.model.camp}:{})})),state.board.composition.ruleset,state.board.composition.idiotPolicy);
 }
 function stageFor(victory:EngineState['victory']):EngineState['stage']{
  return victory.status==='ended'?'ended':victory.status==='unresolved'?'awaiting-decision':'resolved';

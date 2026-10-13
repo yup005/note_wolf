@@ -33,10 +33,10 @@ export class PreparationStore{
  }
  deal(token:string,id:string){
   this.db.transaction(()=>{this.host(token,id);if(this.row(id).phase!=='lobby')return;
-   const config=assertPlayableBoard(this.board(id));const seats=this.seats(id);assertCanDeal(seats,config);const r=this.row(id);
+   const r=this.row(id);const config=assertPlayableBoard(this.board(id),r.game_mode);const seats=this.seats(id);assertCanDeal(seats,config,r.game_mode);
    this.db.prepare("UPDATE preparations SET phase='identity_collection' WHERE room_id=?").run(id);
    if(r.deal_method==='online'){
-    const deck=createDeck(config);const insert=this.db.prepare('INSERT INTO identities(room_id,member_id,role,confirmed) VALUES (?,?,?,0)');
+    const deck=createDeck(config,r.game_mode);const insert=this.db.prepare('INSERT INTO identities(room_id,member_id,role,confirmed) VALUES (?,?,?,0)');
     seats.forEach((s,i)=>insert.run(id,s.memberId,deck[i]));
    }
    this.bump(id);
@@ -69,7 +69,7 @@ export class PreparationStore{
  start(token:string,id:string){
   this.db.transaction(()=>{this.host(token,id);const r=this.row(id);if(r.phase==='started')return;
    if(r.phase!=='identity_collection')throw new LobbyError('PHASE_LOCKED',409);
-   const config=assertPlayableBoard(this.board(id));const p=this.snapshot(id);if(p.confirmedCount!==config.seatCount)throw new LobbyError('IDENTITY_INCOMPLETE',409);
+   const config=assertPlayableBoard(this.board(id),r.game_mode);const p=this.snapshot(id);if(p.confirmedCount!==config.seatCount)throw new LobbyError('IDENTITY_INCOMPLETE',409);
    if(p.validation!=='valid')throw new LobbyError('ROLE_MISMATCH',409);
    this.db.prepare("UPDATE preparations SET phase='started' WHERE room_id=?").run(id);this.bump(id);
   }).immediate();

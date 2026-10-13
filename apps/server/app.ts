@@ -9,7 +9,7 @@ import {randomBytes} from 'node:crypto';
 import {Server} from 'socket.io';
 import {LobbyStore} from '../../packages/storage/lobby.js';
 import {LobbyError,createSchema,joinSchema,selectSchema,messages,settingsSchema,readySchema,identitySchema,emptySchema} from '../../packages/contracts/index.js';
-import {recordSaveSchema,recordRevisionSchema,manualSwitchSchema,manualResolveSchema,manualAdjudicateSchema} from '../../packages/contracts/records.js';
+import {recordSaveSchema,recordRevisionSchema,manualSwitchSchema,manualResolveSchema,manualAdjudicateSchema,manualFinishSchema} from '../../packages/contracts/records.js';
 import {controlSchema} from '../../packages/contracts/control.js';
 import {nightCommandSchema,beginNightSchema} from '../../packages/contracts/night.js';
 import {dayCommandSchema,type FirstDayRules} from '../../packages/contracts/day.js';
@@ -163,6 +163,7 @@ export async function createServer(options:ServerOptions){
  web.post('/api/record-favorites/:id/remove',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body);res.json(store.removeRecordFavorite(authenticated(req),req.params.id));});
  web.post('/api/rooms/:id/manual/switch',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const b=parse(manualSwitchSchema,req.body);const result=store.switchManual(authenticated(req),req.params.id,b.confirmed);publish(req.params.id);roomWrite(res,req.params.id,result);});
  for(const action of ['commit','request'] as const)web.post(`/api/rooms/:id/manual/${action}`,(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const b=parse(recordRevisionSchema,req.body);const result=action==='commit'?store.commitManual(authenticated(req),req.params.id,b.revision):store.requestManualEnd(authenticated(req),req.params.id,b.revision);publish(req.params.id);roomWrite(res,req.params.id,result);});
+ web.post('/api/rooms/:id/manual/finish-record',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const b=parse(manualFinishSchema,req.body);const result=store.finishManualRecord(authenticated(req),req.params.id,b);publish(req.params.id);roomWrite(res,req.params.id,result);});
  web.post('/api/rooms/:id/manual/adjudicate',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const b=parse(manualAdjudicateSchema,req.body);const result=store.adjudicateManual(authenticated(req),req.params.id,b);publish(req.params.id);roomWrite(res,req.params.id,result);});
  web.get('/api/rooms/:id/manual/request',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.manualRequest(authenticated(req),req.params.id));});
  web.get('/api/rooms/:id/manual/history',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json({items:store.manualHistory(authenticated(req),req.params.id)});});

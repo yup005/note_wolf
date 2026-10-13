@@ -1,6 +1,11 @@
 # Mechanical board implementation progress
 
-Date: 2026-10-11 (America/Los_Angeles). Entry point: [M0–M6 specification](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md). Confirmation, implementation and executed verification are separate.
+## 最新：双边白痴与配牌边界（2026-10-12）
+
+FUTURE-007 / CFG-001 / WIN-001：14人真实白痴的独立双边选项、神/民结算、跨夜/转手动/归档已本地接入；无狼仅手动并由房主确认结束、不判胜可发布，纯狼不能正常开局。标准12及机械白痴额外夜保留。最新确认、实际检查结果、审查修复、实施SHA与未部署/实机边界统一见[当前交接](PROJECT_STATUS_FOR_CHATGPT.md)和[验证报告](TEST_REPORT.md)；下方旧日期章节保留为历史证据，不能覆盖本批已实施项。
+
+
+Date: 2026-10-12 (America/Los_Angeles). Entry point: [M0–M6 specification](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md). Confirmation, implementation and executed verification are separate.
 
 ## Historical M0 module/test differences
 
@@ -26,9 +31,11 @@ Date: 2026-10-11 (America/Los_Angeles). Entry point: [M0–M6 specification](COD
 | M5 | Confirmed default runtime implemented; separate dual-category variant pending | Mixer private model/timeout, standard12 mixed-blood exception, extra-night mechanical idiot, independent15s interjection and pause/resume;14-player dual-category policy not selectable |
 | M6 | Automated coverage expanded; physical acceptance pending | Dynamic online/physical × automatic/manual, browser private actions/refresh, HTTP/Socket privacy, restart, replay and extra-night scenarios; real devices/multiplayer remain separate |
 
-## Product decision blockers
+<a id="product-decision-blockers"></a>
 
-Current blockers are [unified specification §7](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md#7-未决项--codex-禁止擅自决定). Confirmed never-self-save, milk-through, mixed-blood timeout/private seat view, default idiot categories and extra-night runtime are implemented;14-player dual-category policy is still not selectable, without inferring it from headcount. Armor source inheritance ced569a/fab5566d and extra knife only after inherited normal knife remain authoritative. Complex reflection, undefined damage/copy combinations (including ordinary seer copies), unconfirmed camp inspection of mixed blood and special model/configuration boundaries remain blocked. CFG-05 generic shared-knife membership is domain-supported; black/white wolf king declarations/powers are absent from the runtime role catalog. Existing standard12 stays compatible; owner-authorized3-villager+1-mixed-blood variant uses all4 civilian targets. This is code delivery, not a deployment.
+## Historical blockers and remaining implementation (2026-10-11 baseline; 2026-10-12 updates below)
+
+Current blockers are [unified specification §7](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md#7-未决项--codex-禁止擅自决定). Confirmed never-self-save, milk-through, mixed-blood timeout/private seat view, default idiot categories and extra-night runtime are implemented. The historical 14-player policy blocker is superseded by the 2026-10-12 delivery below; it remains an explicit choice, not a headcount inference. Armor source inheritance ced569a/fab5566d and extra knife only after inherited normal knife remain authoritative. Complex reflection, undefined damage/copy combinations (including ordinary seer copies), unconfirmed camp inspection of mixed blood and special model/configuration boundaries remain blocked. CFG-05 generic shared-knife membership is domain-supported; black/white wolf king declarations/powers are absent from the runtime role catalog. Existing standard12 stays compatible; owner-authorized3-villager+1-mixed-blood variant uses all4 civilian targets. This is code delivery, not a deployment.
 
 ## Current runtime delivery evidence (2026-10-11)
 

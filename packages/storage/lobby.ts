@@ -180,7 +180,7 @@ export class LobbyStore {
  identity(token:string,id:string){return this.preparation.identity(token,id);}
  submitIdentity(token:string,id:string,role:Role){return this.preparation.submitIdentity(token,id,role);}
  confirmIdentity(token:string,id:string){return this.preparation.confirmIdentity(token,id);}
- fillTestPlayers(token:string,id:string){this.member(token,id);assertPlayableBoard(this.boards.configuration(id));this.testPlayers.fill(token,id);return this.view(token,id);}
+ fillTestPlayers(token:string,id:string){this.member(token,id);assertPlayableBoard(this.boards.configuration(id),this.preparation.snapshot(id).settings.gameMode);this.testPlayers.fill(token,id);return this.view(token,id);}
  testPlayerIdentity(token:string,id:string,actorId:string){return this.testPlayers.identity(token,id,actorId);}
  testPlayerReady(token:string,id:string,actorId:string,ready:boolean,settingsRevision:number){this.testPlayers.ready(token,id,actorId,ready,settingsRevision);return this.view(token,id);}
  testPlayerConfirm(token:string,id:string,actorId:string){return this.testPlayers.confirm(token,id,actorId);}
@@ -263,6 +263,7 @@ export class LobbyStore {
  recordFavorites(token:string){return this.records.favorites(token);}
  removeRecordFavorite(token:string,id:string){return this.db.transaction(()=>{const exists=this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(this.auth.owner(token),id);const result=this.records.removeFavorite(token,id);if(exists){this.favoriteLibraryStore.clearName(token,'record',id);this.touchRecordRoom(id);}return result;}).immediate();}
  switchManual(token:string,id:string,confirmed:boolean){this.records.switch(token,id,confirmed);return this.view(token,id);}
+ finishManualRecord(token:string,id:string,input:import('../contracts/records.js').ManualFinish){return this.records.finishRecord(token,id,input);}
  adjudicateManual(token:string,id:string,input:import('../contracts/records.js').ManualAdjudicate){return this.records.adjudicate(token,id,input);}
  commitManual(token:string,id:string,revision:number){return this.records.commit(token,id,revision);}
  requestManualEnd(token:string,id:string,revision:number){return this.records.requestEnd(token,id,revision);}

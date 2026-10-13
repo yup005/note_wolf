@@ -1,9 +1,9 @@
 import {z} from 'zod';
-import {boardRoleSchema,rulesetSchema,boardRuleVersion,boardCompositionSchema} from './board.js';
+import {boardRoleSchema,rulesetSchema,boardRuleVersion,boardCompositionSchema,idiotPolicySchema} from './board.js';
 import {snapshotSchema,skillSchema} from './abilities.js';
 const seat=z.number().int().positive().max(256),id=z.string().min(1).max(200),night=z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const camp=z.enum(['wolves','good']);
-export const engineBoardSchema=z.object({id,name:z.string(),ruleVersion:z.literal(boardRuleVersion),composition:z.object({seatCount:seat,roleCounts:boardCompositionSchema.shape.roles,ruleset:rulesetSchema,playable:z.boolean()}).strict()}).strict();
+export const engineBoardSchema=z.object({id,name:z.string(),ruleVersion:z.literal(boardRuleVersion),composition:z.object({seatCount:seat,roleCounts:boardCompositionSchema.shape.roles,ruleset:rulesetSchema,playable:z.boolean(),idiotPolicy:idiotPolicySchema.optional()}).strict()}).strict();
 export const engineSeedSchema=z.object({seat,role:boardRoleSchema,knifeGroup:z.enum(['shared','mechanical','armor','none'])}).strict();
 export const enginePlayerSchema=engineSeedSchema.extend({
  camp:camp.nullable(),alive:z.boolean(),abilities:snapshotSchema,

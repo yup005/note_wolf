@@ -4,6 +4,16 @@
 > This document records **product-relevant confirmed decisions and current planning**, not the raw ChatGPT conversation.  
 > **Source note:** The 2026-10-10 product status below was provided by the project owner as a handoff summary. It is **not** verified against the older GitHub `main` snapshot or by re-running tests.
 
+<a id="dual-idiot-delivery-2026-10-12"></a>
+
+## 14 人双边白痴与配牌边界实施确认（2026-10-12）
+
+来源：Owner先确认本批优先开发范围，再回复“开始”；沿用第一轮第11、12、17–19项及2026-10-10双边分类确认。实现使用独立 `idiotPolicy` 选项，仅14人且有一名真实白痴可选；不按人数自动启用，不改变标准12人或机械白痴的既有额外夜。翻牌神边算死、民边仍活，无发言/插嘴/投票权且不能再次放逐；后续实际死亡单独结算。正式期望与回归见 [B-002及配置规则](WEREWOLF_RULES_SPEC.md#双边白痴与配牌边界2026-10-12)、[验收](WEREWOLF_TEST_CASES.md#双边白痴与配牌边界验收2026-10-12)。
+
+新增明确答复：针对无狼手动记录的结束方式，Owner选择“房主确认结束记录，不判胜负；结束后可发布”。因此仅无任何狼角色的手动记录开放版本校验和再次确认的“结束记录”；胜方保持空，状态标注“不判胜负”，不猜测好人胜或狼胜，不给有狼对局此入口。结束来源、官方事实、修订和发布历史独立保留，房间清理/重启不丢失。本条补齐第11项没有定义的结束方式，不改变其他正常胜利或人工裁定规则。
+
+本批仍暂不部署；实机验收独立。代码与实际执行结果见 [最新交接](PROJECT_STATUS_FOR_CHATGPT.md) 和 [验证报告](TEST_REPORT.md)，历史49项问卷原文保留，其他已确认而尚未实现的狼王/法官/切回流程不随本批标为完成。
+
 <a id="owner-decisions-2026-10-12-round4"></a>
 
 ## 最新确认：临时法官资格与主持权限（2026-10-12，第四轮47–49项）

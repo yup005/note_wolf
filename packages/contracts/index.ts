@@ -22,7 +22,7 @@ export const messages:Record<string,string>={
  UNAUTHORIZED:'设备会话已失效，请返回首页重新加入',FORBIDDEN:'此请求来源不受支持',RATE_LIMITED:'操作太频繁，请稍后再试',
  PARTICIPANT_ONLY:'只有本局参赛玩家可以查看完整记录',PRIORITY_WOLF_ONLY:'本夜需由优先指刀的狼人确认',INTERNAL_ERROR:'服务器暂时无法处理，请稍后重试'
 };
-Object.assign(messages,{INVALID_BOARD_CONFIGURATION:'角色总数须与人数一致，特殊角色只能有一位',BOARD_NOT_IMPLEMENTED:'此板子配置可保存；完整玩法开发中，暂不能发牌',BOARD_NOT_FOUND:'未找到你的自定义板子',STALE_BOARD:'板子已更新，请重新载入',BOARD_VERSION_UNSUPPORTED:'此板子的规则版本暂不受支持',OCCUPIED_SEATS_OUTSIDE_BOARD:'缩减人数前，请超出范围的玩家自行取消入座'});
+Object.assign(messages,{WOLF_FREE_MANUAL_ONLY:'没有狼人角色，只能选择纯手动记录',INVALID_BOARD_FACTIONS:'只有狼人角色，不能正常开局',INVALID_BOARD_CONFIGURATION:'角色总数须与人数一致，特殊角色只能有一位',BOARD_NOT_IMPLEMENTED:'此板子配置可保存；完整玩法开发中，暂不能发牌',BOARD_NOT_FOUND:'未找到你的自定义板子',STALE_BOARD:'板子已更新，请重新载入',BOARD_VERSION_UNSUPPORTED:'此板子的规则版本暂不受支持',OCCUPIED_SEATS_OUTSIDE_BOARD:'缩减人数前，请超出范围的玩家自行取消入座'});
 
 export const roleSchema=boardRoleSchema;
 export type Role=z.infer<typeof roleSchema>;

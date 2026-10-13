@@ -1,7 +1,7 @@
 import {LobbyError} from '../contracts/index.js';
-import {boardRoleSchema,rulesetSchema,standardRoleCounts,type BoardRole,type Ruleset} from '../contracts/board.js';
+import {boardRoleSchema,rulesetSchema,standardRoleCounts,idiotPolicySchema,type IdiotPolicy,type BoardRole,type Ruleset} from '../contracts/board.js';
 
-export interface VictoryPlayer {seat:number;role:BoardRole;alive:boolean;learnedRole?:BoardRole;modelSeat?:number;modelCamp?:'wolves'|'good'}
+export interface VictoryPlayer {seat:number;role:BoardRole;alive:boolean;idiotFlipped?:boolean;learnedRole?:BoardRole;modelSeat?:number;modelCamp?:'wolves'|'good'}
 export type VictoryResult={status:'playing'}|{status:'ended';winner:'wolves'|'good';reason:'all-villagers-dead'|'all-gods-dead'|'all-wolves-dead'|'mixer-dead-one-villager'|'mixer-last-civilian';personalResults?:{seat:number;won:boolean}[]}|{status:'unresolved';questionId:string};
 const wolves=new Set<BoardRole>(['wolf','mechanicalWolf','armoredWolf']);
 const gods=new Set<BoardRole>(['seer','witch','hunter','idiot','spiritSeer','guard']);
@@ -11,10 +11,12 @@ export function playerCamp(role:BoardRole):'wolves'|'good'|null{
 
 // Input must reflect the entire settled night batch or one ordered daytime death.
 // Unresolved special policies deliberately block an ordinary terminal verdict.
-export function evaluateVictory(players:readonly VictoryPlayer[],ruleset:Ruleset):VictoryResult{
+export function evaluateVictory(players:readonly VictoryPlayer[],ruleset:Ruleset,idiotPolicy:IdiotPolicy='standard'):VictoryResult{
+ const dual=idiotPolicy==='dual-category-14';
  if(!players.length||!rulesetSchema.safeParse(ruleset).success||
+  !idiotPolicySchema.safeParse(idiotPolicy).success||dual&&(players.length!==14||players.filter(p=>p.role==='idiot').length!==1)||
   new Set(players.map(p=>p.seat)).size!==players.length||players.some(p=>!Number.isSafeInteger(p.seat)||p.seat<1||
-   !boardRoleSchema.safeParse(p.role).success||typeof p.alive!=='boolean'||
+   !boardRoleSchema.safeParse(p.role).success||typeof p.alive!=='boolean'||p.idiotFlipped!==undefined&&(typeof p.idiotFlipped!=='boolean'||p.idiotFlipped&&(!dual||p.role!=='idiot'))||
    p.learnedRole!==undefined&&!boardRoleSchema.safeParse(p.learnedRole).success)||
   ruleset==='standard'&&players.some(p=>!Object.hasOwn(standardRoleCounts,p.role))||
   ruleset!=='mechanical-armor'&&players.some(p=>p.role==='armoredWolf'))throw new LobbyError('INVALID_VICTORY_STATE');
@@ -30,12 +32,13 @@ export function evaluateVictory(players:readonly VictoryPlayer[],ruleset:Ruleset
  // identities. The expanded-board early thresholds never apply to this roster.
  const standardMixerCounts={...standardRoleCounts,villager:3,mixer:1};
  const standardMixer=players.length===12&&Object.entries(standardMixerCounts).every(([role,count])=>players.filter(p=>p.role===role).length===count);
- const civilian=(p:VictoryPlayer)=>p.role==='villager'||standardMixer&&p.role==='mixer';
+ const civilian=(p:VictoryPlayer)=>p.role==='villager'||standardMixer&&p.role==='mixer'||dual&&p.role==='idiot';
+ const godAlive=(p:VictoryPlayer)=>gods.has(p.role)&&!(dual&&p.role==='idiot'&&p.idiotFlipped);
  const noVillagers=players.some(civilian)&&!alive.some(civilian);
- const noGods=players.some(p=>gods.has(p.role))&&!alive.some(p=>gods.has(p.role));
+ const noGods=players.some(p=>gods.has(p.role))&&!alive.some(godAlive);
  const noWolves=players.some(p=>wolves.has(p.role))&&!alive.some(p=>wolves.has(p.role));
  const mixerThreshold=!standardMixer&&!!mixer&&!mixer.alive&&players.some(p=>p.role==='villager')&&alive.filter(p=>p.role==='villager').length===1;
- const mixerLastCivilian=!standardMixer&&!!mixer&&mixer.alive&&!alive.some(p=>p.role==='villager');
+ const mixerLastCivilian=!standardMixer&&!!mixer&&mixer.alive&&!alive.some(civilian);
  // All confirmed rulesets give wolves priority when both sides finish in the same batch.
  const ended=(winner:'wolves'|'good',reason:Extract<VictoryResult,{status:'ended'}>['reason']):VictoryResult=>({status:'ended',winner,reason,
   ...(mixer?{personalResults:[{seat:mixer.seat,won:mixer.modelCamp===winner}]}:{})});

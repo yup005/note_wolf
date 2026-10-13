@@ -11,7 +11,7 @@ function template(row:Row):BoardTemplate{
  return {id:row.id,name:row.name,revision:row.revision,ruleVersion:boardRuleVersion,composition:createBoardConfiguration(JSON.parse(row.composition))};
 }
 function preset(id:keyof typeof names):BoardTemplate{return {id,name:names[id],revision:1,ruleVersion:boardRuleVersion,composition:boardPreset(id)};}
-const composition=(config:BoardConfiguration)=>({seatCount:config.seatCount,roles:config.roles});
+const composition=(config:BoardConfiguration)=>({seatCount:config.seatCount,roles:config.roles,...(config.idiotPolicy?{idiotPolicy:config.idiotPolicy}:{})});
 export class BoardsStore{
  constructor(private db:Database.Database,private owner:(token:string)=>string){
   db.exec(`CREATE TABLE IF NOT EXISTS board_templates(id TEXT PRIMARY KEY,owner TEXT NOT NULL,name TEXT NOT NULL,revision INTEGER NOT NULL,rule_version TEXT NOT NULL,composition TEXT NOT NULL);
@@ -35,7 +35,7 @@ export class BoardsStore{
   if(!row)throw new LobbyError('ROOM_NOT_FOUND',404);return row;
  }
  configuration(id:string){return template(this.row(id)).composition;}
- snapshot(id:string):RoomBoardSnapshot{const t=template(this.row(id));return {id:t.id,name:t.name,ruleVersion:t.ruleVersion,composition:{seatCount:t.composition.seatCount,roleCounts:t.composition.roles,ruleset:t.composition.ruleset,playable:t.composition.playable}};}
+ snapshot(id:string):RoomBoardSnapshot{const t=template(this.row(id));return {id:t.id,name:t.name,ruleVersion:t.ruleVersion,composition:{seatCount:t.composition.seatCount,roleCounts:t.composition.roles,ruleset:t.composition.ruleset,playable:t.composition.playable,...(t.composition.idiotPolicy?{idiotPolicy:t.composition.idiotPolicy}:{})}};}
  configure(token:string,id:string,input:BoardConfigure){
   const parsed=boardConfigureSchema.safeParse(input);if(!parsed.success)throw new LobbyError('INVALID_INPUT');const command=parsed.data;
   this.db.transaction(()=>{

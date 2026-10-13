@@ -41,9 +41,9 @@ test('three fixed templates cannot be overwritten, and host configuration valida
   assert.throws(()=>store.configureBoard('g',room.id,{selection:{kind:'preset',id:'mechanical-12'},settingsRevision:0}),/HOST_ONLY/);
   assert.throws(()=>store.configureBoard('h',room.id,{selection:{kind:'composition',composition:{seatCount:2,roles:{witch:2}}},settingsRevision:0}),/INVALID_INPUT|INVALID_BOARD_CONFIGURATION/);
   assert.equal(store.snapshot(room.id).seats[0].ready,true);
-  store.configureBoard('h',room.id,{selection:{kind:'composition',composition:{seatCount:2,roles:{mechanicalWolf:1,armoredWolf:1}}},settingsRevision:0});
+  store.configureBoard('h',room.id,{selection:{kind:'composition',composition:{seatCount:3,roles:{mechanicalWolf:1,armoredWolf:1,villager:1}}},settingsRevision:0});
   assert.equal(store.snapshot(room.id).board.composition.ruleset,'mechanical-armor');assert.equal(store.snapshot(room.id).seats[0].ready,false);
-  assert.throws(()=>store.select('g',room.id,3),/INVALID_SEAT/);
+  assert.throws(()=>store.select('g',room.id,4),/INVALID_SEAT/);
   assert.throws(()=>store.deal('h',room.id),/ROOM_NOT_FULL/);
   assert.throws(()=>store.fillTestPlayers('h',room.id),/TEST_ROOM_NOT_EMPTY/);
  }finally{store.close();}
