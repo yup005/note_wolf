@@ -14,6 +14,6 @@ Owner reports 13-seat confirmation, compressed final target card, and real silen
 - [x] Reproduce13–15 equal rows and verify host confirmation; fix grid/confirmation copy/visible enable entry.
 - [x] Write tokenization/asset/cancel regressions; generate public static audio and implement gesture-unlocked recorded fallback, preserving lease/privacy/error behavior.
 - [x] Verify the actual local browser, full npm test/typecheck/build/full E2E, independent review and docs. 400 unit tests and59 full browser tests passed;77 clips decoded to nonzero PCM. Actual local UI entered recorded playback; human audibility and real iPhone/multi-device acceptance stay pending.
-- [ ] Publish the completed verified batch on main and verify remote SHA; record implementation SHA in the existing progress/report documents.
+- [x] Prepare the completed verified batch for publication on main and record implementation SHA76433a95d2950d52dae4750869b84b32cd67c45b in the existing progress/report documents. Final push/remote SHA verification is reported in the delivery message.
 
 Owner timing addition: mechanical_authority15s only; subsequent eyes_closed5s and guard30s retained. Numeric-list review found separator merging; exact1、3 and13、14 failing regression added, then normalized input/vocabulary equivalently and prerecorded和 preserves individual numbers.
