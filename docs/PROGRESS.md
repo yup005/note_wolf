@@ -1,5 +1,9 @@
 # Project progress
 
+## 当前：评论与基本审核（2026-10-14）
+
+SOCIAL-001–008的已发布复盘评论/回复/点赞和基本举报/审核/禁评接入；NOTICE-003及ADMIN-005/007只完成社区部分。规则统一见[当前规格](WEREWOLF_RULES_SPEC.md#community-2026-10-14)，执行和实施SHA见[交接](PROJECT_STATUS_FOR_CHATGPT.md)与[报告](TEST_REPORT.md)。完整通知/后台、记录删除及实机仍待完成，不部署。下方旧“最新/当前”是相应日期历史。
+
 ## 当前：临时法官与补录切回（2026-10-13）
 
 FUTURE-002 / MANUAL-002 / COPY-001 / S-001：显式死亡法官、秘密补录与核对恢复、普通预言家拟态阵营反馈已接入。当前条件统一见[规则](WEREWOLF_RULES_SPEC.md#judge-and-automatic-return-2026-10-13)，实际检查/审查修复与实施SHA统一见[最新交接](PROJECT_STATUS_FOR_CHATGPT.md)及[报告](TEST_REPORT.md)。下方原“最新/当前”保留为相应日期历史，旧单向切换/待开发/日间语音不覆盖后续已确认实施。未定义交互及真实设备验收保留，不部署。

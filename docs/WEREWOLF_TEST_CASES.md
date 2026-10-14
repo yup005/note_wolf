@@ -1,5 +1,20 @@
 # WEREWOLF_TEST_CASES.md
 
+## 评论与审核验收（2026-10-14）
+
+来源：[当前完整规则](WEREWOLF_RULES_SPEC.md#community-2026-10-14)。以下为场景/期望，实际已执行结果见[报告](TEST_REPORT.md)，不等于实机通过。
+
+| ID | 场景 | 当前期望 | 自动证据 |
+|---|---|---|---|
+| SOCIAL-001/005 | 跨作者/版本/设备点赞、洛杉矶自然日/DST | 同局日限一次、累计不丢；评论终身一次、不可撤销；重复请求不增计数 | community、community-wire、e2e/community |
+| SOCIAL-002/003 | 多级嵌套、根/子分页、三排序、深层长文 | 同局共区，子节点独立分页/折叠，签名游标绑定，稳定排序/去重；320/390/430无溢出 | community、e2e/community |
+| SOCIAL-004/006/007 | 举报待审、删除父评论、警告/禁评 | 未审正文仍见，作者无改删，删除墓碑保留子回复，管理员带原因/确认/审计 | community、community-wire、e2e/community-moderation |
+| SOCIAL-007/008 | 旧举报标签+更新处罚、警告永久禁评者、期限到期 | 目标双版本防覆盖，警告不移除/改写原禁评，禁评到期恢复；游戏仍可用、保护性举报允许 | community、community-wire、e2e/community-moderation |
+| SOCIAL-002/007 | 服务已执行但响应丢失；评论中途做别的互动 | 重试同编号/指令，评论不重复，警告通知/审计一次，禁评期限不延长 | e2e/community、e2e/community-moderation |
+| H-003/SOCIAL-002 | 匿名、普通账号、原链接重生/撤回/VIP暂停、分享收藏 | 匿名不建Cookie，合法普通账号可评；原授权每次验证，ID/父节点/游标不扩权，旧读响应不复活正文 | community、community-wire、e2e/community |
+| H-004/NOTICE-003 | 自己的处罚消息、他人账号、后台私稿/游戏秘密 | 仅本人消息，30天展示截止；管理员只有公开评论/举报证据，评论不入公共Socket、无私稿/秘密/凭据/作者账号ID | community、community-wire、e2e/community-moderation |
+| SOCIAL-002/008 | 重启和实时房间清理 | 归档评论、赞、回复、举报、处罚及审计保留，不随实时房间丢失 | community |
+
 ## 临时法官与补录切回验收（2026-10-13）
 
 来源：[当前规则](WEREWOLF_RULES_SPEC.md#judge-and-automatic-return-2026-10-13)。以下为自动化场景，实际执行结果见[报告](TEST_REPORT.md)，不等于实机验收。

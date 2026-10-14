@@ -1,3 +1,5 @@
+import {CommunityStore} from './community.js';
+import type {CommunityScope} from '../contracts/community.js';
 import {JudgeStore} from './judge.js';
 import type {JudgeAppoint,JudgeDraftCommand,JudgeSupplement,JudgeReturn} from '../contracts/judge.js';
 import {VoiceStore} from './voice.js';
@@ -45,6 +47,7 @@ export class LobbyStore {
  private sharing:SharingStore;
  private boards:BoardsStore;
  private retention:RetentionStore;
+ private community:CommunityStore;
  constructor(path:string,private codeStart:()=>number=()=>randomInt(10000),private allowTestPlayers=false,private now:()=>number=Date.now,private dayRules:FirstDayRules=firstDayRules){
   this.db=new Database(path);this.db.pragma('journal_mode = WAL');this.db.pragma('foreign_keys = ON');this.db.pragma('busy_timeout = 5000');
   this.db.exec(`
@@ -86,10 +89,28 @@ export class LobbyStore {
   this.voice=new VoiceStore(this.db,this.now,(id,memberId)=>{const m=this.db.prepare('SELECT * FROM members WHERE room_id=? AND id=?').get(id,memberId) as MemberRow|undefined;return !!m&&this.control.canManage(id,m);});
   this.sharing=new SharingStore(this.db,this.auth,this.now);
   this.sharedFavoritesStore=new SharedFavoritesStore(this.db,this.auth,this.sharing,this.now);
+  this.community=new CommunityStore(this.db,this.auth,this.now,(token,scope)=>this.communityRoom(token,scope));
   this.favoriteLibraryStore=new FavoriteLibraryStore(this.db,this.auth,token=>this.favoriteSources(token));
   this.preparation=new PreparationStore(this.db,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats,id=>this.boards.configuration(id));
   this.retention=new RetentionStore(this.db,this.now,id=>this.records.preserveForRoomCleanup(id));
  }
+ private communityRoom(token:string|undefined,scope:CommunityScope){
+  let recordId:string;
+  if(scope.kind==='share'){this.sharing.read(scope.token);recordId=(this.db.prepare('SELECT record_id FROM record_share_links WHERE token=?').get(scope.token) as {record_id:string}).record_id;}
+  else {if(!token||!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);if(scope.kind==='record'){this.records.post(token,scope.id);recordId=scope.id;}else{this.sharedFavoritesStore.read(token,scope.id);recordId=(this.db.prepare('SELECT record_id FROM shared_record_favorites WHERE id=? AND owner=?').get(scope.id,this.auth.owner(token)) as {record_id:string}).record_id;}}
+  return (this.db.prepare('SELECT room_id FROM record_drafts WHERE id=?').get(recordId) as {room_id:string}).room_id;
+ }
+ communityRead(token:string|undefined,input:unknown){if(token&&!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.community.read(token,input);}
+ private communitySession(token:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);}
+ communityComment(token:string,input:unknown){this.communitySession(token);return this.community.post(token,input);}
+ communityLike(token:string,input:unknown){this.communitySession(token);return this.community.like(token,input);}
+ communityGameLike(token:string,input:unknown){this.communitySession(token);return this.community.gameLike(token,input);}
+ communityReport(token:string,input:unknown){this.communitySession(token);return this.community.report(token,input);}
+ communityMe(token:string){this.communitySession(token);return this.community.me(token);}
+ communityUser(token:string,id:string){this.communitySession(token);return this.community.user(token,id);}
+ communityReports(token:string,input:unknown){this.communitySession(token);return this.community.reports(token,input);}
+ communityAudit(token:string,input:unknown){this.communitySession(token);return this.community.audit(token,input);}
+ communityModerate(token:string,input:unknown){this.communitySession(token);return this.community.moderate(token,input);}
  // Internal lifecycle hooks; neither reads nor background game/voice work renew rooms.
  touchRooms(ids:readonly string[]){this.retention.touch(ids);}
  touchRecordRoom(recordId:string){const row=this.db.prepare('SELECT room_id FROM record_drafts WHERE id=?').get(recordId) as {room_id:string}|undefined;if(row)this.retention.touch([row.room_id]);}

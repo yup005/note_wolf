@@ -1,3 +1,4 @@
+import {CommunityEntry} from './CommunityEntry';
 import {useEffect} from 'react';
 import {shareTokenSchema} from '../../../packages/contracts/sharing';
 import {SharedRecordContent} from './SharedRecordContent';
@@ -10,6 +11,7 @@ export function SharedRecordPage({token}:{token:string}){
   <section className="card shared-record"><div className="section-head"><h1>{post?.official?'房主官方复盘':'复盘分享'}</h1><button className="text-button" disabled={loading} onClick={refresh}>刷新</button></div>
    {error&&<p className="night-error" role="alert">{error}</p>}{loading&&!post&&<p className="helper" role="status">正在读取复盘…</p>}
    {post&&<SharedRecordContent post={post}/>} {valid&&<SharedCollectControls token={token} available={!!post&&!loading}/>}
+   {valid&&<CommunityEntry key={token} scope={{kind:'share',token}} available={!!post&&!loading}/>}
   </section>
  </main></div>;
 }

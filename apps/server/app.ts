@@ -86,6 +86,13 @@ export async function createServer(options:ServerOptions){
  web.get('/api/shares',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json({items:store.ownShares(authenticated(req))});});
  web.get('/api/records/:id/share',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.shareStatus(authenticated(req),req.params.id));});
  web.post('/api/records/:id/share',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');recordWrite(res,req.params.id,store.shareRecord(authenticated(req),req.params.id,parse(shareCommandSchema,req.body)));});
+ web.post('/api/community/read',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.communityRead(cookieToken(req),req.body));});
+ for(const [path,method] of [['comment','communityComment'],['like','communityLike'],['game-like','communityGameLike'],['report','communityReport']] as const)web.post('/api/community/'+path,(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store[method](authenticated(req),req.body));});
+ web.get('/api/community/me',(req,res)=>{parse(emptySchema,req.body??{});if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.communityMe(authenticated(req)));});
+ web.get('/api/admin/community/users/:id',(req,res)=>{parse(emptySchema,req.body??{});if(Object.keys(req.query).length||! /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id))throw new LobbyError('INVALID_INPUT');res.json(store.communityUser(authenticated(req),req.params.id));});
+ web.get('/api/admin/community/reports',(req,res)=>{parse(emptySchema,req.body??{});res.json(store.communityReports(authenticated(req),req.query));});
+ web.get('/api/admin/community/audit',(req,res)=>{parse(emptySchema,req.body??{});res.json(store.communityAudit(authenticated(req),req.query));});
+ web.post('/api/admin/community/action',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.communityModerate(authenticated(req),req.body));});
  web.get('/api/session',(req,res)=>{
   let token=cookieToken(req);
   if(!token||!store.hasSession(token)){

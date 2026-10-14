@@ -24,3 +24,5 @@
 - 多文档/重要章节的大更新（含远程同步增量）后，执行[定期文档复查要求](CODEX_WORKFLOW.md#authorized-documentation-optimization)，在现有进度条目简记结果；小修只做相关检查，不反复复制清单或遍历全部历史报告。
 
 当前临时法官/补录切回/拟态反馈按[现行完整规则](WEREWOLF_RULES_SPEC.md#judge-and-automatic-return-2026-10-13)定位；旧单向切换与待开发说明保留为历史，当前实现和执行证据以最新交接/报告为准。
+
+当前社交评论/基本审核按[完整规则](WEREWOLF_RULES_SPEC.md#community-2026-10-14)和SOCIAL-001–008定位；通知中心/完整后台状态分别在矩阵，不能把最小审核闭环当作全量通知/后台完成。
