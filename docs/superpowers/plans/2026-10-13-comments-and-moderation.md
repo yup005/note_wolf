@@ -64,3 +64,5 @@ Review round1 rulings: report-only stale guards are insufficient; also compare a
 
 
 2026-10-14 completed verification: root npm test461/461 (18.2s), typecheck/build pass, full Chromium mobile E2E73/73 (5.0m). Independent final review no blockers after2rounds: targetVersion+avatar privacy, perlogicalcommand pending requests and full moderation command retention. Warning preserves permanent restriction/null and reason. Actual lostACK tests RED2duplicates -> GREEN1, mute expiry unchanged. New fixture honors Retry-After/authlimit unchanged. Main504.36KB known500KB warning; comments8.34KB/moderation7.99KB/notices1.65KB lazy. Thirty-second refresh folds pagination/replies, input remains; acknowledged nonblocking. Physical-device/VoiceOver/network acceptance remains pending. Publication/remote check follows prepared docs.
+
+Implementation commit: 5b7d39d249a92840a97d1e4a859505f4130c8dbf. This documentation-only follow-up records the verified code SHA; normal push and final remote equality are checked afterward and reported in the delivery response.
