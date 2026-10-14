@@ -65,7 +65,7 @@
 - [x] RED mobile host nomination + appointed player private panel, supplementation/return/revocation and non-judge privacy flows.
 - [x] Add clear nominee and death-skill confirmation controls, a judge-only private panel with role inventories and human-readable phase/command forms; no JSON/code editing in user flow.
 - [x] Verify320/390/430px screenshots and complete lifecycle, full tests/build/E2E, final independent review.
-- [ ] Sync confirmed rules/status/IDs/history, scoped commit+SHA doc follow-up, normal push and remote SHA check. No deployment.
+- [x] Sync confirmed rules/status/IDs/history, scoped commit+SHA doc follow-up; prepare normal push and remote SHA check. No deployment.
 
 ## Execution notes
 
@@ -75,3 +75,5 @@
 Execution rulings: missing official facts mean unknown and may be filled by validated canonical replay; existing facts must remain a compatible ordered subset, true conflicts fail atomically. Previously ended manual games cannot reopen; a new legal computed terminal reached within supplementation may return as ended with existing domain victory. Recorded manual public death plus explicit audited completion may appoint while the original automatic queue is frozen; live automatic queues remain ineligible, and return proves all previous judges remain dead. New seer receipts carry server-owned mimic-camp-v1, untagged historical receipts retain prior feedback. Review found ongoing historical death-cause disclosure and foreground auto-reveal; both require regression/fix before delivery. Existing player interjection must stop on judge appointment.
 
 Final verification: root npm test441/441 (29.0s), typecheck/build pass; full Chromium mobile E2E63/63 (4.4m). Independent final review no blockers after privacy/interjection fixes. Main bundle502.49KB with500KB warning, JudgePanel19.64KB lazy. Physical-device/audio acceptance remains pending.
+
+Implementation commit: ac5b79795ee04267e5e961fda978d07a39575511; this documentation-only SHA follow-up does not change verified code. Publication and final remote equality are checked after committing this follow-up and reported in the delivery response.
