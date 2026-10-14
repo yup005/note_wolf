@@ -129,7 +129,9 @@ export function useConfirmedAbility(input:SkillSnapshot,skillId:string,command:S
  if(instance.kind==='inspect'&&target){
   const visible=visibleInspectionRole(target);if(visible.status==='blocked')return visible;
   if(instance.parameters.inspection==='camp'){
-   const camp=playerCamp(target.role);if(camp===null)return blocked('MA-INSPECTION-MIXER');inspection={status:'camp',camp};
+   // Ordinary seer follows the frozen visible identity. Mixed-blood always
+   // reports good; true camp/model allegiance remains a victory concern.
+   inspection={status:'camp',camp:playerCamp(visible.role)??'good'};
   }else inspection=visible;
  }
  const next=useSkill(snapshot,skillId,use,{inheritedWolfKnife:context.inheritedWolfKnife===true});

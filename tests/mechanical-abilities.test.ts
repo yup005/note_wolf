@@ -162,9 +162,11 @@ test('extra knife learning-night timing returns explicit decision block without 
 });
 
 
-test('seer camp inspection of mixed-blood remains blocked while exact copied identity is confirmed',()=>{
+test('seer camp inspection of real mixed-blood returns good while exact copied identity stays mixed-blood',()=>{
  const seer=player(1,'seer').abilities;const ctx=context(seer);ctx.players[1]=player(2,'mixer');
- assert.deepEqual(abilities.useConfirmedAbility(seer,seer.skills[0].id,{requestId:'camp',night:1,target:2},ctx),{status:'blocked',reason:'product-decision',questionIds:['MA-INSPECTION-MIXER']});
+ const result=abilities.useConfirmedAbility(seer,seer.skills[0].id,{requestId:'camp',night:1,target:2},ctx);
+ assert.equal(result.status,'used');if(result.status!=='used')throw Error('inspection');
+ assert.deepEqual(result.inspection,{status:'camp',camp:'good'});
  const mechanical=player(2,'mechanicalWolf');mechanical.abilities=learned('mixer').abilities;mechanical.abilities.ownerSeat=2;
  assert.deepEqual(abilities.visibleInspectionRole(mechanical),{status:'visible',role:'mixer'});
 });

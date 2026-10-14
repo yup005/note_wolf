@@ -48,14 +48,19 @@ export function validateConfirmedEngineState(input:unknown):EngineState{
   if(action.abilityType==='inspect'&&action.targetId!==null){
    const target=state.players.find(p=>p.seat===action.targetId)!,result=action.privateInspection;
    if(!result||!skill)throw new LobbyError('INVALID_ENGINE_STATE');
+   const roles=[target.role];
+   // A receipt from before learning in this night keeps its original result.
+   // Prior-night learning already applied when every current action was made.
+   if(target.learning&&target.learning.night<=action.night&&target.abilities.mimickedRole){if(target.learning.night<action.night)roles.length=0;roles.push(target.abilities.mimickedRole);}
    if(skill.parameters.inspection==='camp'){
-    if(result.status!=='camp'||result.camp!==playerCamp(target.role))throw new LobbyError('INVALID_ENGINE_STATE');
+    const valid=result.status==='camp'&&(action.inspectionPolicy==='mimic-camp-v1'
+     ?roles.some(role=>result.camp===(playerCamp(role)??'good'))
+     :result.camp===playerCamp(target.role));
+    if(!valid)throw new LobbyError('INVALID_ENGINE_STATE');
    }else{
-    const roles=[target.role];
-    if(target.learning&&target.learning.night<=action.night&&target.abilities.mimickedRole){if(target.learning.night<action.night)roles.length=0;roles.push(target.abilities.mimickedRole);}
-    if(result.status!=='visible'||!roles.includes(result.role))throw new LobbyError('INVALID_ENGINE_STATE');
+    if(action.inspectionPolicy||result.status!=='visible'||!roles.includes(result.role))throw new LobbyError('INVALID_ENGINE_STATE');
    }
-  }else if(action.privateInspection)throw new LobbyError('INVALID_ENGINE_STATE');
+  }else if(action.privateInspection||action.inspectionPolicy)throw new LobbyError('INVALID_ENGINE_STATE');
  }
  return state;
 }
@@ -75,7 +80,7 @@ export function learnConfirmedEngineAbility(input:EngineState,ownerSeat:number,t
 export function appendConfirmedEngineAction(input:EngineState,command:NightActionCommand):ProductDecisionBlocked|{status:'committed';state:EngineState;inspection?:InspectionResult}{
  const state=validateConfirmedEngineState(input),parsed=nightActionCommandSchema.safeParse(command);if(!parsed.success)throw new LobbyError('INVALID_NIGHT_ACTION');const c=parsed.data;
  const previous=state.actions.find(a=>a.casterId===c.casterId&&a.requestId===c.requestId);
- if(previous){const {night,sourceRole,ruleset,privateInspection,...original}=previous;if(JSON.stringify(original)!==JSON.stringify(c))throw new LobbyError('ALREADY_COMMITTED',409);return {status:'committed',state,...(privateInspection?{inspection:privateInspection}:{})};}
+ if(previous){const {night,sourceRole,ruleset,privateInspection,inspectionPolicy,...original}=previous;if(JSON.stringify(original)!==JSON.stringify(c))throw new LobbyError('ALREADY_COMMITTED',409);return {status:'committed',state,...(privateInspection?{inspection:privateInspection}:{})};}
  if(state.stage!=='collecting')throw new LobbyError('PHASE_LOCKED',409);
  if(state.actions.some(a=>a.id===c.id||a.casterId===c.casterId&&a.abilityType===c.abilityType||a.abilityType==='wolf-knife'&&c.abilityType==='wolf-knife'))throw new LobbyError('ALREADY_COMMITTED',409);
  if(c.abilityType==='wolf-knife')return {status:'committed',state:validateConfirmedEngineState(appendNightAction(state,c))};
@@ -88,6 +93,6 @@ export function appendConfirmedEngineAction(input:EngineState,command:NightActio
  const result=useConfirmedAbility(actor.abilities,skill.id,{requestId:c.requestId,night:state.night,target:c.targetId},{ruleset:state.board.composition.ruleset,players:state.players,inheritedWolfKnife:authority.inheritedKnifeSeat===actor.seat,witchKnifeTarget:state.actions.find(a=>a.abilityType==='wolf-knife')?.targetId});
  if(result.status==='blocked')return result;
  actor.abilities=result.abilities;
- state.actions.push({...c,night:state.night,sourceRole:actor.role,ruleset:state.board.composition.ruleset,...(result.status==='used'&&result.inspection?{privateInspection:result.inspection}:{})});
+ state.actions.push({...c,night:state.night,sourceRole:actor.role,ruleset:state.board.composition.ruleset,...(result.status==='used'&&result.inspection?{privateInspection:result.inspection,...(result.inspection.status==='camp'?{inspectionPolicy:'mimic-camp-v1' as const}:{})}:{})});
  return {status:'committed',state:validateConfirmedEngineState(state),...(result.status==='used'&&result.inspection?{inspection:result.inspection}:{})};
 }

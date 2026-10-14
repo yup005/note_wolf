@@ -1,0 +1,15 @@
+import {lazy,Suspense,useEffect,useState} from 'react';
+import type {LobbyView} from '../../../packages/contracts/index';
+import {api,errorText} from './api';
+const JudgePanel=lazy(()=>import('./JudgePanel'));
+export function JudgeControls({view,connected,onRefresh}:{view:LobbyView;connected:boolean;onRefresh:()=>Promise<void>}){
+ const {room,me}=view,judge=room.judge;const [settings,setSettings]=useState(false),[panel,setPanel]=useState(false),[seat,setSeat]=useState(''),[completed,setCompleted]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const assigned=judge?.seat===me.seat&&me.seat!==null;
+ useEffect(()=>{setSettings(false);setError('');setCompleted(false);setSeat('');},[judge?.version,room.id]);
+ if(!judge||room.preparation.phase!=='started'||room.manual?.status==='ended'||room.day?.phase==='ended')return null;
+ async function appoint(){if(!judge||busy||!connected)return;setBusy(true);setError('');try{await api(`/api/rooms/${room.id}/judge/appoint`,{confirmed:true,version:judge.version,seat:seat?Number(seat):null,...(seat&&room.manual?{deathSkillsComplete:true}:{})});setSettings(false);await onRefresh();}catch(e){setError(errorText(e));await onRefresh().catch(()=>{});}finally{setBusy(false);}}
+ return <><div className="judge-entry">{me.isHost&&<button className="text-button" disabled={!connected} onClick={()=>{setSeat(judge.seat?.toString()??'');setCompleted(false);setSettings(true);}}>法官设置</button>}{assigned&&<button className="text-button" disabled={!connected} onClick={()=>setPanel(true)}>法官面板</button>}{judge.seat!==null&&<small>法官 {judge.seat} 号</small>}</div>
+  {settings&&me.isHost&&<div className="modal-backdrop judge-overlay"><section className="card modal" role="dialog" aria-modal="true" aria-labelledby="judge-settings-title"><h2 id="judge-settings-title">临时法官设置</h2><p>仅可指定已公开死亡、死亡技能已处理完的玩家。任职期间可查看本局身份及秘密技能，不能继续玩家插嘴或操作。</p>{error&&<p className="night-error" role="alert">{error}</p>}<label>临时法官<select aria-label="临时法官" value={seat} disabled={busy} onChange={e=>{setSeat(e.target.value);setCompleted(false);}}><option value="">收回法官权限</option>{judge.candidates.map(value=><option key={value} value={value}>{value} 号 · {room.seats.find(s=>s.number===value)?.nickname}</option>)}</select></label>{seat&&room.manual&&<label className="judge-attestation"><input aria-label="死亡技能已处理完毕" type="checkbox" checked={completed} disabled={busy} onChange={e=>setCompleted(e.target.checked)}/>死亡技能已处理完毕</label>}<button className="primary full" disabled={busy||!connected||!!seat&&!!room.manual&&!completed} onClick={()=>void appoint()}>确认法官设置</button><button className="text-button full" disabled={busy} onClick={()=>setSettings(false)}>返回</button></section></div>}
+  {panel&&<Suspense fallback={<div className="modal-backdrop judge-overlay"><section className="card modal"><p>正在读取法官面板…</p><button className="text-button" onClick={()=>setPanel(false)}>关闭</button></section></div>}><JudgePanel view={view} connected={connected} onRefresh={onRefresh} onClose={()=>setPanel(false)}/></Suspense>}
+ </>;
+}

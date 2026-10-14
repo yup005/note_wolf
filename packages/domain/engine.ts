@@ -102,7 +102,7 @@ export function copyEngineAbilities(input:EngineState,ownerSeat:number,sourceSea
 export function appendNightAction(input:EngineState,command:NightActionCommand):EngineState{
  const state=validateEngineState(input);const parsed=nightActionCommandSchema.safeParse(command);if(!parsed.success)throw new LobbyError('INVALID_NIGHT_ACTION');const c=parsed.data;
  const previous=state.actions.find(a=>a.casterId===c.casterId&&a.requestId===c.requestId);
- if(previous){const {night,sourceRole,ruleset,privateInspection,...original}=previous;if(JSON.stringify(original)!==JSON.stringify(c))throw new LobbyError('ALREADY_COMMITTED',409);return state;}
+ if(previous){const {night,sourceRole,ruleset,privateInspection,inspectionPolicy,...original}=previous;if(JSON.stringify(original)!==JSON.stringify(c))throw new LobbyError('ALREADY_COMMITTED',409);return state;}
  if(state.stage!=='collecting')throw new LobbyError('PHASE_LOCKED',409);
  if(state.actions.some(a=>a.id===c.id))throw new LobbyError('ALREADY_COMMITTED',409);
  const actor=state.players.find(p=>p.seat===c.casterId),target=state.players.find(p=>p.seat===c.targetId);

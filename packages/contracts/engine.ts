@@ -17,7 +17,9 @@ const inspectionSchema=z.discriminatedUnion('status',[
  z.object({status:z.literal('visible'),role:boardRoleSchema}).strict(),
  z.object({status:z.literal('camp'),camp}).strict()
 ]);
-export const nightActionSchema=nightActionCommandSchema.extend({night,sourceRole:boardRoleSchema,ruleset:rulesetSchema,privateInspection:inspectionSchema.optional()}).strict();
+// Untagged camp receipts retain the historical true-role policy on restart.
+// The server stamps new mimic feedback; callers cannot supply this metadata.
+export const nightActionSchema=nightActionCommandSchema.extend({night,sourceRole:boardRoleSchema,ruleset:rulesetSchema,privateInspection:inspectionSchema.optional(),inspectionPolicy:z.literal('mimic-camp-v1').optional()}).strict();
 export const effectSchema=z.object({id,actionId:id,casterId:seat,targetId:seat.nullable(),abilityType:abilityTypeSchema,sourceRole:boardRoleSchema,ruleset:rulesetSchema,night,outcome:z.enum(['killed','prevented','no-effect']),reflectTarget:seat.nullable(),preventedBy:z.array(id)}).strict();
 export const resolutionDecisionSchema=z.discriminatedUnion('status',[
  z.object({status:z.literal('blocked'),reason:z.enum(['unimplemented','product-decision']),questionIds:z.array(id).min(1)}).strict(),

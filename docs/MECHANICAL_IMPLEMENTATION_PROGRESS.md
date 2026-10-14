@@ -1,5 +1,9 @@
 # Mechanical board implementation progress
 
+## 当前补充：法官与拟态反馈（2026-10-13）
+
+COPY-001普通预言家拟态阵营反馈及旧回执兼容、FUTURE-002显式死亡临时法官、私密补录与有校验的手动切回已接入。保持独立库存/固定夜序/真实胜利分类与未知链阻断；完整条件见[现行规则](WEREWOLF_RULES_SPEC.md#judge-and-automatic-return-2026-10-13)，执行与未部署/实机边界见[最新交接](PROJECT_STATUS_FOR_CHATGPT.md)和[报告](TEST_REPORT.md)。下方旧批次的待开发描述为历史状态。
+
 ## 最新补充：夜间播报与标签配置（2026-10-13）
 
 入夜提示先于首角色，后续狼人不重复，白天全静音。角色标签配置自动求和，只有普通狼人/村民可以加数量，白痴规则按选择显隐；旧重复狼王能力和已保存配置保留。明确来源及执行证据见[当前规则](WEREWOLF_RULES_SPEC.md#night-only-and-role-tags-2026-10-13)、[交接](PROJECT_STATUS_FOR_CHATGPT.md)与[报告](TEST_REPORT.md)。未决玩法/实机/未部署边界不变。

@@ -1,3 +1,5 @@
+import {JudgeStore} from './judge.js';
+import type {JudgeAppoint,JudgeDraftCommand,JudgeSupplement,JudgeReturn} from '../contracts/judge.js';
 import {VoiceStore} from './voice.js';
 import {RetentionStore} from './retention.js';
 import {SharingStore} from './sharing.js';
@@ -37,6 +39,7 @@ export class LobbyStore {
  private night:NightStore;
  private day:DayStore;
  private control:ControlStore;
+ private judge:JudgeStore;
  private records:RecordsStore;
  private voice:VoiceStore;
  private sharing:SharingStore;
@@ -74,7 +77,8 @@ export class LobbyStore {
   migrateIdentityRoles(this.db);
   this.auth=new AuthStore(this.db);
   this.boards=new BoardsStore(this.db,token=>this.auth.owner(token));
-  this.control=new ControlStore(this.db,this.now);
+  this.judge=new JudgeStore(this.db,(token,id)=>this.member(token,id),token=>this.hasSession(token),id=>this.boards.snapshot(id),this.dayRules,this.now);
+  this.control=new ControlStore(this.db,this.now,(id,m)=>this.judge.isJudge(id,m));
   this.testPlayers=new TestPlayersStore(this.db,this.allowTestPlayers,token=>{if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);this.auth.requireAdmin(token);},(token,id)=>this.member(token,id),id=>this.snapshot(id).seats);
   this.night=new NightStore(this.db,(token,id)=>this.member(token,id),this.now,this.control,id=>this.boards.snapshot(id));
   this.day=new DayStore(this.db,(token,id)=>this.member(token,id),id=>this.night.completedState(id),this.now,this.dayRules,this.control);
@@ -160,7 +164,7 @@ export class LobbyStore {
   if(!r)throw new LobbyError('ROOM_NOT_FOUND',404);
   const members=this.db.prepare("SELECT m.id,m.nickname,m.is_host,m.seat,m.ready,v.account_id AS avatar_account_id,v.revision AS avatar_revision FROM members m LEFT JOIN accounts a ON m.session_hash='account:'||a.id AND a.status='active' LEFT JOIN account_avatars v ON v.account_id=a.id WHERE m.room_id=? AND m.seat IS NOT NULL").all(roomId) as (MemberRow&{avatar_account_id:string|null;avatar_revision:string|null})[];
   const board=this.boards.snapshot(roomId);
-  return {board,manual:this.records.public(roomId),...(this.night.snapshot(roomId)&&!this.records.public(roomId)?{control:this.control.snapshot(roomId)}:{}),testRoom:this.testPlayers.isTestRoom(roomId),id:r.id,code:r.code,boardId:board.id==='standard-12'?'seer-witch-hunter-idiot-12':board.id,revision:r.revision,night:this.night.snapshot(roomId),day:this.day.snapshot(roomId),preparation:this.preparation.snapshot(roomId),seats:Array.from({length:board.composition.seatCount},(_,i)=>{
+  return {board,judge:this.judge.public(roomId),manual:this.records.public(roomId),...(this.night.snapshot(roomId)&&!this.records.public(roomId)?{control:this.control.snapshot(roomId)}:{}),testRoom:this.testPlayers.isTestRoom(roomId),id:r.id,code:r.code,boardId:board.id==='standard-12'?'seer-witch-hunter-idiot-12':board.id,revision:r.revision,night:this.night.snapshot(roomId),day:this.day.snapshot(roomId),preparation:this.preparation.snapshot(roomId),seats:Array.from({length:board.composition.seatCount},(_,i)=>{
    const m=members.find(m=>m.seat===i+1);return {number:i+1,memberId:m?.id??null,nickname:m?.nickname??null,avatarUrl:m?.avatar_account_id&&m.avatar_revision?avatarUrl(m.avatar_account_id,m.avatar_revision):null,isHost:m?.is_host===1,isTestPlayer:m?this.testPlayers.isActor(m.id):false,ready:!!m?.ready};
   })};
  }
@@ -184,17 +188,18 @@ export class LobbyStore {
  testPlayerIdentity(token:string,id:string,actorId:string){return this.testPlayers.identity(token,id,actorId);}
  testPlayerReady(token:string,id:string,actorId:string,ready:boolean,settingsRevision:number){this.testPlayers.ready(token,id,actorId,ready,settingsRevision);return this.view(token,id);}
  testPlayerConfirm(token:string,id:string,actorId:string){return this.testPlayers.confirm(token,id,actorId);}
- enterNight(token:string,id:string){return this.db.transaction(()=>{this.night.enter(token,id);const n=this.night.snapshot(id)!;if(n.phase==='awaiting_host')this.night.begin(token,id,n.turnId);return this.view(token,id);}).immediate();}
- beginNight(token:string,id:string,turnId:string){this.night.begin(token,id,turnId);return this.view(token,id);}
- nightPrivate(token:string,id:string){return this.night.private(token,id);}
- nightCommand(token:string,id:string,c:NightCommand){return this.night.command(token,id,c);}
+ private management<T>(token:string,id:string,action:string,detail:unknown,apply:()=>T){return this.db.transaction(()=>{const m=this.member(token,id);const result=apply();if(this.judge.isJudge(id,m))this.judge.audit(id,m,action,detail);return result;}).immediate();}
+ enterNight(token:string,id:string){return this.management(token,id,'enter-night',{},()=>{this.night.enter(token,id);const n=this.night.snapshot(id)!;if(n.phase==='awaiting_host')this.night.begin(token,id,n.turnId);return this.view(token,id);});}
+ beginNight(token:string,id:string,turnId:string){return this.management(token,id,'begin-night',{turnId},()=>{this.night.begin(token,id,turnId);return this.view(token,id);});}
+ nightPrivate(token:string,id:string){const m=this.member(token,id);if(this.judge.isJudge(id,m))return {turnId:this.night.snapshot(id)?.turnId??'',kind:'waiting' as const};return this.night.private(token,id);}
+ nightCommand(token:string,id:string,c:NightCommand){const m=this.member(token,id);this.judge.assertPlayer(id,m);this.judge.assertFreshTurn(id,c.turnId);return this.night.command(token,id,c);}
  tickNights(){const restored=this.control.tick();return [...new Set([...restored,...this.night.tick(),...this.day.tick(),...this.control.tick()])];}
- gameControl(token:string,id:string,c:ControlCommand){this.control.command(id,this.member(token,id),c);return this.view(token,id);}
+ gameControl(token:string,id:string,c:ControlCommand){return this.management(token,id,'control',c,()=>{this.control.command(id,this.member(token,id),c);return this.view(token,id);});}
  connectMember(id:string,memberId:string,connectionId:string){return [...new Set([...this.tickNights(),...this.control.connect(id,memberId,connectionId)])];}
  disconnectMember(connectionId:string){return [...new Set([...this.tickNights(),...this.control.disconnect(connectionId)])];}
- enterDay(token:string,id:string){this.day.enter(token,id);return this.view(token,id);}
- dayPrivate(token:string,id:string){return this.day.private(token,id);}
- dayCommand(token:string,id:string,c:DayCommand){return this.day.command(token,id,c);}
+ enterDay(token:string,id:string){return this.management(token,id,'enter-day',{},()=>{this.day.enter(token,id);return this.view(token,id);});}
+ dayPrivate(token:string,id:string){const m=this.member(token,id),result=this.day.private(token,id);if(this.judge.isJudge(id,m))return {...result,canSignup:false,canWithdraw:false,canVote:false,canShoot:false,canExplode:false,canTransfer:false,canInterject:false,canEndInterjection:false};return result;}
+ dayCommand(token:string,id:string,c:DayCommand){const m=this.member(token,id);this.judge.assertFreshTurn(id,c.turnId);if(this.judge.isJudge(id,m)){if(['signup','withdraw','vote','shoot','explode','interject'].includes(c.action)||c.action==='transfer_badge'&&!c.takeover)this.judge.assertPlayer(id,m);return this.management(token,id,'day-control',c,()=>this.day.command(token,id,c));}return this.day.command(token,id,c);}
  testDayStore(actorId:string){return new DayStore(this.db,(token,id)=>this.testPlayers.actor(token,id,actorId),id=>this.night.completedState(id),this.now,this.dayRules,this.control);}
  testDayPrivate(token:string,id:string,actorId:string){this.testPlayers.actor(token,id,actorId);return this.testDayStore(actorId).private(token,id);}
  testDayCommand(token:string,id:string,actorId:string,c:DayCommand){this.testPlayers.actor(token,id,actorId);return this.testDayStore(actorId).command(token,id,c);}
@@ -262,7 +267,12 @@ export class LobbyStore {
  saveRecordFavorite(token:string,id:string){return this.records.favorite(token,id);}
  recordFavorites(token:string){return this.records.favorites(token);}
  removeRecordFavorite(token:string,id:string){return this.db.transaction(()=>{const exists=this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(this.auth.owner(token),id);const result=this.records.removeFavorite(token,id);if(exists){this.favoriteLibraryStore.clearName(token,'record',id);this.touchRecordRoom(id);}return result;}).immediate();}
- switchManual(token:string,id:string,confirmed:boolean){this.records.switch(token,id,confirmed);return this.view(token,id);}
+ appointJudge(token:string,id:string,c:JudgeAppoint){this.judge.appoint(token,id,c);return this.view(token,id);}
+ judgePrivate(token:string,id:string){return this.judge.private(token,id);}
+ startJudgeDraft(token:string,id:string,c:JudgeDraftCommand){return this.judge.start(token,id,c);}
+ supplementJudge(token:string,id:string,c:JudgeSupplement){return this.judge.supplement(token,id,c);}
+ returnJudge(token:string,id:string,c:JudgeReturn){this.judge.return(token,id,c);return this.view(token,id);}
+ switchManual(token:string,id:string,confirmed:boolean){return this.db.transaction(()=>{this.judge.captureManualCheckpoint(token,id);this.records.switch(token,id,confirmed);return this.view(token,id);}).immediate();}
  finishManualRecord(token:string,id:string,input:import('../contracts/records.js').ManualFinish){return this.records.finishRecord(token,id,input);}
  adjudicateManual(token:string,id:string,input:import('../contracts/records.js').ManualAdjudicate){return this.records.adjudicate(token,id,input);}
  commitManual(token:string,id:string,revision:number){return this.records.commit(token,id,revision);}

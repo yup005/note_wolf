@@ -1,5 +1,7 @@
 # Codex 开发需求：机械狼／机械装甲／自由配牌（V1）
 
+2026-10-13实施覆盖：普通预言家查验机械/装甲按拟态反馈，真实混血儿恒为好人，真实阵营/榜样归属不变；临时法官与核对后切回自动也已接入。详见[当前规则](WEREWOLF_RULES_SPEC.md#judge-and-automatic-return-2026-10-13)和[进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md)。下方旧路线图/待决快照不覆盖最新明确决定，未定义交互仍阻断。
+
 > Date: 2026-10-10 · Status: 开发任务规格草案（confirmed / unresolved 分层）
 >
 > **使用方式**：Codex 必须先读 `AGENTS.md`、`docs/CODEX_WORKFLOW.md`、`docs/DOCUMENTATION_MAP.md`、`docs/PRODUCT_DECISIONS.md`、`docs/MECHANICAL_WOLF_SEER.md`、`docs/MECHANICAL_ARMOR.md`。本规格是任务入口与验收索引；详细玩法以最新确认的两份规则文档为准。不要将“讨论中”误报为“已实现”。九尾／白泽仍不在范围。

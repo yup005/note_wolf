@@ -9,7 +9,7 @@ interface Presence {member_id:string;connected:number;disconnected_at:number|nul
 type Active={kind:'night'|'day';state:NightState|DayState};
 export class ControlStore {
  private connections=new Map<string,{roomId:string;memberId:string}>();
- constructor(private db:Database.Database,private now:()=>number=Date.now){
+ constructor(private db:Database.Database,private now:()=>number=Date.now,private judge?:(id:string,m:MemberRow)=>boolean){
   db.exec(`CREATE TABLE IF NOT EXISTS room_controls(room_id TEXT PRIMARY KEY REFERENCES rooms(id) ON DELETE CASCADE,status TEXT NOT NULL DEFAULT 'running',version INTEGER NOT NULL DEFAULT 0,remaining_ms INTEGER,resume_at INTEGER,kind TEXT,turn_id TEXT,temp_member TEXT REFERENCES members(id) ON DELETE SET NULL,vote_seconds INTEGER NOT NULL DEFAULT 30,vote_visibility TEXT NOT NULL DEFAULT 'individual',notice_until INTEGER NOT NULL DEFAULT 0);
    CREATE TABLE IF NOT EXISTS member_presence(member_id TEXT PRIMARY KEY REFERENCES members(id) ON DELETE CASCADE,room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,connected INTEGER NOT NULL DEFAULT 0,disconnected_at INTEGER,turn_id TEXT,lost_ms INTEGER NOT NULL DEFAULT 0,grace_used INTEGER NOT NULL DEFAULT 0,grace_turn TEXT);
    PRAGMA user_version=11;`);
@@ -28,7 +28,7 @@ export class ControlStore {
  private saveActive(id:string,a:Active){this.db.prepare(`UPDATE ${a.kind}_games SET state=? WHERE room_id=?`).run(JSON.stringify(a.state),id);}
  private living(id:string,seat:number|null){return seat!==null&&this.active(id)?.state.players.some(p=>p.seat===seat&&p.alive!==false);}
  defaults(id:string){const r=this.row(id);return {seconds:r.vote_seconds,visibility:r.vote_visibility};}
- canManage(id:string,m:MemberRow){return !!m.is_host||(this.row(id).temp_member===m.id&&!!this.living(id,m.seat));}
+ canManage(id:string,m:MemberRow){return !!this.judge?.(id,m)||!!m.is_host||(this.row(id).temp_member===m.id&&!!this.living(id,m.seat));}
  assertRunning(id:string){if(this.row(id).status!=='running')throw new LobbyError('GAME_PAUSED',409);}
  frozen(id:string){return this.row(id).status!=='running';}
  snapshot(id:string):GameControl{

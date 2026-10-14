@@ -7,7 +7,7 @@ export const createSchema=z.object({nickname:nameSchema,requestId:z.string().uui
 export const joinSchema=z.object({nickname:nameSchema,code:codeSchema});
 export const selectSchema=z.object({seat:z.number().int().positive().max(256)}).strict();
 export interface PublicSeat { number:number; memberId:string|null; nickname:string|null; avatarUrl?:string|null; isHost:boolean; isTestPlayer:boolean; ready:boolean }
-export interface RoomSnapshot { board:import('./board.js').RoomBoardSnapshot; manual?:import('./records.js').ManualPublic|null; control?:import('./control.js').GameControl; testRoom:boolean; id:string; code:string; boardId:string; revision:number; seats:PublicSeat[]; preparation:PreparationState; night?:import('./night.js').NightPublic|null; day?:import('./day.js').DayPublic|null }
+export interface RoomSnapshot { judge?:import('./judge.js').JudgePublic; board:import('./board.js').RoomBoardSnapshot; manual?:import('./records.js').ManualPublic|null; control?:import('./control.js').GameControl; testRoom:boolean; id:string; code:string; boardId:string; revision:number; seats:PublicSeat[]; preparation:PreparationState; night?:import('./night.js').NightPublic|null; day?:import('./day.js').DayPublic|null }
 export interface MyMembership { id:string; nickname:string; isHost:boolean; seat:number|null }
 export interface LobbyView { testPlayersEnabled:boolean; room:RoomSnapshot; me:MyMembership }
 export interface ApiFailure { error:string; message:string }
@@ -56,3 +56,5 @@ Object.assign(messages,{LOGIN_REQUIRED:'请先登录账号',SHARE_AUTHOR_ONLY:'�
 Object.assign(messages,{AVATAR_TOO_LARGE:'头像超过当前账号允许的文件大小',INVALID_AVATAR:'请选择有效的 JPEG、PNG 或 WebP 图片'});
 Object.assign(messages,{STALE_FAVORITE:'收藏名称已更新，请重新读取后修改'});
 Object.assign(messages,{RULE_DECISION_REQUIRED:'该技能组合的规则尚未确认，请选择已确认的操作',GUARD_CONSECUTIVE_TARGET:'不能连续两夜守护同一玩家',SKILL_NOT_ACTIVE:'该技能从下一夜开始可用',SKILL_EXHAUSTED:'该技能已用完',ALREADY_LEARNED:'已经完成学习，不能重新选择',KNIFE_NOT_INHERITED:'继承普通狼刀后才可使用额外刀'});
+
+Object.assign(messages,{JUDGE_ONLY:'只有当前有效临时法官可以操作',INVALID_JUDGE:'请选择已公开死亡且死亡技能处理完毕的玩家',JUDGE_ATTESTATION_REQUIRED:'请确认该玩家的死亡技能已处理完毕',STALE_JUDGE:'法官或补录版本已更新，请重新读取',JUDGE_PLAYER_ACTION:'法官任职期间不能执行玩家操作',JUDGE_DRAFT_REQUIRED:'请先建立法官补录草稿',JUDGE_FACT_MISMATCH:'补录与官方公开事实不一致，请核对死讯、警徽和投票',JUDGE_KNOWLEDGE_CONFLICT:'曾任法官的玩家不能恢复为存活玩家，请核对官方死讯与补录',JUDGE_RETURN_BLOCKED:'当前补录尚不能恢复自动，请先完成有效阶段核对'});
