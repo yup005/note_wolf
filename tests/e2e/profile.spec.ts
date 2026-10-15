@@ -1,10 +1,11 @@
+import {requestWithBackoff} from './helpers/test-admin';
 import {prepareOrdinaryRoom} from './helpers/real-players';
 import {test,expect,type Page} from '@playwright/test';
 import {randomUUID} from 'node:crypto';
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADUlEQVQImWOIqJz4HwAE8QJi/co1KgAAAABJRU5ErkJggg==','base64');
 async function registered(page:Page,nickname='资料玩家'){
  await page.goto('/');await expect(page.getByRole('button',{name:'登录 / 注册',exact:true})).toBeEnabled();
- const response=await page.request.post('/api/auth/register',{data:{username:'profile_'+randomUUID().slice(0,8),password:'profile-test-password',nickname}});expect(response.ok()).toBe(true);const session=await response.json();await page.reload();await expect(page.getByRole('button',{name:nickname,exact:true})).toBeVisible();return session.account;
+ const response=await requestWithBackoff(()=>page.request.post('/api/auth/register',{data:{username:'profile_'+randomUUID().slice(0,8),password:'profile-test-password',nickname}}));expect(response.ok()).toBe(true);const session=await response.json();await page.reload();await expect(page.getByRole('button',{name:nickname,exact:true})).toBeVisible();return session.account;
 }
 async function editor(page:Page,nickname:string){
  await page.getByRole('button',{name:nickname,exact:true}).click();await page.getByRole('button',{name:'编辑资料',exact:true}).click();const dialog=page.getByRole('dialog',{name:'编辑资料',exact:true});await expect(dialog).toBeVisible();return dialog;
@@ -36,7 +37,7 @@ test('profile file validation makes no upload request and failed upload preserve
 
 test('active VIP permits 2MB selection while expired VIP returns to 1MB and phone layouts stay contained',async({page,browser})=>{
  const account=await registered(page,'资料昵称显示到二十四个字符测试玩家');const admin=await browser.newContext();
- try{await admin.request.get('/api/session');expect((await admin.request.post('/api/auth/login',{data:{username:'test_admin',password:'test-admin-password'}})).ok()).toBe(true);expect((await admin.request.post(`/api/admin/users/${account.id}/vip`,{data:{enabled:true,expiresAt:null}})).ok()).toBe(true);await page.reload();
+ try{await admin.request.get('/api/session');expect((await requestWithBackoff(()=>admin.request.post('/api/auth/login',{data:{username:'test_admin',password:'test-admin-password'}}))).ok()).toBe(true);expect((await admin.request.post(`/api/admin/users/${account.id}/vip`,{data:{enabled:true,expiresAt:null}})).ok()).toBe(true);await page.reload();
   let dialog=await editor(page,account.nickname);await expect(dialog).toContainText('2 MB');await dialog.getByLabel('选择头像',{exact:true}).setInputFiles({name:'vip.png',mimeType:'image/png',buffer:Buffer.concat([png,Buffer.alloc(1024*1024)])});await expect(dialog.getByRole('button',{name:'上传头像',exact:true})).toBeEnabled();
   for(const width of [320,390,430]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);const bounds=await dialog.boundingBox();expect(bounds!.x).toBeGreaterThanOrEqual(0);expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(width);await expect(dialog.getByRole('button',{name:'保存昵称',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'返回账号',exact:true})).toBeVisible();}
   expect((await admin.request.post(`/api/admin/users/${account.id}/vip`,{data:{enabled:true,expiresAt:Date.now()+2000}})).ok()).toBe(true);await expect.poll(async()=>((await (await page.request.get('/api/session')).json()).account.vip.active),{timeout:10000}).toBe(false);await page.reload();dialog=await editor(page,account.nickname);await expect(dialog).toContainText('1 MB');await dialog.getByLabel('选择头像',{exact:true}).setInputFiles({name:'expired.png',mimeType:'image/png',buffer:Buffer.alloc(1024*1024+1)});await expect(dialog.getByRole('alert')).toContainText('1 MB');

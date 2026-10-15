@@ -1,3 +1,4 @@
+import {AdminOversightStore} from './adminOversight.js';
 import {NotificationsStore} from './notifications.js';
 import {CommunityStore} from './community.js';
 import type {CommunityScope} from '../contracts/community.js';
@@ -50,6 +51,7 @@ export class LobbyStore {
  private retention:RetentionStore;
  private community:CommunityStore;
  private notifications:NotificationsStore;
+ private oversight:AdminOversightStore;
  constructor(path:string,private codeStart:()=>number=()=>randomInt(10000),private allowTestPlayers=false,private now:()=>number=Date.now,private dayRules:FirstDayRules=firstDayRules){
   this.db=new Database(path);this.db.pragma('journal_mode = WAL');this.db.pragma('foreign_keys = ON');this.db.pragma('busy_timeout = 5000');
   this.db.exec(`
@@ -80,7 +82,7 @@ export class LobbyStore {
   }).immediate();
   migrateBoardSeats(this.db);
   migrateIdentityRoles(this.db);
-  this.auth=new AuthStore(this.db,(id,body)=>this.notifications?.account(id,body));
+  this.auth=new AuthStore(this.db,(id,body)=>this.notifications?.account(id,body),change=>this.oversight.accountChange(change));
   this.boards=new BoardsStore(this.db,token=>this.auth.owner(token));
   this.judge=new JudgeStore(this.db,(token,id)=>this.member(token,id),token=>this.hasSession(token),id=>this.boards.snapshot(id),this.dayRules,this.now);
   this.control=new ControlStore(this.db,this.now,(id,m)=>this.judge.isJudge(id,m));
@@ -93,6 +95,7 @@ export class LobbyStore {
   this.sharedFavoritesStore=new SharedFavoritesStore(this.db,this.auth,this.sharing,this.now);
   this.community=new CommunityStore(this.db,this.auth,this.now,(token,scope)=>this.communityRoom(token,scope),{comment:(id,account,scope)=>this.notifications.comment(id,account,scope),like:(id,actor)=>this.notifications.like(id,actor),moderation:()=>this.notifications.moderation()});
   this.notifications=new NotificationsStore(this.db,this.auth,this.now,(owner,scope)=>this.validateNotificationSource(owner,scope));
+  this.oversight=new AdminOversightStore(this.db,this.auth,this.now,(id,body)=>this.notifications.account(id,body));
   this.favoriteLibraryStore=new FavoriteLibraryStore(this.db,this.auth,token=>this.favoriteSources(token));
   this.preparation=new PreparationStore(this.db,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats,id=>this.boards.configuration(id));
   this.retention=new RetentionStore(this.db,this.now,id=>this.records.preserveForRoomCleanup(id));
@@ -105,6 +108,11 @@ export class LobbyStore {
   if(!(JSON.parse(row.participants) as string[]).includes(owner))throw new LobbyError('PARTICIPANT_ONLY',403);
   if(row.withdrawn)throw new LobbyError('RECORD_WITHDRAWN',409);if(!row.ended)throw new LobbyError('PHASE_LOCKED',409);
  }
+ adminReportGroups(token:string,query:unknown={}){return this.oversight.reports(token,query);}
+ adminAuditList(token:string,query:unknown={}){return this.oversight.audit(token,query);}
+ adminShares(token:string,query:unknown={}){return this.oversight.shares(token,query);}
+ adminExport(token:string,input:unknown){return this.oversight.export(token,input);}
+ adminRevokeShare(token:string,input:unknown){return this.oversight.revoke(token,input);}
  notificationsList(token:string,query:unknown={}){return this.notifications.list(token,query);}
  notificationSettings(token:string,input:unknown){return this.notifications.setSettings(token,input);}
  notificationCommand(token:string,input:unknown){return this.notifications.command(token,input);}

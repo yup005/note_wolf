@@ -60,3 +60,5 @@ Object.assign(messages,{RULE_DECISION_REQUIRED:'该技能组合的规则尚未�
 Object.assign(messages,{JUDGE_ONLY:'只有当前有效临时法官可以操作',INVALID_JUDGE:'请选择已公开死亡且死亡技能处理完毕的玩家',JUDGE_ATTESTATION_REQUIRED:'请确认该玩家的死亡技能已处理完毕',STALE_JUDGE:'法官或补录版本已更新，请重新读取',JUDGE_PLAYER_ACTION:'法官任职期间不能执行玩家操作',JUDGE_DRAFT_REQUIRED:'请先建立法官补录草稿',JUDGE_FACT_MISMATCH:'补录与官方公开事实不一致，请核对死讯、警徽和投票',JUDGE_KNOWLEDGE_CONFLICT:'曾任法官的玩家不能恢复为存活玩家，请核对官方死讯与补录',JUDGE_RETURN_BLOCKED:'当前补录尚不能恢复自动，请先完成有效阶段核对'});
 
 Object.assign(messages,{COMMENT_MUTED:'评论权限暂受限制，请查看账号消息',COMMENT_DELETED:'评论已移除',STALE_COMMUNITY:'审核状态已更新，请重新读取',COMMUNITY_REQUEST_CONFLICT:'请求已用于其他操作，请刷新后重试'});
+
+Object.assign(messages,{EXPORT_TOO_LARGE:'导出结果超过 5000 条，请缩小筛选范围'});

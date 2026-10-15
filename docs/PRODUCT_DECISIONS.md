@@ -1,5 +1,13 @@
 # 笔记狼人杀 — 产品决定与对话同步记录
 
+<a id="admin-oversight-delivery-2026-10-14"></a>
+
+## 当前实施范围：后台监督管理（2026-10-14）
+
+Owner在通知批次交付后再次“继续”，沿用连续实施/不重复询问指示，补齐H-004/ADMIN-005–007既有后台范围及第一轮第27项：举报人数汇总、昵称/日期/处罚类别/处理状态筛选导出、实际管理员操作日志、填写原因并留审计后撤销他人违规公开分享。不授权读取未发布私稿/进行中秘密，不增加永久禁止作者重生成链接的政策。
+
+本批在现有后台上扩展；举报按内容汇总及最新举报时间筛选、CSV上限/公式防护和原请求重试为明确工程默认。完整条件见[现行管理规格](WEREWOLF_RULES_SPEC.md#admin-oversight-2026-10-14)，实际实现/验证/发布以[交接](PROJECT_STATUS_FOR_CHATGPT.md)及[报告](TEST_REPORT.md)为准。49项原确认保留；通用群发/支付/正式持久存储/实机和部署不纳入本批。
+
 <a id="notification-delivery-2026-10-14"></a>
 
 ## 当前实施范围：通知中心（2026-10-14）
@@ -8,7 +16,7 @@ Owner在永久删除批次交付后回复“继续”，沿用“都允许，你
 
 工程入口、来源权限/去重/已看标记/重试和清理边界统一见[规则](WEREWOLF_RULES_SPEC.md#notifications-2026-10-14)，执行证据见[交接](PROJECT_STATUS_FOR_CHATGPT.md)。通用管理员群发、完整非社区审计/统计、持久存储和实机/部署不由本批标为完成；不读取真实玩家数据或改变Render开关。
 
-> Updated: 2026-10-14 (America/Los_Angeles)
+> Updated: 2026-10-15 (America/Los_Angeles)
 > This document records **product-relevant confirmed decisions and current planning**, not the raw ChatGPT conversation.  
 > **Source note:** The 2026-10-10 product status below was provided by the project owner as a handoff summary. It is **not** verified against the older GitHub `main` snapshot or by re-running tests.
 

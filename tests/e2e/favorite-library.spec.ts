@@ -1,10 +1,11 @@
+import {requestWithBackoff} from './helpers/test-admin';
 import {test,expect,type Page,type Browser} from '@playwright/test';
 import {prepareOrdinaryRoom} from './helpers/real-players';
 async function fixture(page:Page,browser:Browser){
  await page.goto('/');await expect(page.getByRole('button',{name:'登录 / 注册',exact:true})).toBeEnabled();
  const username='fav_'+crypto.randomUUID().slice(0,8),password='synthetic-favorite-password';
- const registration=await page.request.post('/api/auth/register',{data:{username,password,nickname:'VIP收藏玩家'}});expect(registration.ok()).toBe(true);const account=(await registration.json()).account;
- const admin=await browser.newContext();await admin.request.get('/api/session');expect((await admin.request.post('/api/auth/login',{data:{username:'test_admin',password:'test-admin-password'}})).ok()).toBe(true);expect((await admin.request.post(`/api/admin/users/${account.id}/vip`,{data:{enabled:true,expiresAt:null}})).ok()).toBe(true);
+ const registration=await requestWithBackoff(()=>page.request.post('/api/auth/register',{data:{username,password,nickname:'VIP收藏玩家'}}));expect(registration.ok()).toBe(true);const account=(await registration.json()).account;
+ const admin=await browser.newContext();await admin.request.get('/api/session');expect((await requestWithBackoff(()=>admin.request.post('/api/auth/login',{data:{username:'test_admin',password:'test-admin-password'}}))).ok()).toBe(true);expect((await admin.request.post(`/api/admin/users/${account.id}/vip`,{data:{enabled:true,expiresAt:null}})).ok()).toBe(true);
  const room=(await (await page.request.post('/api/rooms',{data:{nickname:'VIP收藏玩家',requestId:crypto.randomUUID()}})).json()).room,path=`/api/rooms/${room.id}`;
  const roles=await prepareOrdinaryRoom(browser,page.context(),room,'manual');const draft=(await (await page.request.get(path+'/records')).json()).own;
  const document={deaths:roles.filter(p=>p.role==='wolf').map(p=>({seat:p.seat,round:1,period:'night',cause:'unrecorded'})),votes:[],badges:[],exiles:[],notes:'Published searchable orchard'};
@@ -25,7 +26,7 @@ test('VIP manages searchable favorites and a private name survives independent a
   await favorites.getByLabel('收藏日期从').fill('2099-01-01');await favorites.getByRole('button',{name:'应用筛选',exact:true}).click();await expect(favorites).toContainText('没有符合条件的收藏');await favorites.getByRole('button',{name:'清除筛选',exact:true}).click();await expect(favorites.locator('.favorite-game')).toHaveCount(1);
   for(const width of [320,390,430]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(width);}
   await page.screenshot({path:'test-results/favorite-library-mobile.png',fullPage:true});
-  const other=await browser.newContext();try{await other.request.get('/api/session');expect((await other.request.post('/api/auth/login',{data:{username:f.username,password:f.password}})).ok()).toBe(true);const second=await other.newPage();await second.goto('/');await expect(second.getByRole('region',{name:'我的收藏'})).toContainText('保留我的输入');}finally{await other.close();}
+  const other=await browser.newContext();try{await other.request.get('/api/session');expect((await requestWithBackoff(()=>other.request.post('/api/auth/login',{data:{username:f.username,password:f.password}}))).ok()).toBe(true);const second=await other.newPage();await second.goto('/');await expect(second.getByRole('region',{name:'我的收藏'})).toContainText('保留我的输入');}finally{await other.close();}
  }finally{await f.admin.close();}
 });
 test('VIP expiry hides advanced controls while keeping owned names and ordinary cancellation',async({page,browser})=>{

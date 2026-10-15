@@ -1,9 +1,9 @@
 import {test,expect} from '@playwright/test';
-import {loginTestAdmin} from './helpers/test-admin';
+import {loginTestAdmin,requestWithBackoff} from './helpers/test-admin';
 test('guest and ordinary hosts see no test entry and forged test requests are refused',async({page})=>{
  await page.goto('/');await expect(page.getByRole('button',{name:'登录 / 注册',exact:true})).toBeEnabled();
  for(const registered of [false,true]){
-  if(registered){const r=await page.request.post('/api/auth/register',{data:{username:'test_gate_'+crypto.randomUUID().slice(0,8),password:'synthetic-password',nickname:'Ordinary'}});expect(r.ok()).toBe(true);}
+  if(registered){const r=await requestWithBackoff(()=>page.request.post('/api/auth/register',{data:{username:'test_gate_'+crypto.randomUUID().slice(0,8),password:'synthetic-password',nickname:'Ordinary'}}));expect(r.ok()).toBe(true);}
   const created=await (await page.request.post('/api/rooms',{data:{nickname:'Host',requestId:crypto.randomUUID()}})).json();const path=`/api/rooms/${created.room.id}`;
   expect(created.testPlayersEnabled).toBe(false);await page.request.post(path+'/seat',{data:{seat:1}});
   await page.evaluate(id=>localStorage.setItem('wolf.room',id),created.room.id);await page.reload();

@@ -9,8 +9,9 @@ const derive=promisify(scrypt);
 export const sessionHash=(token:string)=>createHash('sha256').update(token).digest('hex');
 type Row={id:string;username:string;nickname:string;role:'user'|'admin';status:'active'|'disabled';created_at:number;password_hash:string;salt:string};
 const publicAccount=(r:Row):Account=>({id:r.id,username:r.username,nickname:r.nickname,role:r.role,status:r.status,createdAt:r.created_at});
+export interface AdminAccountChange {operatorId:string;operator:string;subjectId:string;subject:string;action:'vip'|'status';before:string;after:string}
 export class AuthStore {
- constructor(private db:Database.Database,private onChange?:(accountId:string,body:string)=>void){
+ constructor(private db:Database.Database,private onChange?:(accountId:string,body:string)=>void,private onAdminChange?:(change:AdminAccountChange)=>void){
   db.exec(`CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY,username TEXT NOT NULL UNIQUE,nickname TEXT NOT NULL,password_hash TEXT NOT NULL,salt TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('user','admin')),status TEXT NOT NULL CHECK(status IN ('active','disabled')),created_at INTEGER NOT NULL);
    CREATE TABLE IF NOT EXISTS vip_entitlements(account_id TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,enabled INTEGER NOT NULL,expires_at INTEGER);
    CREATE TABLE IF NOT EXISTS account_avatars(account_id TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,revision TEXT NOT NULL,image BLOB NOT NULL);
@@ -19,7 +20,16 @@ export class AuthStore {
   db.pragma('user_version = 10');
  }
  private public(r:Row):Account{const v=this.db.prepare('SELECT enabled,expires_at FROM vip_entitlements WHERE account_id=?').get(r.id) as {enabled:number;expires_at:number|null}|undefined;const avatar=this.db.prepare('SELECT revision FROM account_avatars WHERE account_id=?').get(r.id) as {revision:string}|undefined;return {...publicAccount(r),avatarUrl:avatar?avatarUrl(r.id,avatar.revision):null,vip:{active:!!v?.enabled&&(v.expires_at===null||v.expires_at>Date.now()),expiresAt:v?.expires_at??null}};}
- setVip(token:string,id:string,enabled:boolean,expiresAt:number|null){return this.db.transaction(()=>{this.requireAdmin(token);if(!this.db.prepare('SELECT 1 FROM accounts WHERE id=?').get(id))throw new LobbyError('NOT_FOUND',404);if(enabled&&expiresAt!==null&&expiresAt<=Date.now())throw new LobbyError('INVALID_INPUT');const old=this.db.prepare('SELECT enabled,expires_at FROM vip_entitlements WHERE account_id=?').get(id) as {enabled:number;expires_at:number|null}|undefined;this.db.prepare('INSERT INTO vip_entitlements VALUES (?,?,?) ON CONFLICT(account_id) DO UPDATE SET enabled=excluded.enabled,expires_at=excluded.expires_at').run(id,enabled?1:0,expiresAt);if((old?.enabled??0)!==+enabled||(old?.expires_at??null)!==expiresAt)this.onChange?.(id,enabled?`VIP 已启用${expiresAt===null?'':`，有效期至 ${new Date(expiresAt).toISOString()}`}`:'VIP 已停用');return {id,enabled,expiresAt};}).immediate();}
+ setVip(token:string,id:string,enabled:boolean,expiresAt:number|null){return this.db.transaction(()=>{
+  this.requireAdmin(token);const operator=this.requireAccount(token),target=this.db.prepare('SELECT nickname FROM accounts WHERE id=?').get(id) as {nickname:string}|undefined;if(!target)throw new LobbyError('NOT_FOUND',404);
+  if(enabled&&expiresAt!==null&&expiresAt<=Date.now())throw new LobbyError('INVALID_INPUT');
+  const old=this.db.prepare('SELECT enabled,expires_at FROM vip_entitlements WHERE account_id=?').get(id) as {enabled:number;expires_at:number|null}|undefined;
+  this.db.prepare('INSERT INTO vip_entitlements VALUES (?,?,?) ON CONFLICT(account_id) DO UPDATE SET enabled=excluded.enabled,expires_at=excluded.expires_at').run(id,enabled?1:0,expiresAt);
+  if((old?.enabled??0)!==+enabled||(old?.expires_at??null)!==expiresAt){
+   this.onAdminChange?.({operatorId:operator.id,operator:operator.nickname,subjectId:id,subject:target.nickname,action:'vip',before:JSON.stringify({enabled:!!old?.enabled,expiresAt:old?.expires_at??null}),after:JSON.stringify({enabled,expiresAt})});
+   this.onChange?.(id,enabled?`VIP 已启用${expiresAt===null?'':`，有效期至 ${new Date(expiresAt).toISOString()}`}`:'VIP 已停用');
+  }return {id,enabled,expiresAt};
+ }).immediate();}
  account(token:string):Account|null{const r=this.db.prepare('SELECT a.* FROM accounts a JOIN sessions s ON s.account_id=a.id WHERE s.session_hash=? AND a.status=\'active\'').get(sessionHash(token)) as Row|undefined;return r?this.public(r):null;}
  requireAccount(token:string):Account{
   const account=this.account(token);if(account)return account;
@@ -124,7 +134,11 @@ export class AuthStore {
  logout(token:string){this.db.prepare('DELETE FROM sessions WHERE session_hash=?').run(sessionHash(token));const next=randomBytes(32).toString('hex');this.db.prepare('INSERT INTO sessions(session_hash,created_at) VALUES (?,?)').run(sessionHash(next),Date.now());return next;}
  users(token:string){this.requireAdmin(token);return (this.db.prepare('SELECT * FROM accounts ORDER BY created_at DESC,id').all() as Row[]).map(r=>this.public(r));}
  setStatus(token:string,id:string,status:'active'|'disabled'){
-  this.requireAdmin(token);const user=this.db.prepare('SELECT * FROM accounts WHERE id=?').get(id) as Row|undefined;if(!user)throw new LobbyError('NOT_FOUND',404);if(user.role==='admin')throw new LobbyError('ADMIN_PROTECTED',409);
-  this.db.transaction(()=>{this.db.prepare('UPDATE accounts SET status=? WHERE id=?').run(status,id);if(user.status!==status)this.onChange?.(id,status==='active'?'账号已恢复':'账号已停用');if(status==='disabled')this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(id);}).immediate();return {id,status};
+  return this.db.transaction(()=>{
+   this.requireAdmin(token);const operator=this.requireAccount(token),user=this.db.prepare('SELECT * FROM accounts WHERE id=?').get(id) as Row|undefined;if(!user)throw new LobbyError('NOT_FOUND',404);if(user.role==='admin')throw new LobbyError('ADMIN_PROTECTED',409);
+   this.db.prepare('UPDATE accounts SET status=? WHERE id=?').run(status,id);
+   if(user.status!==status){this.onAdminChange?.({operatorId:operator.id,operator:operator.nickname,subjectId:id,subject:user.nickname,action:'status',before:user.status,after:status});this.onChange?.(id,status==='active'?'账号已恢复':'账号已停用');}
+   if(status==='disabled')this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(id);return {id,status};
+  }).immediate();
  }
 }
