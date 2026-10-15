@@ -42,7 +42,9 @@
 **Files:** root rules/testcases/decisions/status/report/progress/matrix/map/README/OPEN_QUESTIONS.
 - [x] Independent backend review before UI, final whole-change review; implementer fixes with regression evidence, reviewers reread scoped fixes.
 - [x] Full npm test/typecheck/build/isolated full Chromium, preserve existing production limits and tests; no live3000.
-- [ ] Sync source-preserving docs/166 stableIDs/49 historicaldecisions and actual statuscounts, link/diff checks. Full implementationSHA followup.
+- [x] Sync source-preserving docs/166 stableIDs/49 historicaldecisions and actual statuscounts, link/diff checks. Full implementationSHA followup.
 - [ ] Current-main normal commit/push, refetch/compare, verify remoteSHA exact; final report no deployment/device claims.
 
 Final integrated evidence: npm test504/504(25.2s), typecheck/build pass, all96 Chromium pass(7.9m). Three production P2 fixes plus related focus edge and fixture corrections independently approved. Source limits/guards preserved; actual failure history and physical-device limits are in the report. Remaining publication checkboxes describe this file’s pre-publication checkpoint; exact remote verification is recorded by the controller after Git publication.
+
+Implementation commit: [2ff92e379d0cb147786d21ad6fb8ad0818b1e895](https://github.com/yup005/note_wolf/commit/2ff92e379d0cb147786d21ad6fb8ad0818b1e895). SHA followup changes documentation only; code tests are not rerun for it. Exact remote publication is verified after these commits are pushed, then recorded in the final response and local execution ledger.

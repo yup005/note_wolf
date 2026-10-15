@@ -15,6 +15,8 @@
 
 真实iPhone Safari/VoiceOver、实际声音/锁屏/弱网和真实多设备仍待验收；纯管理元信息导出不包含私人正文或游戏秘密。完整日志指本批确认的VIP/状态/社区处罚/公开分享撤销源，不等于通用群发或新隐私权限。最终类型/差异检查及阶段重试修正独立复查通过。文档复查12份、389个本地引用/锚点通过，166项稳定需求ID/汇总与49项历史确认原文保留；规则、期望、证据与历史职责清楚，无需删除有用来源。实施SHA同批跟进，正常推送后核对最终远端SHA。
 
+实施提交：[2ff92e379d0cb147786d21ad6fb8ad0818b1e895](https://github.com/yup005/note_wolf/commit/2ff92e379d0cb147786d21ad6fb8ad0818b1e895)。本次SHA跟进仅文档，引用/差异检查通过，代码检查未重跑；同批正常推送后核对最终远端SHA。
+
 ## 历史：通知中心（2026-10-14）
 
 来源与期望见[本批确认](PRODUCT_DECISIONS.md#notification-delivery-2026-10-14)、[完整规格](WEREWOLF_RULES_SPEC.md#notifications-2026-10-14)和[交接](PROJECT_STATUS_FOR_CHATGPT.md)。仅隔离合成账号/记录、临时SQLite与端口3100；不操作用户localhost3000或真实数据，不部署。
