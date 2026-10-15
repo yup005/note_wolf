@@ -14,6 +14,8 @@
 
 证据边界：浏览器VIP失权场景使用真实列表的canRecord:false投影，实际自然到期授权/禁止新建由领域测试执行；浏览器首页入口独立于实时导航，实际清理/重启由DB测试执行。不是实际iPhone Safari/VoiceOver、真实听感、锁屏/弱网/物理多设备验收。SQLite逻辑清除仅当前应用数据，不改写外部副本或物理释放页。文档复查12份/330个本地引用及锚点和差异通过，166项ID/状态汇总与49项来源保留，未改变未决玩法或删除历史证据。未部署/未启用Render测试开关，构建既有提示保留。
 
+实施提交：[b0959171eedfb3cb76a50a6f33f496cfffba9e53](https://github.com/yup005/note_wolf/commit/b0959171eedfb3cb76a50a6f33f496cfffba9e53)。本次SHA跟进仅文档，引用/差异检查通过，代码检查未重跑；同批正常推送后核对最终远端SHA。
+
 ## 历史：评论、多级回复与基本审核（2026-10-14）
 
 来源：[本批范围](PRODUCT_DECISIONS.md#community-delivery-2026-10-14)、[规则](WEREWOLF_RULES_SPEC.md#community-2026-10-14)及[交接](PROJECT_STATUS_FOR_CHATGPT.md)。全为隔离合成归档/内存数据库、端口3100和独立浏览器，未读取真人秘密/私稿、未部署。
