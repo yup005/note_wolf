@@ -1,6 +1,10 @@
 # Project progress
 
-## 当前：评论与基本审核（2026-10-14）
+## 当前：个人记录永久删除（2026-10-14）
+
+ADMIN-008/H-004：本人二次确认删除草稿/全部本人发布版本及分享；官方事实、他人记录/评论和独立收藏元数据保留。归档/VIP到期可删，明确新建/旧授权隔离，双向绑定冲突及会话切换保护已补齐。完整规则见[现行规格](WEREWOLF_RULES_SPEC.md#personal-record-deletion-2026-10-14)，执行证据/审查及实施SHA见[交接](PROJECT_STATUS_FOR_CHATGPT.md)与[报告](TEST_REPORT.md)。通知/持久存储/真实设备等仍待完成，未部署。
+
+## 历史：评论与基本审核（2026-10-14）
 
 SOCIAL-001–008的已发布复盘评论/回复/点赞和基本举报/审核/禁评接入；NOTICE-003及ADMIN-005/007只完成社区部分。规则统一见[当前规格](WEREWOLF_RULES_SPEC.md#community-2026-10-14)，执行和实施SHA见[交接](PROJECT_STATUS_FOR_CHATGPT.md)与[报告](TEST_REPORT.md)。完整通知/后台、记录删除及实机仍待完成，不部署。下方旧“最新/当前”是相应日期历史。
 

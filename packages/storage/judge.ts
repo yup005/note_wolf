@@ -118,7 +118,7 @@ export class JudgeStore {
   for(const h of runtime.history)this.db.prepare('INSERT INTO game_history(room_id,kind,round,state) VALUES (?,?,?,?) ON CONFLICT(room_id,kind,round) DO UPDATE SET state=excluded.state').run(id,h.kind,h.round,JSON.stringify(h.state));
   this.db.prepare('INSERT INTO night_games VALUES (?,?) ON CONFLICT(room_id) DO UPDATE SET state=excluded.state').run(id,JSON.stringify(runtime.night));if(runtime.day)this.db.prepare('INSERT INTO day_games VALUES (?,?) ON CONFLICT(room_id) DO UPDATE SET state=excluded.state').run(id,JSON.stringify(runtime.day));
   // All independent record drafts, versions and manual revisions remain archived.
-  this.db.prepare('INSERT OR IGNORE INTO manual_revisions(room_id,version,at,document,outcome) VALUES (?,?,?,?,NULL)').run(id,manual.version,this.now(),manual.official);
+  this.db.prepare('INSERT OR IGNORE INTO manual_revisions(room_id,version,at,document,outcome) VALUES (?,?,?,?,NULL)').run(id,manual.version,this.now(),JSON.stringify({...JSON.parse(manual.official),notes:''}));
   this.db.prepare("INSERT OR IGNORE INTO manual_revision_sources VALUES (?,?,'computed')").run(id,manual.version);
   this.db.prepare('INSERT INTO manual_revisions(room_id,version,at,document,outcome) VALUES (?,?,?,?,?)').run(id,manual.version+1,this.now(),JSON.stringify(canonical),terminal?runtime.day!.winner:null);
   const priorOfficial=JSON.parse(manual.official) as RecordDocument;

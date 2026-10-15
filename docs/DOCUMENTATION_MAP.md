@@ -1,6 +1,6 @@
 # 文档职责与阅读导航
 
-更新：2026-10-12。本页只说明去哪里查阅和如何避免重复，不新增玩法或改变已确认细节。
+更新：2026-10-14。本页只说明去哪里查阅和如何避免重复，不新增玩法或改变已确认细节。
 
 ## 按任务查阅
 
@@ -9,6 +9,7 @@
 | Codex 每次开始/结束任务 | [简短指令入口](../AGENTS.md)、[详细工作流程](CODEX_WORKFLOW.md)中的任务前检查、Git 工作流与进度要求 | 当前分支、远程增量、本地修改及任务范围 |
 | 当前板子玩法/例外/权限 | [规则规格](WEREWOLF_RULES_SPEC.md)的相关 ID 和完整细节 | [产品决策](PRODUCT_DECISIONS.md)、[最新规则确认及未决问题](../OPEN_QUESTIONS.md)、[详细需求 V1](WEREWOLF_REQUIREMENTS_V1.md) |
 | 需求优先级、是否已实现 | [需求总表](NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md)、[当前项目进度](PROJECT_STATUS_FOR_CHATGPT.md) | 实际代码/测试与[差距审计](GAP_ANALYSIS.md)，不能把索引状态当作验收证据 |
+| 本人永久删除记录 / ADMIN-008 | [H-004删除边界](WEREWOLF_RULES_SPEC.md#personal-record-deletion-2026-10-14)、[Owner第2项](PRODUCT_DECISIONS.md#owner-decisions-2026-10-12) | [验收场景](WEREWOLF_TEST_CASES.md#个人记录永久删除验收2026-10-14)；与G-003清理实时房间、撤回发布不同；官方事实/其他作者/评论保留 |
 | 规则验收/回归 | [验收场景与期望](WEREWOLF_TEST_CASES.md)的相关用例 | 当前确认规则、实际自动测试，以及[验证报告](TEST_REPORT.md)中的结果与限制 |
 | 机械狼与装甲狼 Codex 开发需求/验收索引 | [统一实施规格](CODEX_MECHANICAL_BOARDS_IMPLEMENTATION.md) | [机械狼通灵师规则](MECHANICAL_WOLF_SEER.md)、[机械装甲规则](MECHANICAL_ARMOR.md)，以明确的确认/待决标记为准；新需求不等于已实现；[M0–M6进度](MECHANICAL_IMPLEMENTATION_PROGRESS.md) |
 | 机械狼／机械装甲开发 | [机械狼需求](MECHANICAL_WOLF_SEER.md)、[装甲规则](MECHANICAL_ARMOR.md) | 已授权实现确认部分；[基础层设计](superpowers/specs/2026-10-10-board-foundation-design.md)、[M2引擎设计](superpowers/specs/2026-10-10-engine-framework-design.md)、当前代码/测试和未决交互，不能把基础模块等同完整板子 |

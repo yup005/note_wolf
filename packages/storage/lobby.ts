@@ -263,12 +263,15 @@ export class LobbyStore {
   });
   const records=this.recordFavorites(token).map(item=>{
    let available=true,searchText='';try{searchText=JSON.stringify(this.recordPost(token,item.id).document);}catch(error){if(!(error instanceof LobbyError&&['RECORD_WITHDRAWN','PARTICIPANT_ONLY','NOT_FOUND','PHASE_LOCKED'].includes(error.code)))throw error;available=false;}
-   return {kind:'record' as const,id:item.id,code:item.code,author:item.author,title:`房间 ${item.code} · ${item.official?'官方':item.author}`,savedAt:item.savedAt,board:item.board??null,available,detail:`版本 ${item.version} · ${available?'已发布':item.withdrawn?'作者已撤回，暂不可读':'暂不可读'}`,searchText};
+   return {kind:'record' as const,id:item.id,code:item.code,author:item.author,title:`房间 ${item.code} · ${item.official?'官方':item.author}`,savedAt:item.savedAt,board:item.board??null,available,detail:`版本 ${item.version} · ${available?'已发布':item.deleted?'已永久删除':item.withdrawn?'作者已撤回，暂不可读':'暂不可读'}`,searchText};
   });
   return [...games,...records,...this.sharedFavoritesStore.sources(token)];
  }
  favoriteLibrary(token:string,query:Partial<FavoriteQuery>={}){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.view(token,query);}
  renameFavorite(token:string,kind:FavoriteKind,id:string,input:FavoriteName){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.rename(token,kind,id,input);}
+ myRecords(token:string){return this.records.myRecords(token);}
+ deleteRecord(token:string,id:string,input:import('../contracts/records.js').RecordDelete){return this.records.delete(token,id,input);}
+ createRecord(token:string,id:string,input:import('../contracts/records.js').RecordCreate){return this.records.create(token,id,input);}
  recordsList(token:string,id:string){return this.records.list(token,id);}
  saveRecord(token:string,id:string,revision:number,document:import('../contracts/records.js').RecordDocument){return this.records.save(token,id,revision,document);}
  importAutomaticRecord(token:string,id:string,revision:number){return this.records.importAutomatic(token,id,revision);}

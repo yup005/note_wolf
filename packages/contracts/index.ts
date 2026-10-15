@@ -49,7 +49,7 @@ Object.assign(messages,{GAME_PAUSED:'对局暂停或恢复准备中，请稍候'
 
 Object.assign(messages,{GRACE_ACTIVE:'连接宽限期间不能提前跳过阶段'});
 
-Object.assign(messages,{RECORDER_ONLY:"只有参赛房主或有效 VIP 可记录",VIP_ONLY:"需要有效 VIP",STALE_RECORD:"记录已更新，请重新读取后修改",MANUAL_MODE:"本局已切换为纯手动记录",MANUAL_MODE_REQUIRED:"当前不是纯手动模式",RECORD_WITHDRAWN:"作者已撤回，重新发布后恢复访问",RECORD_ACCOUNT_CONFLICT:"当前游客和账号各有独立草稿，无法自动合并"});
+Object.assign(messages,{RECORDER_ONLY:"只有参赛房主或有效 VIP 可记录",VIP_ONLY:"需要有效 VIP",STALE_RECORD:"记录已更新，请重新读取后修改",MANUAL_MODE:"本局已切换为纯手动记录",MANUAL_MODE_REQUIRED:"当前不是纯手动模式",RECORD_WITHDRAWN:"作者已撤回，重新发布后恢复访问",RECORD_ACCOUNT_CONFLICT:"游客与账号的本局记录发生冲突，无法自动合并",LEGACY_PENDING_RECORD:"旧结束申请来源无法确认，请先由房主采纳或拒绝申请，再删除记录"});
 
 Object.assign(messages,{OFFICIAL_UNCOMMITTED:'死讯修改尚未提交，请先修正官方记录后发布'});
 Object.assign(messages,{LOGIN_REQUIRED:'请先登录账号',SHARE_AUTHOR_ONLY:'只能管理自己发布的复盘链接',SHARE_UNPUBLISHED:'请先结束对局并发布复盘',SHARE_REVOKED:'此链接已主动撤销，请重新生成',STALE_SHARE:'链接状态已更新，请重新读取',SHARE_UNAVAILABLE:'分享链接暂不可用'});

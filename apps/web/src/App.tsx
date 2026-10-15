@@ -11,6 +11,7 @@ import {AdminPanel} from './AdminPanel';
 import {ProfileAvatar} from './ProfileEditor';
 import type {Account} from '../../../packages/contracts/auth';
 import {useRoom,expireRoomNavigation,acceptRoomActionView,type RoomExpiration} from './useRoom';
+const MyRecordsPanel=lazy(()=>import('./MyRecordsPanel').then(module=>({default:module.MyRecordsPanel})));
 const FavoritesPanel=lazy(()=>import('./FavoritesPanel').then(module=>({default:module.FavoritesPanel})));
 interface PendingCreate {requestId:string;nickname:string}
 function loadPendingCreate():PendingCreate|undefined{
@@ -74,7 +75,7 @@ function LobbyApp(){
   <header className="app-header"><a className="brand" href="/" onClick={e=>{e.preventDefault();home();}}><span className="brand-symbol"><svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="m5 6 4 3 5-2 5 2 4-3-2 13-7 4-7-4L5 6Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/><path d="m9 14 2 1m6-1-2 1m-3 3h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></span><span>笔记狼人杀</span></a><div className="account-tools">{account?.role==='admin'&&<button className="text-button" onClick={()=>{home();setAdminOpen(true);}}>后台</button>}<button className="text-button header-account-button" onClick={()=>setAccountOpen(true)} disabled={booting}>{account&&<ProfileAvatar url={account.avatarUrl} nickname={account.nickname} className="avatar header-account-avatar"/>}<span className="header-account-name">{account?account.nickname:'登录 / 注册'}</span></button></div></header>
   <main>
    {error&&<div className="error-box" role="alert">{error}{booting===false&&!view&&previous.length===0&&<button className="text-button" onClick={()=>void initialize()}>重新连接</button>}</div>}
-   {booting?<div className="card loading" role="status">正在连接房间服务…</div>:adminOpen&&account?.role==='admin'?<AdminPanel onClose={()=>setAdminOpen(false)}/>:view?<PublicVoiceProvider key={view.room.id} view={view} connected={connected}><RoomLobby view={view} connected={connected} busy={busy} onSeat={seat=>void roomAction('seat',{seat})} onAction={(action,body)=>void roomAction(action,body)} onPublicRefresh={refreshRoom} onHome={home}/></PublicVoiceProvider>:<>
+   {booting?<div className="card loading" role="status">正在连接房间服务…</div>:adminOpen&&account?.role==='admin'?<AdminPanel onClose={()=>setAdminOpen(false)}/>:view?<PublicVoiceProvider key={`${view.room.id}:${sessionRevision}`} view={view} connected={connected}><RoomLobby view={view} connected={connected} busy={busy} onSeat={seat=>void roomAction('seat',{seat})} onAction={(action,body)=>void roomAction(action,body)} onPublicRefresh={refreshRoom} onHome={home}/></PublicVoiceProvider>:<>
     <section className="hero"><h1>房间大厅</h1></section>
     <div className="home-grid home-entry">
      <section className="card entry-card"><div className="section-head"><div><h2>加入或创建房间</h2></div><span className="small-icon">↗</span></div>
@@ -89,6 +90,7 @@ function LobbyApp(){
     </div>
     {previous.length>0&&<section className="recent"><h2>{account?'我的房间':'这台设备加入的房间'}</h2><div>{previous.map(r=><button className="recent-room" key={r.room.id} onClick={()=>void run(()=>api<LobbyView>(`/api/rooms/${r.room.id}`))}><strong>{r.room.code}</strong><span>{r.room.board.composition.seatCount} 人 · {r.room.board.name}</span><span>返回 →</span></button>)}</div></section>}
     <Suspense fallback={<section className="card favorites-panel" aria-label="我的收藏"><h2>我的收藏</h2><p className="helper" role="status">正在读取…</p></section>}><FavoritesPanel key={`favorites:${sessionRevision}`}/></Suspense>
+    <Suspense fallback={<p role="status">正在读取…</p>}><MyRecordsPanel key={`records:${sessionRevision}`}/></Suspense>
     {account&&<MySharesPanel key={`shares:${sessionRevision}`}/>}
    </>}
   </main>

@@ -10,7 +10,7 @@ import {randomBytes} from 'node:crypto';
 import {Server} from 'socket.io';
 import {LobbyStore} from '../../packages/storage/lobby.js';
 import {LobbyError,createSchema,joinSchema,selectSchema,messages,settingsSchema,readySchema,identitySchema,emptySchema} from '../../packages/contracts/index.js';
-import {recordSaveSchema,recordRevisionSchema,manualSwitchSchema,manualResolveSchema,manualAdjudicateSchema,manualFinishSchema} from '../../packages/contracts/records.js';
+import {recordCreateSchema,recordDeleteSchema,recordSaveSchema,recordRevisionSchema,manualSwitchSchema,manualResolveSchema,manualAdjudicateSchema,manualFinishSchema} from '../../packages/contracts/records.js';
 import {controlSchema} from '../../packages/contracts/control.js';
 import {nightCommandSchema,beginNightSchema} from '../../packages/contracts/night.js';
 import {dayCommandSchema,type FirstDayRules} from '../../packages/contracts/day.js';
@@ -162,6 +162,9 @@ export async function createServer(options:ServerOptions){
  web.get('/api/favorites/:id',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.favoriteReplay(authenticated(req),req.params.id));});
  web.post('/api/favorites/:id/remove',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body);res.json(store.removeFavorite(authenticated(req),req.params.id));});
  // Private drafts never enter room snapshots. Published records use archived participant authorization.
+ web.get('/api/my-records',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json({items:store.myRecords(authenticated(req))});});
+ web.post('/api/records/:id/delete',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const token=authenticated(req),own=store.myRecords(token).find(r=>r.id===req.params.id);const result=store.deleteRecord(token,req.params.id,parse(recordDeleteSchema,req.body));if(own)publish(own.roomId);recordWrite(res,req.params.id,result);});
+ web.post('/api/rooms/:id/record/create',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');roomWrite(res,req.params.id,store.createRecord(authenticated(req),req.params.id,parse(recordCreateSchema,req.body)));});
  web.get('/api/rooms/:id/records',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.recordsList(authenticated(req),req.params.id));});
  web.post('/api/rooms/:id/record',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const b=parse(recordSaveSchema,req.body);roomWrite(res,req.params.id,store.saveRecord(authenticated(req),req.params.id,b.revision,b.document));});
  for(const action of ['publish','withdraw','import-auto'] as const)web.post(`/api/rooms/:id/record/${action}`,(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const b=parse(recordRevisionSchema,req.body);roomWrite(res,req.params.id,action==='import-auto'?store.importAutomaticRecord(authenticated(req),req.params.id,b.revision):action==='publish'?store.publishRecord(authenticated(req),req.params.id,b.revision):store.withdrawRecord(authenticated(req),req.params.id,b.revision));});
