@@ -7,5 +7,5 @@ export type FavoriteQuery=z.infer<typeof favoriteQuerySchema>;
 export const favoriteNameSchema=z.object({name:z.string().trim().max(80),revision:z.number().int().nonnegative()}).strict();
 export type FavoriteName=z.infer<typeof favoriteNameSchema>;
 export interface FavoriteBoard {id:string;name:string}
-export interface FavoriteItem {kind:FavoriteKind;id:string;code:string;author:string;title:string;customName:string|null;nameRevision:number;savedAt:number;board:FavoriteBoard|null;available:boolean;detail:string}
+export interface FavoriteItem {kind:FavoriteKind;id:string;code:string;author:string;title:string;customName:string|null;nameRevision:number;savedAt:number;board:FavoriteBoard|null;available:boolean;hasUpdate?:boolean;detail:string}
 export interface FavoriteLibrary {advanced:boolean;items:FavoriteItem[];boards:FavoriteBoard[];authors:string[]}

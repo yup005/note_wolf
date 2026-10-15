@@ -105,3 +105,6 @@ export const communityModerationSchema = z.object({
         invalid();
 });
 export type CommunityModerationCommand = z.infer<typeof communityModerationSchema>;
+
+export const communityFocusSchema=z.object({scope:communityScopeSchema,commentId:z.string().uuid()}).strict();
+export interface CommunityFocus {comment:CommunityComment;parent:CommunityComment|null}

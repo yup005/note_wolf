@@ -8,7 +8,7 @@ export function useSharedRecord(path:string,valid=true,authenticated=false){
   let cancelled=false,active:AbortController|undefined;
   const load=async()=>{
    active?.abort();const request=new AbortController();active=request;setLoading(true);setError('');const timeout=setTimeout(()=>request.abort(),6000);
-   try{const response=await fetch(path,{signal:request.signal,cache:'no-store',credentials:authenticated?'same-origin':'omit'}),data=await response.json();if(!response.ok)throw Error(data.message??'分享链接暂不可用');if(!cancelled&&active===request)setPost(data as SharedRecord);}
+   try{const response=await fetch(path,{signal:request.signal,cache:'no-store',credentials:authenticated?'same-origin':'omit'}),data=await response.json();if(!response.ok)throw Error(data.message??'分享链接暂不可用');if(!cancelled&&active===request){setPost(data as SharedRecord);if(authenticated)window.dispatchEvent(new Event('wolf:favorite-read'));}}
    catch(e){if(!cancelled&&active===request){setPost(undefined);setError(request.signal.aborted?'读取超时，请重试':errorText(e));}}
    finally{clearTimeout(timeout);if(!cancelled&&active===request)setLoading(false);}
   };

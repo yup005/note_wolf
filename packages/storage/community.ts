@@ -3,7 +3,7 @@ import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypt
 import type { ZodType } from 'zod';
 import { LobbyError } from '../contracts/index.js';
 import type { AuthStore } from './auth.js';
-import { communityReadSchema, communityCommentSchema, communityLikeSchema, communityGameLikeSchema, communityReportSchema, communityModerationSchema, communityListSchema, communityReportsQuerySchema, type CommunityScope, type CommunityComment, type CommunityViewer, type CommunityRestriction, type CommunityNotice, type CommunityPage, type CommunityReport, type CommunityAudit } from '../contracts/community.js';
+import { communityFocusSchema, communityReadSchema, communityCommentSchema, communityLikeSchema, communityGameLikeSchema, communityReportSchema, communityModerationSchema, communityListSchema, communityReportsQuerySchema, type CommunityScope, type CommunityComment, type CommunityViewer, type CommunityRestriction, type CommunityNotice, type CommunityPage, type CommunityReport, type CommunityAudit } from '../contracts/community.js';
 interface CommentRow {
     id: string;
     room_id: string;
@@ -38,7 +38,7 @@ const parse = <T>(schema: ZodType<T>, input: unknown): T => {
 const dayFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' });
 export class CommunityStore {
     private cursorKey: Buffer;
-    constructor(private db: Database.Database, private auth: AuthStore, private now: () => number, private resolve: (token: string | undefined, scope: CommunityScope) => string) {
+    constructor(private db: Database.Database, private auth: AuthStore, private now: () => number, private resolve: (token: string | undefined, scope: CommunityScope) => string, private events: {comment?:(id:string,accountId:string,scope:CommunityScope)=>void;like?:(id:string,actorId:string)=>void;moderation?:()=>void}={}) {
         db.exec(`CREATE TABLE IF NOT EXISTS community_comments(id TEXT PRIMARY KEY,room_id TEXT NOT NULL REFERENCES record_rooms(room_id),account_id TEXT NOT NULL REFERENCES accounts(id),parent_id TEXT REFERENCES community_comments(id),root_id TEXT NOT NULL,body TEXT NOT NULL,created_at INTEGER NOT NULL,deleted INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL DEFAULT 1);
    CREATE INDEX IF NOT EXISTS community_comment_tree ON community_comments(room_id,parent_id,created_at,id);
    CREATE TABLE IF NOT EXISTS community_likes(comment_id TEXT NOT NULL REFERENCES community_comments(id),account_id TEXT NOT NULL REFERENCES accounts(id),PRIMARY KEY(comment_id,account_id));
@@ -134,6 +134,10 @@ export class CommunityStore {
         const more = rows.length > c.limit, items = rows.slice(0, c.limit), last = items.at(-1);
         return { items: items.map(r => this.project(r, viewer.account?.id ?? null)), nextCursor: more && last ? this.encode({ bind, at: last.created_at, id: last.id, heat: last.heat }) : null, gameLikes: this.count('SELECT count(*) n FROM community_game_likes WHERE room_id=?', room), gameLikedToday: !!viewer.account && !!this.db.prepare('SELECT 1 FROM community_game_likes WHERE room_id=? AND account_id=? AND day=?').get(room, viewer.account.id, this.day()), viewer };
     }
+    focus(token:string|undefined,input:unknown) {
+        const c=parse(communityFocusSchema,input),room=this.resolve(token,c.scope),viewer=this.viewer(token),comment=this.comment(c.commentId,room);
+        return {comment:this.project(comment,viewer.account?.id??null),parent:comment.parent_id?this.project(this.comment(comment.parent_id,room),viewer.account?.id??null):null};
+    }
     private request(account: string, id: string, kind: string, payload: unknown) {
         const row = this.db.prepare('SELECT kind,payload,target FROM community_requests WHERE account_id=? AND request_id=?').get(account, id) as {
             kind: string;
@@ -155,6 +159,7 @@ export class CommunityStore {
                 return { comment: this.project(this.comment(previous.target!, room), a.id) };
             const parent = c.parentId ? this.comment(c.parentId, room, true) : null, id = randomUUID();
             this.db.prepare('INSERT INTO community_comments(id,room_id,account_id,parent_id,root_id,body,created_at) VALUES (?,?,?,?,?,?,?)').run(id, room, a.id, c.parentId, parent?.root_id ?? id, c.text, this.now());
+            this.events.comment?.(id,a.id,c.scope);
             this.remember(a.id, c.requestId, 'comment', c, id);
             return { comment: this.project(this.comment(id), a.id) };
         }).immediate();
@@ -165,7 +170,8 @@ export class CommunityStore {
             const a = this.actor(token, true), room = this.resolve(token, c.scope);
             this.comment(c.commentId, room, true);
             const previous = this.request(a.id, c.requestId, 'like', c);
-            this.db.prepare('INSERT OR IGNORE INTO community_likes VALUES (?,?)').run(c.commentId, a.id);
+            const inserted=this.db.prepare('INSERT OR IGNORE INTO community_likes VALUES (?,?)').run(c.commentId, a.id);
+            if(inserted.changes)this.events.like?.(c.commentId,a.id);
             if (!previous)
                 this.remember(a.id, c.requestId, 'like', c, c.commentId);
             return { liked: true as const, count: this.count('SELECT count(*) n FROM community_likes WHERE comment_id=?', c.commentId) };
@@ -205,7 +211,7 @@ export class CommunityStore {
         this.auth.requireAdmin(token);
         if (!this.db.prepare('SELECT 1 FROM accounts WHERE id=?').get(id))
             throw new LobbyError('NOT_FOUND', 404);
-        return { restriction: this.restriction(id), notices: this.notices(id) };
+        return { restriction: this.restriction(id), notices: this.auth.requireAccount(token).id===id?this.notices(id):[] };
     }
     reports(token: string, input: unknown) {
         this.auth.requireAdmin(token);
@@ -295,6 +301,7 @@ export class CommunityStore {
             this.db.prepare('INSERT INTO community_audit VALUES (?,?,?,?,?,?,?,?,?,?)').run(randomUUID(), at, operator.id, c.action, c.reason, comment?.id ?? null, accountId, c.requestId, c.version, c.action==='dismiss'?null:targetVersion);
             if (c.action !== 'dismiss' && accountId)
                 this.db.prepare('INSERT INTO community_notices VALUES (?,?,?,?,?,?)').run(randomUUID(), accountId, at, c.action, c.reason, c.action === 'mute' ? c.until! : null);
+            this.events.moderation?.();
             this.remember(operator.id, c.requestId, 'moderation', c, null);
             return { applied: true as const };
         }).immediate();

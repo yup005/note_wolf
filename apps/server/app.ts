@@ -78,7 +78,7 @@ export async function createServer(options:ServerOptions){
  web.get('/api/boards',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.boardLibrary(authenticated(req)));});
  web.post('/api/boards',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.saveBoard(authenticated(req),parse(boardSaveSchema,req.body)));});
  web.post('/api/rooms/:id/board',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const result=store.configureBoard(authenticated(req),req.params.id,parse(boardConfigureSchema,req.body));publish(req.params.id);roomWrite(res,req.params.id,result);});
- web.get('/api/shared-records/:token',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.sharedRecord(req.params.token));});
+ web.get('/api/shared-records/:token',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.sharedRecord(req.params.token,cookieToken(req)));});
  web.get('/api/shared-records/:token/favorite',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.sharedFavoriteStatus(cookieToken(req),req.params.token));});
  web.post('/api/shared-records/:token/favorite',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body);res.json(store.saveSharedFavorite(authenticated(req),req.params.token));});
  web.get('/api/shared-favorites/:id',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.sharedFavorite(authenticated(req),req.params.id));});
@@ -86,6 +86,11 @@ export async function createServer(options:ServerOptions){
  web.get('/api/shares',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json({items:store.ownShares(authenticated(req))});});
  web.get('/api/records/:id/share',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.shareStatus(authenticated(req),req.params.id));});
  web.post('/api/records/:id/share',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');recordWrite(res,req.params.id,store.shareRecord(authenticated(req),req.params.id,parse(shareCommandSchema,req.body)));});
+ web.get('/api/notifications',(req,res)=>{parse(emptySchema,req.body??{});res.json(store.notificationsList(authenticated(req),req.query));});
+ web.post('/api/notifications/settings',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.notificationSettings(authenticated(req),req.body));});
+ web.post('/api/notifications/command',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.notificationCommand(authenticated(req),req.body));});
+ web.post('/api/notifications/:id/open',(req,res)=>{if(Object.keys(req.query).length||! /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id))throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body);res.json(store.notificationOpen(authenticated(req),req.params.id));});
+ web.post('/api/community/focus',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.communityFocus(cookieToken(req),req.body));});
  web.post('/api/community/read',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.communityRead(cookieToken(req),req.body));});
  for(const [path,method] of [['comment','communityComment'],['like','communityLike'],['game-like','communityGameLike'],['report','communityReport']] as const)web.post('/api/community/'+path,(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store[method](authenticated(req),req.body));});
  web.get('/api/community/me',(req,res)=>{parse(emptySchema,req.body??{});if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.communityMe(authenticated(req)));});
@@ -226,6 +231,7 @@ export async function createServer(options:ServerOptions){
   });
  });
  function cleanupRooms(){
+  store.cleanupNotifications();
   // Forget presence mappings before disconnect callbacks can write deleted rows.
   for(const roomId of store.cleanupExpiredRooms()){
    io.to(roomId).emit('room:expired',{roomId,error:'ROOM_NOT_FOUND',message:'房间已清理，请返回首页'});

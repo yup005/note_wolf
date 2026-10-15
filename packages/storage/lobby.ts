@@ -1,3 +1,4 @@
+import {NotificationsStore} from './notifications.js';
 import {CommunityStore} from './community.js';
 import type {CommunityScope} from '../contracts/community.js';
 import {JudgeStore} from './judge.js';
@@ -48,6 +49,7 @@ export class LobbyStore {
  private boards:BoardsStore;
  private retention:RetentionStore;
  private community:CommunityStore;
+ private notifications:NotificationsStore;
  constructor(path:string,private codeStart:()=>number=()=>randomInt(10000),private allowTestPlayers=false,private now:()=>number=Date.now,private dayRules:FirstDayRules=firstDayRules){
   this.db=new Database(path);this.db.pragma('journal_mode = WAL');this.db.pragma('foreign_keys = ON');this.db.pragma('busy_timeout = 5000');
   this.db.exec(`
@@ -78,7 +80,7 @@ export class LobbyStore {
   }).immediate();
   migrateBoardSeats(this.db);
   migrateIdentityRoles(this.db);
-  this.auth=new AuthStore(this.db);
+  this.auth=new AuthStore(this.db,(id,body)=>this.notifications?.account(id,body));
   this.boards=new BoardsStore(this.db,token=>this.auth.owner(token));
   this.judge=new JudgeStore(this.db,(token,id)=>this.member(token,id),token=>this.hasSession(token),id=>this.boards.snapshot(id),this.dayRules,this.now);
   this.control=new ControlStore(this.db,this.now,(id,m)=>this.judge.isJudge(id,m));
@@ -89,11 +91,26 @@ export class LobbyStore {
   this.voice=new VoiceStore(this.db,this.now,(id,memberId)=>{const m=this.db.prepare('SELECT * FROM members WHERE room_id=? AND id=?').get(id,memberId) as MemberRow|undefined;return !!m&&this.control.canManage(id,m);});
   this.sharing=new SharingStore(this.db,this.auth,this.now);
   this.sharedFavoritesStore=new SharedFavoritesStore(this.db,this.auth,this.sharing,this.now);
-  this.community=new CommunityStore(this.db,this.auth,this.now,(token,scope)=>this.communityRoom(token,scope));
+  this.community=new CommunityStore(this.db,this.auth,this.now,(token,scope)=>this.communityRoom(token,scope),{comment:(id,account,scope)=>this.notifications.comment(id,account,scope),like:(id,actor)=>this.notifications.like(id,actor),moderation:()=>this.notifications.moderation()});
+  this.notifications=new NotificationsStore(this.db,this.auth,this.now,(owner,scope)=>this.validateNotificationSource(owner,scope));
   this.favoriteLibraryStore=new FavoriteLibraryStore(this.db,this.auth,token=>this.favoriteSources(token));
   this.preparation=new PreparationStore(this.db,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats,id=>this.boards.configuration(id));
   this.retention=new RetentionStore(this.db,this.now,id=>this.records.preserveForRoomCleanup(id));
  }
+ private validateNotificationSource(owner:string,scope:CommunityScope){
+  if(scope.kind==='share'){this.sharing.read(scope.token);return;}
+  if(scope.kind==='shared-favorite'){const f=this.db.prepare('SELECT share_token FROM shared_record_favorites WHERE owner=? AND id=?').get(owner,scope.id) as {share_token:string}|undefined;if(!f)throw new LobbyError('NOT_FOUND',404);this.sharing.read(f.share_token);return;}
+  const row=this.db.prepare('SELECT d.published_version,d.withdrawn,d.deleted,r.ended,r.participants FROM record_drafts d JOIN record_rooms r ON r.room_id=d.room_id WHERE d.id=?').get(scope.id) as {published_version:number|null;withdrawn:number;deleted:number;ended:number;participants:string}|undefined;
+  if(!row||row.deleted||row.published_version===null)throw new LobbyError('NOT_FOUND',404);
+  if(!(JSON.parse(row.participants) as string[]).includes(owner))throw new LobbyError('PARTICIPANT_ONLY',403);
+  if(row.withdrawn)throw new LobbyError('RECORD_WITHDRAWN',409);if(!row.ended)throw new LobbyError('PHASE_LOCKED',409);
+ }
+ notificationsList(token:string,query:unknown={}){return this.notifications.list(token,query);}
+ notificationSettings(token:string,input:unknown){return this.notifications.setSettings(token,input);}
+ notificationCommand(token:string,input:unknown){return this.notifications.command(token,input);}
+ notificationOpen(token:string,id:string){return this.notifications.open(token,id);}
+ cleanupNotifications(){return this.notifications.cleanup();}
+ communityFocus(token:string|undefined,input:unknown){if(token&&!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.community.focus(token,input);}
  private communityRoom(token:string|undefined,scope:CommunityScope){
   let recordId:string;
   if(scope.kind==='share'){this.sharing.read(scope.token);recordId=(this.db.prepare('SELECT record_id FROM record_share_links WHERE token=?').get(scope.token) as {record_id:string}).record_id;}
@@ -262,10 +279,11 @@ export class LobbyStore {
    return {kind:'game' as const,id:item.roomId,code:item.code,author:replay.author??'',title:`房间 ${item.code}`,savedAt:item.savedAt,board,available:true,detail:item.winner==='wolves'?'狼人获胜':'好人获胜',searchText:JSON.stringify(replay)};
   });
   const records=this.recordFavorites(token).map(item=>{
-   let available=true,searchText='';try{searchText=JSON.stringify(this.recordPost(token,item.id).document);}catch(error){if(!(error instanceof LobbyError&&['RECORD_WITHDRAWN','PARTICIPANT_ONLY','NOT_FOUND','PHASE_LOCKED'].includes(error.code)))throw error;available=false;}
-   return {kind:'record' as const,id:item.id,code:item.code,author:item.author,title:`房间 ${item.code} · ${item.official?'官方':item.author}`,savedAt:item.savedAt,board:item.board??null,available,detail:`版本 ${item.version} · ${available?'已发布':item.deleted?'已永久删除':item.withdrawn?'作者已撤回，暂不可读':'暂不可读'}`,searchText};
+   let available=true,searchText='';try{searchText=JSON.stringify(this.records.post(token,item.id).document);}catch(error){if(!(error instanceof LobbyError&&['RECORD_WITHDRAWN','PARTICIPANT_ONLY','NOT_FOUND','PHASE_LOCKED'].includes(error.code)))throw error;available=false;}
+   return {kind:'record' as const,id:item.id,code:item.code,author:item.author,title:`房间 ${item.code} · ${item.official?'官方':item.author}`,savedAt:item.savedAt,board:item.board??null,available,hasUpdate:available&&this.notifications.hasUpdate(this.auth.owner(token),'record',item.id,item.version),detail:`版本 ${item.version} · ${available?'已发布':item.deleted?'已永久删除':item.withdrawn?'作者已撤回，暂不可读':'暂不可读'}`,searchText};
   });
-  return [...games,...records,...this.sharedFavoritesStore.sources(token)];
+  const shares=this.sharedFavoritesStore.sources(token).map(item=>{let hasUpdate=false;if(item.available){const post=this.sharedFavoritesStore.read(token,item.id);hasUpdate=this.notifications.hasUpdate(this.auth.owner(token),'share',item.id,post.version);}return {...item,hasUpdate};});
+  return [...games,...records,...shares];
  }
  favoriteLibrary(token:string,query:Partial<FavoriteQuery>={}){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.view(token,query);}
  renameFavorite(token:string,kind:FavoriteKind,id:string,input:FavoriteName){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.rename(token,kind,id,input);}
@@ -275,22 +293,29 @@ export class LobbyStore {
  recordsList(token:string,id:string){return this.records.list(token,id);}
  saveRecord(token:string,id:string,revision:number,document:import('../contracts/records.js').RecordDocument){return this.records.save(token,id,revision,document);}
  importAutomaticRecord(token:string,id:string,revision:number){return this.records.importAutomatic(token,id,revision);}
- publishRecord(token:string,id:string,revision:number){return this.records.publish(token,id,revision);}
+ publishRecord(token:string,id:string,revision:number){return this.db.transaction(()=>{const result=this.records.publish(token,id,revision);this.notifications.publication(result.id,result.version);return result;}).immediate();}
  withdrawRecord(token:string,id:string,revision:number){return this.records.withdraw(token,id,revision);}
  adminRecordList(token:string,id:string){return this.records.adminList(token,id);}
  adminRecordPost(token:string,id:string,version?:number){return this.records.post(token,id,version,true);}
- recordPost(token:string,id:string,version?:number){return this.records.post(token,id,version);}
+ recordPost(token:string,id:string,version?:number){const post=this.records.post(token,id,version);if(post.saved)this.notifications.seen(this.auth.owner(token),'record',id,post.version);return post;}
  shareStatus(token:string,id:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.sharing.status(token,id);}
  ownShares(token:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.sharing.list(token);}
  shareRecord(token:string,id:string,c:ShareCommand){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.sharing.command(token,id,c);}
- sharedRecord(token:string){return this.sharing.read(token);}
+ sharedRecord(token:string,viewerToken?:string){
+  const post=this.sharing.read(token);
+  if(viewerToken&&this.hasSession(viewerToken)&&this.auth.account(viewerToken)){
+   const owner=this.auth.owner(viewerToken),favorite=this.db.prepare('SELECT id FROM shared_record_favorites WHERE owner=? AND share_token=?').get(owner,token) as {id:string}|undefined;
+   if(favorite)this.notifications.seen(owner,'share',favorite.id,post.version);
+  }
+  return post;
+ }
  sharedFavoriteStatus(token:string|undefined,share:string){return this.sharedFavoritesStore.status(token&&this.hasSession(token)?token:undefined,share);}
- saveSharedFavorite(token:string,share:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);const result=this.sharedFavoritesStore.save(token,share);const row=this.db.prepare('SELECT record_id FROM shared_record_favorites WHERE id=?').get(result.id) as {record_id:string};this.touchRecordRoom(row.record_id);return result;}
- sharedFavorite(token:string,id:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.sharedFavoritesStore.read(token,id);}
- removeSharedFavorite(token:string,id:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.db.transaction(()=>{const row=this.db.prepare('SELECT record_id FROM shared_record_favorites WHERE owner=? AND id=?').get(this.auth.owner(token),id) as {record_id:string}|undefined;const result=this.sharedFavoritesStore.remove(token,id);if(result.removed){this.favoriteLibraryStore.clearName(token,'share',id);if(row)this.touchRecordRoom(row.record_id);}return {saved:false};}).immediate();}
- saveRecordFavorite(token:string,id:string){return this.records.favorite(token,id);}
+ saveSharedFavorite(token:string,share:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.db.transaction(()=>{const existing=this.sharedFavoritesStore.status(token,share).saved,result=this.sharedFavoritesStore.save(token,share);const row=this.db.prepare('SELECT record_id FROM shared_record_favorites WHERE id=?').get(result.id) as {record_id:string};if(!existing)this.notifications.seen(this.auth.owner(token),'share',result.id,this.sharedFavoritesStore.read(token,result.id).version);this.touchRecordRoom(row.record_id);return result;}).immediate();}
+ sharedFavorite(token:string,id:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);const post=this.sharedFavoritesStore.read(token,id);this.notifications.seen(this.auth.owner(token),'share',id,post.version);return post;}
+ removeSharedFavorite(token:string,id:string){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.db.transaction(()=>{const row=this.db.prepare('SELECT record_id FROM shared_record_favorites WHERE owner=? AND id=?').get(this.auth.owner(token),id) as {record_id:string}|undefined;const result=this.sharedFavoritesStore.remove(token,id);if(result.removed){this.favoriteLibraryStore.clearName(token,'share',id);this.notifications.forgetSeen(this.auth.owner(token),'share',id);if(row)this.touchRecordRoom(row.record_id);}return {saved:false};}).immediate();}
+ saveRecordFavorite(token:string,id:string){return this.db.transaction(()=>{const post=this.records.post(token,id);const result=this.records.favorite(token,id);if(!post.saved)this.notifications.seen(this.auth.owner(token),'record',id,post.version);return result;}).immediate();}
  recordFavorites(token:string){return this.records.favorites(token);}
- removeRecordFavorite(token:string,id:string){return this.db.transaction(()=>{const exists=this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(this.auth.owner(token),id);const result=this.records.removeFavorite(token,id);if(exists){this.favoriteLibraryStore.clearName(token,'record',id);this.touchRecordRoom(id);}return result;}).immediate();}
+ removeRecordFavorite(token:string,id:string){return this.db.transaction(()=>{const exists=this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(this.auth.owner(token),id);const result=this.records.removeFavorite(token,id);if(exists){this.favoriteLibraryStore.clearName(token,'record',id);this.notifications.forgetSeen(this.auth.owner(token),'record',id);this.touchRecordRoom(id);}return result;}).immediate();}
  appointJudge(token:string,id:string,c:JudgeAppoint){this.judge.appoint(token,id,c);return this.view(token,id);}
  judgePrivate(token:string,id:string){return this.judge.private(token,id);}
  startJudgeDraft(token:string,id:string,c:JudgeDraftCommand){return this.judge.start(token,id,c);}

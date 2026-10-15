@@ -1,6 +1,14 @@
 # 笔记狼人杀 — 产品决定与对话同步记录
 
-> Updated: 2026-10-13 (America/Los_Angeles)
+<a id="notification-delivery-2026-10-14"></a>
+
+## 当前实施范围：通知中心（2026-10-14）
+
+Owner在永久删除批次交付后回复“继续”，沿用“都允许，你别问我了”推进已确认H-004/NOTICE-001–005。第一轮第26项明确复盘更新/回复/点赞默认关闭、主动订阅，账号/处罚消息保留，30天、回复逐条/点赞合并不变；本批不重新询问已答复决定。旧DEC-15默认策略待确认已由第26项覆盖，49项历史来源保留。
+
+工程入口、来源权限/去重/已看标记/重试和清理边界统一见[规则](WEREWOLF_RULES_SPEC.md#notifications-2026-10-14)，执行证据见[交接](PROJECT_STATUS_FOR_CHATGPT.md)。通用管理员群发、完整非社区审计/统计、持久存储和实机/部署不由本批标为完成；不读取真实玩家数据或改变Render开关。
+
+> Updated: 2026-10-14 (America/Los_Angeles)
 > This document records **product-relevant confirmed decisions and current planning**, not the raw ChatGPT conversation.  
 > **Source note:** The 2026-10-10 product status below was provided by the project owner as a handoff summary. It is **not** verified against the older GitHub `main` snapshot or by re-running tests.
 

@@ -1,4 +1,4 @@
-import {lazy,Suspense,useState} from 'react';
+import {lazy,Suspense,useEffect,useState} from 'react';
 const CommunityNotices=lazy(()=>import('./CommunityNotices'));
 import type {Account} from '../../../packages/contracts/auth';
 import type {LobbyView} from '../../../packages/contracts/index';
@@ -6,6 +6,7 @@ import {api,errorText} from './api';
 import {ProfileAvatar,ProfileEditor} from './ProfileEditor';
 export interface AccountSession {account:Account|null;rooms:LobbyView[]}
 export function AccountDialog({account,onClose,onSession,onProfileSession}:{account:Account|null;onClose:()=>void;onSession:(s:AccountSession)=>void;onProfileSession:(s:AccountSession)=>void}){
+ useEffect(()=>{const close=()=>onClose();window.addEventListener('wolf:open-notifications',close);return()=>window.removeEventListener('wolf:open-notifications',close);},[onClose]);
  const [editing,setEditing]=useState(false);const [register,setRegister]=useState(false);const [username,setUsername]=useState('');const [password,setPassword]=useState('');const [nickname,setNickname]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState('');
  async function submit(){if(busy)return;setBusy(true);setError('');try{const session=await api<AccountSession>(`/api/auth/${account?'logout':register?'register':'login'}`,account?{}:{username,password,...(register?{nickname}:{})});setPassword('');onSession(session);onClose();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
  if(account&&editing)return <ProfileEditor account={account} onBack={()=>setEditing(false)} onSession={onProfileSession}/>;

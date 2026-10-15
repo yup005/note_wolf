@@ -24,7 +24,7 @@ export class FavoriteLibraryStore{
    if(q.board&&(s.board?.id??'unknown')!==q.board||q.author&&s.author!==q.author||q.from!==undefined&&s.savedAt<q.from||q.to!==undefined&&s.savedAt>q.to)return [];
    const searchable=[title,s.title,s.code,s.author,s.board?.name??'',s.available?s.searchText:''].join(' ').toLocaleLowerCase('zh-CN');
    if(q.q&&!searchable.includes(q.q.toLocaleLowerCase('zh-CN')))return [];
-   return [{kind:s.kind,id:s.id,code:s.code,author:s.author,title,customName:name?.name||null,nameRevision:name?.revision??0,savedAt:s.savedAt,board:s.board,available:s.available,detail:s.detail}];
+   return [{kind:s.kind,id:s.id,code:s.code,author:s.author,title,customName:name?.name||null,nameRevision:name?.revision??0,savedAt:s.savedAt,board:s.board,available:s.available,...(s.hasUpdate===undefined?{}:{hasUpdate:s.hasUpdate}),detail:s.detail}];
   }).sort((a,b)=>(q.sort==='saved-asc'?a.savedAt-b.savedAt:b.savedAt-a.savedAt)||(`${a.kind}:${a.id}`<`${b.kind}:${b.id}`?-1:`${a.kind}:${a.id}`>`${b.kind}:${b.id}`?1:0));
   return {advanced,items,boards,authors};
  }

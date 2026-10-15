@@ -18,7 +18,7 @@ export function FavoritesPanel(){
   catch(e){if(mounted.current&&turn===generation.current){setError(errorText(e));if(params.size){try{const basic=await api<FavoriteLibrary>('/api/favorite-library');if(mounted.current&&turn===generation.current&&!basic.advanced){setLibrary(basic);applied.current={};}}catch{}}}}
   finally{if(mounted.current&&turn===generation.current)setLoading(false);}
  }
- useEffect(()=>{mounted.current=true;void load();const refresh=()=>{if(document.visibilityState==='visible'&&!locked.current)void load();};document.addEventListener('visibilitychange',refresh);window.addEventListener('focus',refresh);return()=>{mounted.current=false;generation.current++;document.removeEventListener('visibilitychange',refresh);window.removeEventListener('focus',refresh);};},[]);
+ useEffect(()=>{mounted.current=true;void load();const refresh=()=>{if(document.visibilityState==='visible'&&!locked.current)void load();};document.addEventListener('visibilitychange',refresh);window.addEventListener('focus',refresh);window.addEventListener('wolf:favorite-read',refresh);return()=>{mounted.current=false;generation.current++;document.removeEventListener('visibilitychange',refresh);window.removeEventListener('focus',refresh);window.removeEventListener('wolf:favorite-read',refresh);};},[]);
  function query(){
   const midnight=(day:string)=>new Date(day+'T00:00:00').getTime();let end:number|undefined;
   if(to){const date=new Date(to+'T00:00:00');date.setDate(date.getDate()+1);end=date.getTime()-1;}
@@ -40,11 +40,11 @@ export function FavoritesPanel(){
   </form>}
   {error&&<p role="alert">{error}<button className="text-button" disabled={busy||loading} onClick={()=>void load()}>重试</button></p>}
   {loading?<p className="helper" role="status">正在读取…</p>:!library?.items.length?<p className="helper">{filtered?'没有符合条件的收藏':'暂无收藏'}</p>:<div className="favorite-games">{library.items.map(item=><div className="favorite-game" key={`${item.kind}:${item.id}`}>
-   <button className="favorite-open" onClick={()=>item.kind==='game'?setOpen(item.id):item.kind==='share'?setShared(item.id):setPost(item.id)}><strong>{item.title}</strong><span>{item.detail} · {new Date(item.savedAt).toLocaleDateString('zh-CN')}</span><span>{item.board?.name??'板子未记录'}</span></button>
+   <button className="favorite-open" onClick={()=>item.kind==='game'?setOpen(item.id):item.kind==='share'?setShared(item.id):setPost(item.id)}><strong>{item.title}</strong>{item.hasUpdate&&<span className="favorite-update">有更新</span>}<span>{item.detail} · {new Date(item.savedAt).toLocaleDateString('zh-CN')}</span><span>{item.board?.name??'板子未记录'}</span></button>
    <div className="favorite-item-actions">{library.advanced&&<button className="text-button" disabled={busy} onClick={()=>{setEditing(item);setName(item.customName??'');setNameError('');}}>重命名</button>}
     <button className="text-button" aria-label={item.kind==='game'?`取消收藏房间 ${item.code}`:undefined} disabled={busy} onClick={()=>void remove(item)}>{item.kind==='game'?'取消收藏':item.kind==='share'?'取消收藏分享':'取消收藏版本'}</button></div>
   </div>)}</div>}
   {editing&&<div className="modal-backdrop"><form className="card modal" role="dialog" aria-modal="true" aria-label="收藏名称" onSubmit={e=>{e.preventDefault();void rename();}}><h2>收藏名称</h2><label className="input-label">自定义名称<input autoFocus className="name-input" value={name} maxLength={80} disabled={busy} onChange={e=>setName(e.target.value)}/></label><p className="helper">最多80个字符，留空恢复默认名称。</p>{nameError&&<><p role="alert">{nameError}</p><button className="text-button full" type="button" disabled={busy} onClick={()=>void refreshName()}>读取最新名称</button></>}<button className="primary full" disabled={busy||library?.advanced===false}>保存名称</button><button className="text-button full" type="button" disabled={busy} onClick={()=>setEditing(undefined)}>取消</button></form></div>}
-  {shared&&<SharedFavoriteDialog key={shared} id={shared} onClose={()=>setShared(undefined)}/>}
-  {post&&<RecordPostDialog id={post} onClose={()=>setPost(undefined)}/>} {open&&<ReplayDialog roomId={open} favorite onClose={()=>setOpen(undefined)}/>}</section>;
+  {shared&&<SharedFavoriteDialog key={shared} id={shared} onClose={()=>{setShared(undefined);void load();}}/>}
+  {post&&<RecordPostDialog id={post} onClose={()=>{setPost(undefined);void load();}}/>} {open&&<ReplayDialog roomId={open} favorite onClose={()=>setOpen(undefined)}/>}</section>;
 }
