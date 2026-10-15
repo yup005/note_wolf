@@ -53,7 +53,7 @@
 - [x] Fresh independent review of source privacy, owner-scoped state, migration/expiry, original-link destination and UI retry/races; resolve blockers with regressions.
 - [x] Run full npm test/typecheck/build/full Chromium E2E against isolated3100/in-memory. User localhost3000 untouched.
 - [x] Update NOTICE-001–005 evidence, current account-notice scope and actual matrix totals; retain166 IDs and historical49 decisions. Document limits and doc/link/diff review.
-- [ ] Prepare scoped current-main commit, SHA followup and normal push; verify final remote SHA per workflow. No deployment.
+- [x] Prepare scoped current-main implementation commit and SHA followup. Root performs the final normal push/remote SHA verification and reports it at delivery. No deployment.
 
 ## Execution baseline
 
