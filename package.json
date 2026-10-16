@@ -15,7 +15,10 @@
     "test": "node --import tsx --test --test-isolation=none tests/*.test.ts",
     "test:e2e": "playwright test",
     "admin:create": "node --import tsx apps/server/create-admin.ts",
-    "dev:test": "WOLF_TEST_PLAYERS=1 npm run dev"
+    "dev:test": "WOLF_TEST_PLAYERS=1 npm run dev",
+    "db:backup": "node --import tsx apps/server/database.ts backup",
+    "db:verify": "node --import tsx apps/server/database.ts inspect",
+    "db:restore": "node --import tsx apps/server/database.ts restore"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",

@@ -9,6 +9,7 @@
 | Codex 每次开始/结束任务 | [简短指令入口](../AGENTS.md)、[详细工作流程](CODEX_WORKFLOW.md)中的任务前检查、Git 工作流与进度要求 | 当前分支、远程增量、本地修改及任务范围 |
 | 当前板子玩法/例外/权限 | [规则规格](WEREWOLF_RULES_SPEC.md)的相关 ID 和完整细节 | [产品决策](PRODUCT_DECISIONS.md)、[最新规则确认及未决问题](../OPEN_QUESTIONS.md)、[详细需求 V1](WEREWOLF_REQUIREMENTS_V1.md) |
 | 需求优先级、是否已实现 | [需求总表](NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md)、[当前项目进度](PROJECT_STATUS_FOR_CHATGPT.md) | 实际代码/测试与[差距审计](GAP_ANALYSIS.md)，不能把索引状态当作验收证据 |
+| 本地备份恢复 / BETA-010、GAP-06 | [操作与安全边界](DATABASE_BACKUP.md)、[继续范围](PRODUCT_DECISIONS.md#local-backup-delivery-2026-10-15) | [验收](WEREWOLF_TEST_CASES.md#本地备份恢复验收2026-10-15)、当前报告；新文件隔离恢复，生产备份配置仍待完成 |
 | 后台监督 / ADMIN-005–007、Owner27 | [管理规则](WEREWOLF_RULES_SPEC.md#admin-oversight-2026-10-14)、[继续授权](PRODUCT_DECISIONS.md#admin-oversight-delivery-2026-10-14) | [验收场景](WEREWOLF_TEST_CASES.md#后台监督管理验收2026-10-14)、当前报告；元信息导出/真实审计/原链接撤销，不新增秘密读取 |
 | 通知中心 / NOTICE-001–005 | [通知规则](WEREWOLF_RULES_SPEC.md#notifications-2026-10-14)、[Owner第26项及继续授权](PRODUCT_DECISIONS.md#notification-delivery-2026-10-14) | [验收场景](WEREWOLF_TEST_CASES.md#通知中心验收2026-10-14)、当前报告；独立收藏更新标记，原链接权限，不含通用群发/完整后台 |
 | 本人永久删除记录 / ADMIN-008 | [H-004删除边界](WEREWOLF_RULES_SPEC.md#personal-record-deletion-2026-10-14)、[Owner第2项](PRODUCT_DECISIONS.md#owner-decisions-2026-10-12) | [验收场景](WEREWOLF_TEST_CASES.md#个人记录永久删除验收2026-10-14)；与G-003清理实时房间、撤回发布不同；官方事实/其他作者/评论保留 |
