@@ -39,3 +39,5 @@ Explicit source/output, readonly live source; snapshot-only DELETE normalization
 Commit only at the completed delivery boundary, per owner workflow. Keep useful execution reports; no cleanup of other plans' artifacts. Written spec/plan and in-place implementation proceed under the owner's standing authorization instead of repeated artifact-approval prompts.
 
 Final local checkpoint:14focused pass, full518pass/0fail/0skip29.7s, typecheck/buildpass; one fresh review and one P2 fix wave with4RED→GREEN schema regressions. No browser rerun for this command-only batch. Publication/remote proof is recorded after Git operations in the final response/local execution ledger; this file records its pre-publication checkpoint.
+
+Implementation commit: [32d1d8bf28d186a43c8e1b8f8cc9d56d49d512d5](https://github.com/yup005/note_wolf/commit/32d1d8bf28d186a43c8e1b8f8cc9d56d49d512d5); SHA followup documentation only, code checks not rerun. Exact publication proof is recorded after normal push in the final delivery response and local ledger.

@@ -10,6 +10,8 @@
 
 本批无页面/API/Socket或游戏流程改变，不重跑浏览器测试；上批96项Chromium为历史证据，不冒称本批新执行。未进行线上/异机/断电恢复、加密/定时保留配置或真实iPhone验收；BETA-010仅部分实现。文档复查13份、415个本地引用/锚点和差异通过，166项稳定ID/状态汇总及49历史确认原文保留；职责/历史边界清楚，无需删除有用来源。实施SHA同批跟进，正常推送后核对最终远端SHA。
 
+实施提交：[32d1d8bf28d186a43c8e1b8f8cc9d56d49d512d5](https://github.com/yup005/note_wolf/commit/32d1d8bf28d186a43c8e1b8f8cc9d56d49d512d5)。本次SHA跟进仅文档，引用/差异检查通过，代码检查未重跑；同批正常推送后核对最终远端SHA。
+
 ## 历史：后台监督管理（2026-10-15交付，2026-10-14开始）
 
 来源：[确认](PRODUCT_DECISIONS.md#admin-oversight-delivery-2026-10-14)、[规则](WEREWOLF_RULES_SPEC.md#admin-oversight-2026-10-14)、[交接](PROJECT_STATUS_FOR_CHATGPT.md)。仅隔离合成账号/已结束记录、临时数据库与测试监听，不操作真实私稿/localhost3000，不部署。
