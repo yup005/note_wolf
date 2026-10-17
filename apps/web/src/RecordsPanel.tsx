@@ -1,3 +1,4 @@
+import {ManagementHistoryEntry} from './ManagementHistoryEntry';
 import {useEffect,useRef,useState} from 'react';
 import {RecordDeleteDialog} from './RecordDeleteDialog';
 import {ShareControls} from './ShareControls';
@@ -49,6 +50,7 @@ export function RecordsPanel({view,onClose,onRefresh}:{view:LobbyView;onClose:()
   {room.manual&&me.isHost&&<button className="secondary full" disabled={busy} onClick={()=>void action(async()=>{setHistory((await api<{items:OfficialRevision[]}>(base+'/manual/history')).items);})}>查看官方修订历史</button>}
   {history&&<details open><summary>官方修订历史 · {history.length} 次</summary>{history.map(v=><details key={v.version}><summary>修订 {v.version} · {outcomeLabel(v.outcome,v.outcomeSource)}{v.outcomeSource==='host-adjudicated'?' · 房主人工裁定':''}</summary><RecordContent document={v.document}/></details>)}{history.length===0&&<p>未记录</p>}</details>}
   {ended&&draft?.shareManage&&<ShareControls key={draft.id} id={draft.id}/>}
+  <ManagementHistoryEntry view={view} onRefresh={onRefresh}/>
   <section className="record-published"><div className="section-head"><h3>已发布版本</h3><button className="text-button" disabled={busy} onClick={()=>void action(async()=>{const r=await api<RecordList>(base+'/records');setList(r);})}>刷新列表</button></div>{list.posts.length===0?<p className="helper">{ended?'尚无已发布版本':'对局结束后开放'}</p>:list.posts.map(p=><button key={p.id} className="secondary full" onClick={()=>setPost(p.id)}>{p.official?'官方':'个人'} · {p.author} · 版本 {p.version}{p.withdrawn?' · 已撤回':''}</button>)}</section>
   </>}
  </div>}{deleting&&<RecordDeleteDialog key={deleting.id} record={deleting} onClose={()=>setDeleting(undefined)} onRefresh={refreshDelete} onDeleted={()=>{setDeleting(undefined);setDraft(undefined);setDocument(undefined);setPost(undefined);setHistory(undefined);setRequest(undefined);setList(l=>l?{...l,own:null,posts:l.posts.filter(p=>p.id!==deleting.id)}:l);setNotice('个人记录已永久删除');}}/>}{post&&<RecordPostDialog id={post} onClose={()=>setPost(undefined)}/>}</section></div>;

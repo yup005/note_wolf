@@ -1,3 +1,4 @@
+import {ManagementHistoryEntry} from './ManagementHistoryEntry';
 import {PublicVoiceControls} from './PublicVoice';
 import {useEffect,useState} from 'react';
 import type {LobbyView} from '../../../packages/contracts/index';
@@ -28,7 +29,7 @@ export function GameControls({view,connected,onRefresh}:Props){
     <button className="primary full" disabled={!connected} onClick={()=>setConfirm(control.status==='paused'?'resume':'pause')}>{control.status==='paused'?'恢复对局':'暂停对局'}</button>
     {me.isHost&&<div className="control-settings"><label>临时房主<select aria-label="临时房主" value={seat} onChange={e=>setSeat(e.target.value)}><option value="">收回临时权限</option>{room.seats.filter(s=>s.memberId&&!s.isHost&&alive.includes(s.number)).map(s=><option key={s.number} value={s.number}>{s.number} 号 · {s.nickname}</option>)}</select></label><button className="secondary full" disabled={!connected} onClick={()=>setConfirm('delegate')}>确认授权设置</button>{control.tempSeat!==null&&<p className="helper">当前临时房主：{control.tempSeat} 号</p>}</div>}
     {control.status==='paused'&&<div className="control-settings"><p>未来投票设置</p><label>默认秒数<input aria-label="未来投票秒数" type="number" min={5} max={300} value={duration} onChange={e=>setDuration(Number(e.target.value))}/></label><label>公开程度<select aria-label="未来票型公开程度" value={visibility} onChange={e=>setVisibility(e.target.value as typeof visibility)}><option value="individual">个人票型</option><option value="totals">汇总票数</option></select></label><button className="secondary full" disabled={!connected||!Number.isInteger(duration)||duration<5||duration>300} onClick={()=>setConfirm('defaults')}>保存未来设置</button></div>}
-    <PublicVoiceControls/><button className="text-button full" onClick={()=>setOpen(false)}>关闭</button>
+    <PublicVoiceControls/><ManagementHistoryEntry view={view} onRefresh={onRefresh}/><button className="text-button full" onClick={()=>setOpen(false)}>关闭</button>
    </>}
   </section></div>}
  </>;

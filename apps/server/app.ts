@@ -171,6 +171,7 @@ export async function createServer(options:ServerOptions){
  web.post('/api/rooms/:id/identity/confirm',(req,res)=>{const token=authenticated(req);if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');
   parse(emptySchema,req.body);const result=store.confirmIdentity(token,req.params.id);publish(req.params.id);roomWrite(res,req.params.id,result);
  });
+ web.get('/api/rooms/:id/management-history',(req,res)=>{parse(emptySchema,req.body??{});res.json(store.managementHistory(authenticated(req),req.params.id,req.query));});
  web.post('/api/rooms/:id/control',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const result=store.gameControl(authenticated(req),req.params.id,parse(controlSchema,req.body));publish(req.params.id);roomWrite(res,req.params.id,result);});
  web.post('/api/rooms/:id/night/enter',(req,res)=>{parse(emptySchema,req.body);const result=store.enterNight(authenticated(req),req.params.id);publish(req.params.id);roomWrite(res,req.params.id,result);});
  web.post('/api/rooms/:id/night/begin',(req,res)=>{const body=parse(beginNightSchema,req.body);const result=store.beginNight(authenticated(req),req.params.id,body.turnId);publish(req.params.id);roomWrite(res,req.params.id,result);});

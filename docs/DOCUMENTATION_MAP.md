@@ -31,3 +31,5 @@
 当前临时法官/补录切回/拟态反馈按[现行完整规则](WEREWOLF_RULES_SPEC.md#judge-and-automatic-return-2026-10-13)定位；旧单向切换与待开发说明保留为历史，当前实现和执行证据以最新交接/报告为准。
 
 当前社交评论/基本审核按[完整规则](WEREWOLF_RULES_SPEC.md#community-2026-10-14)和SOCIAL-001–008定位；通知中心按[通知规则](WEREWOLF_RULES_SPEC.md#notifications-2026-10-14)定位，完整后台状态单独在矩阵，不能把消息源覆盖当作全量后台完成。
+
+公开管理记录（GAP-03 / S-003 / S-004）入口、权限、前后值/持久化边界统一见[规则](WEREWOLF_RULES_SPEC.md#management-history-2026-10-17)；[用例](WEREWOLF_TEST_CASES.md#公开管理记录验收2026-10-17)为期望，交接/报告为执行证据。
