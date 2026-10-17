@@ -6,7 +6,7 @@ import {test,expect,type Page} from '@playwright/test';
 // a held/aborted browser claim and change the race's request ordering.
 test.beforeAll(async()=>{test.setTimeout(65000);await new Promise(resolve=>setTimeout(resolve,60000));});
 async function speechBoundary(page:Page,fail=false){await page.addInitScript(({fail})=>{
- localStorage.setItem('wolf.voice.mode','native');
+ localStorage.setItem('wolf.voice.mode','native');localStorage.setItem('wolf.voice.enabled','off');
  const w=window as any;w.voiceSpoken=[];w.voiceCancelled=0;
  class Utterance {text:string;lang='';voice=null;rate=1;onstart:any;onend:any;onerror:any;constructor(text:string){this.text=text;}}
  Object.defineProperty(window,'SpeechSynthesisUtterance',{value:Utterance,configurable:true});
@@ -20,7 +20,7 @@ test('one manager tab speaks public night stages, skips duplicates after refresh
  const outsider=await browser.newContext();try{await outsider.request.get('/api/session');expect((await outsider.request.post('/api/rooms/join',{data:{nickname:'普通玩家',code:room.code}})).status()).toBe(403);const other=await outsider.newPage();await speechBoundary(other);await other.goto('/');await expect(other.locator('.recent-room')).toHaveCount(0);await expect(other.getByRole('button',{name:'管理',exact:true})).toHaveCount(0);expect(await spoken(other)).toEqual([]);
  // The isolated test room refuses the outsider before they can subscribe.
 
- await requestWithBackoff(()=>page.request.post(path+'/night/test-advance',{data:{}}));await expect.poll(()=>spoken(page)).toContain('请闭眼，等待下一阶段。');await requestWithBackoff(()=>page.request.post(path+'/night/test-advance',{data:{}}));await expect.poll(()=>spoken(page)).toContain('女巫请睁眼，请进行操作。');expect((await spoken(page)).join('')).not.toMatch(/刀口|解药|毒药|查验结果|确认者/);
+ await requestWithBackoff(()=>page.request.post(path+'/night/test-advance',{data:{}}));await expect.poll(()=>spoken(page)).toContain('请闭眼。');await requestWithBackoff(()=>page.request.post(path+'/night/test-advance',{data:{}}));await expect.poll(()=>spoken(page)).toContain('女巫请睁眼，请进行操作。');expect((await spoken(page)).join('')).not.toMatch(/刀口|解药|毒药|查验结果|确认者/);
  for(const size of [{width:320,height:568},{width:390,height:844},{width:430,height:932}]){await page.setViewportSize(size);await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight)).toBe(true);}await page.setViewportSize({width:390,height:844});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  await page.reload();await expect(page.getByRole('heading',{name:'女巫行动',exact:true})).toBeVisible();await page.getByRole('button',{name:'管理',exact:true}).click();await page.getByRole('button',{name:'开启公共播报',exact:true}).click();expect((await spoken(page)).filter(t=>t==='女巫请睁眼，请进行操作。')).toHaveLength(0);await page.getByRole('button',{name:'重播当前提示',exact:true}).click();await expect.poll(()=>spoken(page)).toContain('女巫请睁眼，请进行操作。');await page.screenshot({path:'test-results/public-voice-mobile.png',animations:'disabled'});
  await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{value:'hidden',configurable:true});document.dispatchEvent(new Event('visibilitychange'));});await expect(page.getByRole('button',{name:'开启公共播报',exact:true})).toBeVisible();await expect.poll(()=>page.evaluate(()=>(window as any).voiceCancelled)).toBeGreaterThan(0);
@@ -68,7 +68,7 @@ test('a timed out claim releases server ownership and never plays a late respons
 test('phase changes while enabling still accept the new server stage and initialize the lease',async({page})=>{
  await speechBoundary(page);const {path}=await setup(page);let arrived!:()=>void,unblock!:()=>void;const seen=new Promise<void>(r=>{arrived=r;}),gate=new Promise<void>(r=>{unblock=r;});let held=false;
  await page.route('**/voice',async route=>{if(route.request().postDataJSON().action==='claim'&&!held){held=true;arrived();await gate;await route.continue();}else await route.continue();});
- try{await page.getByRole('button',{name:'管理',exact:true}).click();await page.getByRole('button',{name:'开启公共播报',exact:true}).click();await seen;await requestWithBackoff(()=>page.request.post(path+'/night/test-advance',{data:{}}));await expect(page.getByRole('heading',{name:'闭眼间隔',exact:true})).toBeVisible();unblock();await expect.poll(()=>spoken(page)).toContain('请闭眼，等待下一阶段。');await expect(page.getByRole('button',{name:'关闭公共播报',exact:true})).toBeVisible();}
+ try{await page.getByRole('button',{name:'管理',exact:true}).click();await page.getByRole('button',{name:'开启公共播报',exact:true}).click();await seen;await requestWithBackoff(()=>page.request.post(path+'/night/test-advance',{data:{}}));await expect(page.getByRole('heading',{name:'闭眼间隔',exact:true})).toBeVisible();unblock();await expect.poll(()=>spoken(page)).toContain('请闭眼。');await expect(page.getByRole('button',{name:'关闭公共播报',exact:true})).toBeVisible();}
  finally{unblock();}
 });
 test('a synchronous speech startup failure can be retried on the same page',async({page})=>{

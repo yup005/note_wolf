@@ -356,5 +356,6 @@ export class LobbyStore {
  isDevelopmentTestHost(token:string){return this.allowTestPlayers&&this.auth.account(token)?.role==='admin'&&(this.db.prepare('SELECT m.room_id FROM members m JOIN test_rooms t ON t.room_id=m.room_id WHERE m.session_hash=? AND m.is_host=1').all(this.auth.owner(token)) as {room_id:string}[]).some(r=>this.testPlayers.isolated(r.room_id));}
  adminRooms(token:string){this.auth.requireAdmin(token);return (this.db.prepare('SELECT id FROM rooms ORDER BY created_at DESC LIMIT 200').all() as {id:string}[]).map(({id})=>this.snapshot(id));}
  adminReplay(token:string,id:string){this.auth.requireAdmin(token);return this.readReplay(id);}
+ checkStorage(){for(const query of ['SELECT id FROM rooms LIMIT 1','SELECT session_hash FROM sessions LIMIT 1','SELECT id FROM members LIMIT 1','SELECT id FROM accounts LIMIT 1','SELECT room_id FROM preparations LIMIT 1','SELECT room_id FROM night_games LIMIT 1','SELECT room_id FROM day_games LIMIT 1'])this.db.prepare(query).get();}
  close(){this.db.close();}
 }

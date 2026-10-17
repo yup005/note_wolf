@@ -6,7 +6,8 @@ import express from 'express';
 import {registerSchema,credentialsSchema,userStatusSchema,vipSchema,profileSchema} from '../../packages/contracts/auth.js';
 import {avatarMimeTypes,avatarUploadLimit} from '../../packages/storage/avatars.js';
 import {createServer as createHttpServer} from 'node:http';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,randomUUID} from 'node:crypto';
+import {createDiagnostics,type DiagnosticWrite,type DiagnosticContext} from './diagnostics.js';
 import {Server} from 'socket.io';
 import {LobbyStore} from '../../packages/storage/lobby.js';
 import {LobbyError,createSchema,joinSchema,selectSchema,messages,settingsSchema,readySchema,identitySchema,emptySchema} from '../../packages/contracts/index.js';
@@ -19,7 +20,7 @@ import type {ZodType} from 'zod';
 import {testPlayersAllowed} from './testPlayerPolicy.js';
 import {favoriteQuerySchema,favoriteKindSchema,favoriteNameSchema} from '../../packages/contracts/favorites.js';
 
-export interface ServerOptions {dbPath:string;codeStart?:()=>number;secureCookie?:boolean;allowTestPlayers?:boolean;testPlayerScope?:string;now?:()=>number;dayRulesFixture?:FirstDayRules}
+export interface ServerOptions {diagnosticWrite?:DiagnosticWrite;dbPath:string;codeStart?:()=>number;secureCookie?:boolean;allowTestPlayers?:boolean;testPlayerScope?:string;now?:()=>number;dayRulesFixture?:FirstDayRules}
 const cookieName='wolf_session';
 function cookieToken(req:IncomingMessage){
  const value=(req.headers.cookie??'').split(';').map(v=>v.trim()).find(v=>v.startsWith(cookieName+'='))?.slice(cookieName.length+1);
@@ -33,16 +34,26 @@ function validOrigin(req:IncomingMessage){
 function parse<T>(schema:ZodType<T>,body:unknown):T{const result=schema.safeParse(body);if(!result.success)throw new LobbyError('INVALID_INPUT');return result.data;}
 export async function createServer(options:ServerOptions){
  const testPlayersEnabled=testPlayersAllowed(options.allowTestPlayers,options.testPlayerScope,process.env);
- const store=new LobbyStore(options.dbPath,options.codeStart,testPlayersEnabled,options.now,process.env.NODE_ENV==='production'?undefined:options.dayRulesFixture);
+ const diagnostics=createDiagnostics(options.diagnosticWrite);
+ let store:LobbyStore;
+ try{store=new LobbyStore(options.dbPath,options.codeStart,testPlayersEnabled,options.now,process.env.NODE_ENV==='production'?undefined:options.dayRulesFixture);}catch(error){diagnostics.fault('startup',error);throw new Error('SERVER_STARTUP_FAILED');}
  const web=express();web.disable('x-powered-by');
  const http=createHttpServer(web);
  const io=new Server(http,{maxHttpBufferSize:8192,allowRequest:(req,done)=>done(null,validOrigin(req))});
+ function roomContext(id:unknown):DiagnosticContext{
+  if(typeof id!=='string'||!/^[a-f0-9-]{36}$/.test(id))return {};
+  try{const room=store.snapshot(id);return {gameId:room.id,phase:room.day?.phase==='ended'||room.manual?.status==='ended'?'ended':room.manual?'manual':room.day&&(!room.night||room.day.day>=room.night.night)?'day':room.night?'night':'preparation'};}catch{return {gameId:id};}
+ }
+ web.param('id',(req,res,next,id)=>{if(typeof req.route?.path==='string'&&req.route.path.startsWith('/api/rooms/:id'))res.locals.diagnosticRoomId=id;next();});
  const hits=new Map<string,{count:number;until:number}>();
  const limiter=setInterval(()=>{for(const [key,v] of hits)if(v.until<Date.now())hits.delete(key);},60000);limiter.unref();
  function authenticated(req:IncomingMessage){const token=cookieToken(req);if(!token||!store.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return token;}
  web.use((req,res,next)=>{
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');
+  if(req.path.startsWith('/api/')){res.locals.requestId=randomUUID();res.setHeader('X-Request-ID',res.locals.requestId);res.setHeader('Cache-Control','no-store');}
   if(!validOrigin(req))return next(new LobbyError('FORBIDDEN',403));
+  // Readiness must remain reachable when ticking or session storage is broken.
+  if(req.path==='/api/health')return next();
   if(req.path.startsWith('/api/')){
    for(const id of store.tickNights())publish(id);
    res.setHeader('Cache-Control','no-store');
@@ -74,7 +85,10 @@ export async function createServer(options:ServerOptions){
  web.post('/api/auth/profile',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const result=store.updateProfile(authenticated(req),parse(profileSchema,req.body).nickname);for(const room of result.rooms)publish(room.room.id);res.json(result);});
  web.delete('/api/auth/avatar',(req,res)=>{if(Object.keys(req.query).length||req.body===undefined&&(Number(req.headers['content-length']??0)>0||req.headers['transfer-encoding']!==undefined))throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body??{});const result=store.deleteAvatar(authenticated(req));for(const room of result.rooms)publish(room.room.id);res.json(result);});
  web.get('/api/avatars/:accountId',(req,res)=>{if(Object.keys(req.query).some(key=>key!=='v')||req.query.v!==undefined&&typeof req.query.v!=='string')throw new LobbyError('INVALID_INPUT');res.type('image/jpeg').send(store.avatar(req.params.accountId,req.query.v as string|undefined));});
- web.get('/api/health',(_req,res)=>res.json({status:'ok'}));
+ web.get('/api/health',(_req,res)=>{
+  try{store.checkStorage();diagnostics.recovered('health');res.json({status:'ok',storage:'ok'});}
+  catch(error){const requestId=diagnostics.fault('health',error,{requestId:res.locals.requestId},true);res.setHeader('X-Request-ID',requestId);res.status(503).json({status:'degraded',storage:'unavailable',requestId});}
+ });
  web.get('/api/boards',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.boardLibrary(authenticated(req)));});
  web.post('/api/boards',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.saveBoard(authenticated(req),parse(boardSaveSchema,req.body)));});
  web.post('/api/rooms/:id/board',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const result=store.configureBoard(authenticated(req),req.params.id,parse(boardConfigureSchema,req.body));publish(req.params.id);roomWrite(res,req.params.id,result);});
@@ -214,13 +228,13 @@ export async function createServer(options:ServerOptions){
  web.use((error:unknown,_req:express.Request,res:express.Response,_next:express.NextFunction)=>{
   const isBodyError=error instanceof SyntaxError|| (typeof error==='object'&&error!==null&&'type' in error&&error.type==='entity.too.large');
   const e=error instanceof LobbyError?error:new LobbyError(isBodyError?'INVALID_INPUT':'INTERNAL_ERROR',isBodyError?400:500);
-  if(e.status===500)console.error('API error',error instanceof Error?error.message:'unknown');
-  res.status(e.status).json({error:e.code,message:messages[e.code]??'请求无法处理'});
+  const requestId=e.status>=500?diagnostics.fault('http',error,{...roomContext(res.locals.diagnosticRoomId),requestId:res.locals.requestId}):undefined;
+  res.status(e.status).json({error:e.code,message:messages[e.code]??'请求无法处理',...(requestId?{requestId}:{})});
  });
- io.use((socket,next)=>{try{authenticated(socket.request);next();}catch{next(new Error('UNAUTHORIZED'));}});
+ io.use((socket,next)=>{try{authenticated(socket.request);next();}catch(error){if(!(error instanceof LobbyError&&error.status<500))diagnostics.fault('socket-auth',error,{},true);next(new Error('UNAUTHORIZED'));}});
  io.on('connection',socket=>{
   let count=0;let window=Date.now();
-  socket.on('disconnect',()=>{for(const id of store.disconnectMember(socket.id))publish(id);});
+  socket.on('disconnect',()=>diagnostics.guard('socket-disconnect',()=>{for(const id of store.disconnectMember(socket.id))publish(id);}));
   socket.on('room:subscribe',(body:unknown,ack:unknown)=>{
    if(typeof ack!=='function')return;
    if(Date.now()-window>60000){window=Date.now();count=0;}
@@ -230,7 +244,7 @@ export async function createServer(options:ServerOptions){
     const view=store.view(authenticated(socket.request),body.roomId);const room=view.room;
     for(const joined of socket.rooms)if(joined!==socket.id)socket.leave(joined);
     for(const id of store.connectMember(room.id,view.me.id,socket.id))publish(id);socket.join(room.id);ack({room:store.snapshot(room.id)});
-   }catch(e){ack({error:e instanceof LobbyError?e.code:'INTERNAL_ERROR'});}
+   }catch(e){const expected=e instanceof LobbyError&&e.status<500;const requestId=expected?undefined:diagnostics.fault('socket-subscribe',e,roomContext(typeof body==='object'&&body!==null&&'roomId' in body?body.roomId:undefined));ack({error:expected?e.code:'INTERNAL_ERROR',...(requestId?{requestId}:{})});}
   });
  });
  function cleanupRooms(){
@@ -241,8 +255,8 @@ export async function createServer(options:ServerOptions){
    io.in(roomId).disconnectSockets(true);
   }
  }
- cleanupRooms();
- const retentionTimer=setInterval(cleanupRooms,60000);retentionTimer.unref();
- const nightTimer=setInterval(()=>{for(const id of store.tickNights())publish(id);},250);nightTimer.unref();
+ diagnostics.guard('retention',cleanupRooms);
+ const retentionTimer=setInterval(()=>diagnostics.guard('retention',cleanupRooms),60000);retentionTimer.unref();
+ const nightTimer=setInterval(()=>diagnostics.guard('night-tick',()=>{for(const id of store.tickNights())publish(id);}),250);nightTimer.unref();
  return {web,http,io,store,cleanupExpiredRooms:cleanupRooms,async close(){clearInterval(nightTimer);clearInterval(retentionTimer);clearInterval(limiter);await new Promise<void>(resolve=>io.close(()=>resolve()));store.close();}};
 }

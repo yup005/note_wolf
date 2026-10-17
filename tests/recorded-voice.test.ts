@@ -52,3 +52,9 @@ test('failed audio startup still permits safe cancellation',async()=>{
  const context={state:'running',sampleRate:24000,destination:{},decodeAudioData:async()=>({length:data.length,getChannelData:()=>data}),createBuffer:()=>({getChannelData:()=>new Float32Array(data.length)}),createBufferSource:()=>({buffer:null,onended:null,connect:()=>{},disconnect:()=>{},start:()=>{throw Error('audio unavailable');},stop:()=>{throw Error('not started');}})} as unknown as AudioContext;
  const player=new RecordedPublicVoice(context,async()=>new Response(new Uint8Array([1])));await assert.rejects(()=>player.play('公共播报。',()=>true,()=>{},()=>{}),/audio unavailable/);assert.doesNotThrow(()=>player.cancel());
 });
+
+test('the eyes-closed interval announces only closing eyes and uses a reusable local recording',()=>{
+ const room={id:'r',preparation:{settings:{gameMode:'automatic'}},control:{status:'running'},night:{phase:'eyes_closed',night:1,turnId:'n',deadline:5000},day:null} as unknown as RoomSnapshot;
+ const cues=voiceFrame(room,0).cues;assert.equal(cues.length,1);assert.equal(cues[0].text,'请闭眼。');
+ const parts=recordedVoiceParts(cues[0].text);assert.equal(parts.length,1);assert.ok(existsSync('apps/web/public'+parts[0]));
+});

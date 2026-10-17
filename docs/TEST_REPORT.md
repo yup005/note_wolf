@@ -1,6 +1,54 @@
 # 阶段验证记录
 
-## 当前：本地一致性备份与隔离恢复（2026-10-15开始）
+本批文档复查11份/435个本地引用与锚点通过，166项稳定ID/汇总及49项历史确认原文保留；现行规则、期望与执行/失败历史职责明确，无需删除有用来源。
+
+## 当前：语音默认、评论弹窗与基础诊断（2026-10-16开始，2026-10-17交付）
+
+规则/来源见[本批规格](WEREWOLF_RULES_SPEC.md#voice-comments-diagnostics-2026-10-16)，诊断完整边界见[说明](SERVER_DIAGNOSTICS.md)。仅合成临时数据库与独立测试端口，未操作真实房间或3000服务、不部署。
+
+最终 `npm test` **528 pass /0 fail /0 skip**；`npm run typecheck`、`npm run build`通过。全量Chromium E2E **97 pass /0 fail /0 skip**（8.0m）；这是一套重新完整执行的成功结果，不把失败重试次数混入97项。主包517.32KB（gzip158.38KB），既有500KB/Zod构建提示保留。
+
+诊断专项9/9通过：真实SQLite触发器/改表故障覆盖HTTP关联与脱敏、读取健康失败/恢复、自动计时限量输出及恢复、Socket订阅重试、坏库启动、重复健康编号、成员/账号依赖、首次过期清理、结束手动阶段。初始接口/健康/Socket/启动4项RED和计时未捕获异常RED，随后运行表/重复编号RED；独立审查2P2/1P3已补3项真实RED→GREEN，最终无未处理发现。一次未授权监听重试出现7项EPERM，授权后9/9通过，未将环境失败算作产品通过。
+
+语音默认开启的预录真实AudioContext样本启动、关闭偏好刷新/交互保留、重新开启/重播、后台停止与原单标签/失败/陈旧租约保护均有浏览器回归；旧手动竞态用例显式关闭默认后测原手动入口。闭眼提示专项先RED再变为“请闭眼”，新录音离线生成，80段完整解码且有效振幅通过；沙箱内首次生成的236字节无效音频已通过授权系统语音重新生成和验证，最终不发布无效样本。新语音范围独立追加审查无重要发现，不代表真实Safari自动播放或听感通过。
+
+评论截图问题先复现末条按钮底1927px越出弹窗539px；修复单一滚动/非压缩布局后，在320×568、390×844、430×844、844×390验证末条操作边界与实际命中、正文回看、关闭可达及真实发帖/回复。合成截图已查看。首次全量该新用例遇到发帖刷新导致节点断开，等待改为重新定位后重试，原边界/命中断言保留，后续复测及最终整套均通过。
+
+<details><summary>首次全量异常与25项成功复测历史（不作为最终通过）</summary>
+
+第一次完整运行报告72通过/25失败，耗时异常为8.4h，含长时间超时、连接重置及macOS显示时钟错误；跨日后未改生产代码，25项串行复测全部通过（2.0m），再重新完整97项通过。期间的31项相关测试曾在11通过后为纳入新语音范围主动中断，未算全量通过；另端口并行试跑造成测试产物冲突，后续全部串行。失败项原名如下，均已复测并再次全量通过：
+
+- tests/e2e/comment-dialog-layout.spec.ts:12:1 › published record comments stay inside a scrollable dialog and its record remains readable
+- tests/e2e/preparation.spec.ts:41:1 › physical roles can be corrected privately with one uniform mismatch warning
+- tests/e2e/preparation.spec.ts:54:1 › mobile seat correction clears preparation and dealing response loss does not redraw
+- tests/e2e/profile.spec.ts:38:1 › active VIP permits 2MB selection while expired VIP returns to 1MB and phone layouts stay contained
+- tests/e2e/profile.spec.ts:47:1 › editing a seated account after cards are locked preserves private identity, session and room phase
+- tests/e2e/record-deletion.spec.ts:19:1 › stale publication requires fresh confirmation and keeps unsaved private input until ACK
+- tests/e2e/record-deletion.spec.ts:28:1 › committed delete followed by JSON 503 keeps exact command for retry
+- tests/e2e/record-deletion.spec.ts:32:1 › normal published version changes preserve open comments and unfinished input
+- tests/e2e/record-deletion.spec.ts:39:1 › guest binding remounts in-room private editor and deletion confirmation
+- tests/e2e/recorded-voice.spec.ts:4:1 › pre-recorded public voice decodes real audible samples without speech synthesis and stops on hide
+- tests/e2e/records.spec.ts:25:1 › manual mobile game: private draft, official result, publish, history, following favorites and withdrawal across independent clients
+- tests/e2e/records.spec.ts:36:1 › VIP and host keep separate drafts; end requests share facts, and the host alone adopts the official outcome
+- tests/e2e/rules.spec.ts:6:1 › second night has 30-second gods, dead seats are disabled, and deferred sheriff resumes withdrawal without speeches
+- tests/e2e/rules.spec.ts:30:1 › offline individual votes say who voted whom, fit a phone, and appear in the result
+- tests/e2e/sharing.spec.ts:12:1 › VIP author shares latest published content with an independent anonymous phone, regenerates and revokes without affecting private drafts
+- tests/e2e/sharing.spec.ts:27:1 › home lists withdrawn links independently of favorites and lets the author revoke them
+- tests/e2e/sharing.spec.ts:34:1 › external ordinary reader registers on a share, collects across devices and keeps a regenerated old link unavailable
+- tests/e2e/sharing.spec.ts:44:1 › collected share loses its body on foreground expiry and VIP search cannot match revoked content
+- tests/e2e/test-admin.spec.ts:4:1 › admin fixture honors browser bootstrap Retry-After and keeps its session
+- tests/e2e/test-players.spec.ts:4:1 › host can fill a labelled test room and inspect each simulated role
+- tests/e2e/voice.spec.ts:34:1 › daytime stays silent through free speech, voting, death tasks and a complete four-wolf exile victory
+- tests/e2e/voice.spec.ts:49:1 › hiding during a delayed enable cancels activation and releases its lease without playing stale stages
+- tests/e2e/voice.spec.ts:55:1 › a delayed public prompt survives a public management revision within the same night stage
+- tests/e2e/voice.spec.ts:62:1 › a timed out claim releases server ownership and never plays a late response
+- tests/e2e/wolf-kings.spec.ts:7:1 › repeatable kings use public carry and black gun controls after refresh
+
+</details>
+
+本批不证明真实iPhone声音/VoiceOver、锁屏/后台、弱网/多手机或线上行为；不配置外部告警/日志保留/每局超时监测，BETA-011部分实现。
+
+## 历史：本地一致性备份与隔离恢复（2026-10-15开始）
 
 来源：[继续实施范围](PRODUCT_DECISIONS.md#local-backup-delivery-2026-10-15)、[完整运维说明](DATABASE_BACKUP.md)、BETA-010/GAP-06。仅临时合成SQLite，未读取用户真实`.data`、未使用localhost3000、未部署或配置云端备份。
 

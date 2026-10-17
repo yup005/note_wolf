@@ -12,10 +12,12 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
  const Context=window.AudioContext??(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;const recordingsSupported=typeof Context!=='undefined',supported=nativeSupported||recordingsSupported;
  const preferred=()=>{try{return recordingsSupported&&(!nativeSupported||localStorage.getItem('wolf.voice.mode')!=='native');}catch{return recordingsSupported;}};
  const [recorded,setRecorded]=useState(preferred);const mode=useRef(recorded);const context=useRef<AudioContext|null>(null),recordings=useRef<import('./recordedPublicVoice').RecordedPublicVoice|null>(null);
- function unlockRecordings(){if(!Context)throw Error('此浏览器不支持音频播放。');context.current??=new Context();void context.current.resume().catch(()=>{});}
+ function unlockRecordings(){if(!Context)throw Error('此浏览器不支持音频播放。');context.current??=new Context();const current=context.current;void current.resume().then(()=>{if(alive.current&&current.state==='running')setUnlocked(true);}).catch(()=>{});if(current.state==='running')setUnlocked(true);}
  function selectMode(next:boolean){if(!next&&!nativeSupported)return;stop();mode.current=next;setRecorded(next);try{localStorage.setItem('wolf.voice.mode',next?'recorded':'native');}catch{}setError('');void enable();}
 
- const [enabled,setEnabled]=useState(false),[pending,setPending]=useState(false),[status,setStatus]=useState('未开启'),[error,setError]=useState(''),[lastText,setLastText]=useState('');
+ const defaultOn=()=>{try{return localStorage.getItem('wolf.voice.enabled')!=='off';}catch{return true;}};
+ const autoWanted=useRef(defaultOn()),autoAttempted=useRef(false);const [unlocked,setUnlocked]=useState(false);
+ const [enabled,setEnabled]=useState(false),[pending,setPending]=useState(false),[status,setStatus]=useState(()=>autoWanted.current?'默认开启，点击页面启用声音':'未开启'),[error,setError]=useState(''),[lastText,setLastText]=useState('');
  const clientId=useRef(requestId());const alive=useRef(true),on=useRef(false),generation=useRef(0),busy=useRef(false),audio=useRef(0),audioScope=useRef(''),expiry=useRef(0),watchdog=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),controller=useRef<AbortController|null>(null);
  const latest=useRef({view,connected});latest.current={view,connected};
  const automatic=view.room.preparation.settings.gameMode==='automatic'&&!view.room.manual;
@@ -25,7 +27,7 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
  function cancel(){audio.current++;if(watchdog.current)clearTimeout(watchdog.current);if(nativeSupported){try{speechSynthesis.cancel();}catch{}}recordings.current?.cancel();audioScope.current='';}
  function release(id=clientId.current){void fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',credentials:'same-origin',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'release',clientId:id})}).catch(()=>{});}
  function stop(note='已关闭'){
-  generation.current++;on.current=false;busy.current=false;controller.current?.abort();cancel();release();if(alive.current){setEnabled(false);setPending(false);setStatus(note);}
+  autoAttempted.current=true;generation.current++;on.current=false;busy.current=false;controller.current?.abort();cancel();release();if(alive.current){setEnabled(false);setPending(false);setStatus(note);}
  }
  async function request(action:VoiceCommand['action'],id=clientId.current){
   const started=Date.now(),abort=new AbortController();controller.current=abort;const timeout=setTimeout(()=>abort.abort(),5000);
@@ -57,8 +59,10 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
   if(audioScope.current&&audioScope.current!==data.scope)cancel();
   if(data.cues.length)play(data.cues.map(c=>c.text).join(' '),data.scope);
  }
- async function enable(){
+ async function enable(automaticAttempt=false){
+  if(automaticAttempt&&!autoWanted.current)return;
   if(!supported||!eligible()||busy.current||on.current)return;
+  autoAttempted.current=true;if(!automaticAttempt){autoWanted.current=true;try{localStorage.setItem('wolf.voice.enabled','on');}catch{}}
   const seq=++generation.current,id=requestId();clientId.current=id;setPending(true);setError('');
   // The synchronous gesture starts the device speech service; it contains no game facts.
   busy.current=true;
@@ -81,14 +85,24 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
   document.addEventListener('visibilitychange',hide);window.addEventListener('pagehide',pageHide);
   return()=>{alive.current=false;document.removeEventListener('visibilitychange',hide);window.removeEventListener('pagehide',pageHide);stop();void context.current?.close();context.current=null;recordings.current=null;};
  },[]);
- useEffect(()=>{if(!allowed&&(on.current||busy.current))stop(!active?'白天不播报':automatic?'连接或管理权限已变化':'已切换纯手动');},[allowed,automatic,active]);
+ useEffect(()=>{if(!allowed){if(on.current||busy.current)stop(!active?'白天不播报':automatic?'连接或管理权限已变化':'已切换纯手动');autoAttempted.current=false;}},[allowed,automatic,active]);
+ // Prime the reusable device audio context during existing room interactions.
+ // No game audio or lease is started until the current manager enters an eligible night.
+ useEffect(()=>{
+  const prime=()=>{const l=latest.current;if(!autoWanted.current||!canManageGame(l.view)||l.view.room.preparation.settings.gameMode!=='automatic'||l.view.room.manual||document.visibilityState!=='visible')return;try{if(mode.current)unlockRecordings();else setUnlocked(true);}catch{};};
+  const gesture=(event:Event)=>{if(!event.isTrusted||(event instanceof KeyboardEvent&&(event.repeat||event.key!=='Enter'&&event.key!==' '))||(event.target instanceof Element&&event.target.closest('.voice-controls,.voice-shortcut')))return;prime();if(autoWanted.current&&eligible()&&!autoAttempted.current&&(!mode.current||context.current?.state==='running'))void enable(true);};
+  if(mode.current)prime();document.addEventListener('pointerdown',gesture,true);document.addEventListener('click',gesture,true);document.addEventListener('keydown',gesture,true);
+  return()=>{document.removeEventListener('pointerdown',gesture,true);document.removeEventListener('click',gesture,true);document.removeEventListener('keydown',gesture,true);};
+ },[]);
+ useEffect(()=>{if(allowed&&unlocked&&autoWanted.current&&!autoAttempted.current&&eligible())void enable(true);},[allowed,unlocked,enabled]);
+ function disable(){autoWanted.current=false;try{localStorage.setItem('wolf.voice.enabled','off');}catch{}stop();}
  useEffect(()=>{if(audioScope.current&&audioScope.current!==publicScope)cancel();if(enabled)void poll();},[publicScope,enabled]);
  useEffect(()=>{
   if(!enabled)return;const pollTimer=setInterval(()=>void poll(),2000);
   const expiryTimer=setInterval(()=>{if(on.current&&Date.now()>=expiry.current)stop('播报连接已过期');},250);
   return()=>{clearInterval(pollTimer);clearInterval(expiryTimer);};
  },[enabled]);
- const value:VoiceUi={available:allowed,active,nativeSupported,recorded,recordingsSupported,useRecordings:()=>selectMode(true),useNative:()=>selectMode(false),enabled,pending,supported,status,error,lastText,enable:()=>void enable(),disable:()=>stop(),replay:()=>void poll('replay')};
+ const value:VoiceUi={available:allowed,active,nativeSupported,recorded,recordingsSupported,useRecordings:()=>selectMode(true),useNative:()=>selectMode(false),enabled,pending,supported,status,error,lastText,enable:()=>void enable(),disable,replay:()=>void poll('replay')};
  return <VoiceContext.Provider value={value}>{children}</VoiceContext.Provider>;
 }
 export function PublicVoiceControls(){

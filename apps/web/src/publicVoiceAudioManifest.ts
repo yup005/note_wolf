@@ -70,6 +70,7 @@ export const publicVoiceAudioManifest={
  "请查看最终结果": "681af4a27cf61d18.mp3",
  "请线下举手由房主录入结果": "da5ac08360b97c6d.mp3",
  "请线下指定目标由房主录入": "fce5bcfe2f642223.mp3",
+ "请闭眼": "f876a3560ef5d380.mp3",
  "请闭眼等待下一阶段": "f829718a26d26b05.mp3",
  "警上发言开始": "f239bbd7ef95d8a5.mp3",
  "警上发言结束请选择退水结束后进入投票": "e92a100cf97ce6c4.mp3",

@@ -1,5 +1,13 @@
 # 笔记狼人杀 — 产品决定与对话同步记录
 
+<a id="voice-comments-diagnostics-2026-10-16"></a>
+
+## 当前实施范围：默认夜间播报、评论弹窗修复与基础诊断（2026-10-16）
+
+Owner继续实施后反馈“评论显示有问题”，截图显示记录弹窗评论按钮越出白色卡片；修复仅调整该记录弹窗整体滚动和内容不压缩。随后明确“默认开启播报”及“请闭眼后，不需要语音播报等待下一阶段”：无关闭偏好的设备默认准备夜间播报，复用房主/有效管理者已有交互解锁音频，仍受浏览器手势、前台、当前管理权限和单设备租约约束；手动关闭保留为本设备偏好。夜间闭眼间隔只说“请闭眼”，不改5秒间隔、其他夜间时长或白天静音。
+
+原继续范围推进BETA-011/GAP-06最小故障定位：脱敏关联编号、粗公开阶段、读取健康探针及后台异常保护；不扩大管理员秘密权限，不代定日志保留/外部告警或生产配置。完整边界见[规则](WEREWOLF_RULES_SPEC.md#voice-comments-diagnostics-2026-10-16)与[操作说明](SERVER_DIAGNOSTICS.md)，执行与实机限制另见报告。沿用不重复确认的连续授权，原49项确认不改，不部署。
+
 <a id="local-backup-delivery-2026-10-15"></a>
 
 ## 当前实施范围：本地备份与隔离恢复（2026-10-15）
@@ -22,7 +30,7 @@ Owner在永久删除批次交付后回复“继续”，沿用“都允许，你
 
 工程入口、来源权限/去重/已看标记/重试和清理边界统一见[规则](WEREWOLF_RULES_SPEC.md#notifications-2026-10-14)，执行证据见[交接](PROJECT_STATUS_FOR_CHATGPT.md)。通用管理员群发、完整非社区审计/统计、持久存储和实机/部署不由本批标为完成；不读取真实玩家数据或改变Render开关。
 
-> Updated: 2026-10-15 (America/Los_Angeles)
+> Updated: 2026-10-16 (America/Los_Angeles)
 > This document records **product-relevant confirmed decisions and current planning**, not the raw ChatGPT conversation.  
 > **Source note:** The 2026-10-10 product status below was provided by the project owner as a handoff summary. It is **not** verified against the older GitHub `main` snapshot or by re-running tests.
 
