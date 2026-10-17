@@ -1,3 +1,4 @@
+import {finalReplay} from '../domain/replay.js';
 import {ManagementHistoryStore} from './managementHistory.js';
 import type {ManagementState} from '../contracts/management.js';
 import {AdminOversightStore} from './adminOversight.js';
@@ -280,12 +281,12 @@ export class LobbyStore {
   const saved=this.db.prepare('SELECT kind,round,state FROM game_history WHERE room_id=?').all(id) as {kind:'night'|'day';round:number;state:string}[];
   for(const kind of ['night','day'] as const){const row=this.db.prepare(`SELECT state FROM ${kind}_games WHERE room_id=?`).get(id) as {state:string}|undefined;if(row){const s=JSON.parse(row.state);saved.push({kind,round:s[kind],state:row.state});}}
   const board=this.boards.snapshot(id);const host=this.db.prepare('SELECT nickname FROM members WHERE room_id=? AND is_host=1').get(id) as {nickname:string}|undefined;
-  return {board:{id:board.id,name:board.name},author:host?.nickname,winner:day.winner!,roles:day.revealed,rounds:saved.sort((a,b)=>a.round-b.round||(a.kind==='night'?-1:1)).map(r=>({kind:r.kind,round:r.round,events:JSON.parse(r.state).events,...(JSON.parse(r.state).engine?{engine:JSON.parse(r.state).engine}:{}),...(r.kind==='day'?{outcome:{sheriff:JSON.parse(r.state).sheriff,badge:JSON.parse(r.state).badge,result:JSON.parse(r.state).result}}:{})}))};
+  return finalReplay({board:{id:board.id,name:board.name},author:host?.nickname,winner:day.winner!,roles:day.revealed,rounds:saved.sort((a,b)=>a.round-b.round||(a.kind==='night'?-1:1)).map(r=>({kind:r.kind,round:r.round,events:JSON.parse(r.state).events,...(JSON.parse(r.state).engine?{engine:JSON.parse(r.state).engine}:{}),...(r.kind==='day'?{outcome:{sheriff:JSON.parse(r.state).sheriff,badge:JSON.parse(r.state).badge,result:JSON.parse(r.state).result}}:{})}))});
  }
  isFavorite(token:string,id:string){return !!this.db.prepare('SELECT 1 FROM saved_replays WHERE owner_hash=? AND room_id=?').get(this.auth.owner(token),id);}
  saveFavorite(token:string,id:string){return this.db.transaction(()=>{const record=this.gameReplay(token,id);const room=this.snapshot(id);this.db.prepare('INSERT OR IGNORE INTO saved_replays VALUES (?,?,?,?,?,?)').run(this.auth.owner(token),id,room.code,record.winner,this.now(),JSON.stringify({...record,board:{id:room.board.id,name:room.board.name}}));return {saved:true};}).immediate();}
  favorites(token:string):import('../contracts/game.js').FavoriteGame[]{return this.db.prepare('SELECT room_id AS roomId,code,winner,saved_at AS savedAt FROM saved_replays WHERE owner_hash=? ORDER BY saved_at DESC,room_id').all(this.auth.owner(token)) as import('../contracts/game.js').FavoriteGame[];}
- favoriteReplay(token:string,id:string):import('../contracts/game.js').GameReplay{const row=this.db.prepare('SELECT record FROM saved_replays WHERE owner_hash=? AND room_id=?').get(this.auth.owner(token),id) as {record:string}|undefined;if(!row)throw new LobbyError('NOT_FOUND',404);return {...JSON.parse(row.record),saved:true};}
+ favoriteReplay(token:string,id:string):import('../contracts/game.js').GameReplay{const row=this.db.prepare('SELECT record FROM saved_replays WHERE owner_hash=? AND room_id=?').get(this.auth.owner(token),id) as {record:string}|undefined;if(!row)throw new LobbyError('NOT_FOUND',404);return finalReplay({...JSON.parse(row.record),saved:true});}
  removeFavorite(token:string,id:string){return this.db.transaction(()=>{const result=this.db.prepare('DELETE FROM saved_replays WHERE owner_hash=? AND room_id=?').run(this.auth.owner(token),id);if(result.changes){this.favoriteLibraryStore.clearName(token,'game',id);this.retention.touch([id]);}return {saved:false};}).immediate();}
  private favoriteSources(token:string):FavoriteSource[]{
   const games=this.favorites(token).map(item=>{

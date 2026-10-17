@@ -60,8 +60,8 @@ export function nightCommand(s:NightState,seat:number,c:NightCommand,now:number,
  const targetValid=(target:number|null)=>target!==null&&s.players.some(p=>p.seat===target&&p.alive!==false);
  if(c.action==='vote'&&s.phase==='wolves'){
   if(c.target!==null&&!targetValid(c.target))throw new LobbyError('INVALID_INPUT');
-  if(priority){s.priorityTarget=c.target;s.events.push({type:'priority_wolf_vote',at:now,seat,target:c.target});}
-  else {s.votes[seat]=c.target;s.events.push({type:'wolf_vote',at:now,seat,target:c.target});}return;
+  if(priority){s.priorityTarget=c.target;}
+  else {s.votes[seat]=c.target;}return;
  }
  if(c.action==='priority_knife'&&s.phase==='wolves'){
   if(!priority)throw new LobbyError('PRIORITY_WOLF_ONLY',403);

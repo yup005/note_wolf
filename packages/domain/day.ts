@@ -229,7 +229,7 @@ export function privateDay(s:DayState,seat:number):DayPrivate{
 }
 
 export function dayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayCommand,now:number,choose=(n:number)=>randomInt(n)){
- const before=JSON.stringify(s);applyDayCommand(s,actor,c,now,choose);if(JSON.stringify(s)!==before)s.events.push({type:'command',at:now,seat:actor.seat,command:{...c}});
+ const before=JSON.stringify(s);applyDayCommand(s,actor,c,now,choose);if(JSON.stringify(s)!==before&&!['vote','offline_vote','offline_ballots','offline_results'].includes(c.action))s.events.push({type:'command',at:now,seat:actor.seat,command:{...c}});
 }
 
 /** Own inventory only: never include actions, targets, receipts or copy provenance. */

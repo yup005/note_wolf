@@ -35,3 +35,5 @@
 公开管理记录（GAP-03 / S-003 / S-004）入口、权限、前后值/持久化边界统一见[规则](WEREWOLF_RULES_SPEC.md#management-history-2026-10-17)；[用例](WEREWOLF_TEST_CASES.md#公开管理记录验收2026-10-17)为期望，交接/报告为执行证据。
 
 白天本人身份/技能（S-001 / GAP-05 / Owner5）完整条件见[规则](WEREWOLF_RULES_SPEC.md#day-self-2026-10-17)，[用例](WEREWOLF_TEST_CASES.md#白天本人身份与技能验收2026-10-17)是期望，交接/报告记录实际执行；不混入历史验人或管理者秘密读取。
+
+最终事实复盘（H-002 / RECAP-001 / GAP-04）新写入、公开投影和旧收藏只读兼容统一见[规则](WEREWOLF_RULES_SPEC.md#final-replay-2026-10-17)，[验收](WEREWOLF_TEST_CASES.md#最终事实复盘验收2026-10-17)描述期望，交接/报告记录执行；历史清理与物理擦除未包含。

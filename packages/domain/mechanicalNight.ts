@@ -102,7 +102,7 @@ export function mechanicalNightCommand(s:NightState,seat:number,c:NightCommand,n
   if(c.action==='vote'||c.action==='priority_knife'){
    if(!targetValid(c.target))fail('INVALID_TARGET',400);
    if(c.action==='priority_knife'){if(!priority)fail('PRIORITY_WOLF_ONLY',403);s.priorityTarget=c.target;s.priorityCommitted=true;s.events.push({type:'priority_knife',seat,target:c.target,at:now});finish(s,now,choose);}
-   else {if(priority)s.priorityTarget=c.target;else s.votes[seat]=c.target;s.events.push({type:'wolf_vote',seat,target:c.target,at:now});}return;
+   else {if(priority)s.priorityTarget=c.target;else s.votes[seat]=c.target;}return;
   }
   if(c.action==='confirm_wolves'){if(s.priorityWolf!==null)fail('PRIORITY_WOLF_ONLY',403);if(s.confirmer!==seat)fail('CONFIRMER_ONLY',403);finish(s,now,choose);return;}
   fail('NOT_YOUR_TURN',403);

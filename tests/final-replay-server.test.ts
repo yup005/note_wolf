@@ -1,0 +1,18 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import Database from 'better-sqlite3';
+import {createServer} from '../apps/server/app.js';
+import {managementFixture,managementRoles} from './helpers/management-fixture.js';
+
+test('ended replay and new favorites expose final facts to existing authorized readers without modifying legacy runtime history',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'wolf-final-api-')),file=join(dir,'db');let now=1000;const app=await createServer({dbPath:file,now:()=>now}),db=new Database(file);try{const f=managementFixture(app.store),outsider=managementFixture(app.store);await new Promise<void>(r=>app.http.listen(0,'127.0.0.1',r));const addr=app.http.address();assert.ok(addr&&typeof addr!=='string');const base=`http://127.0.0.1:${addr.port}`,root=`/api/rooms/${f.id}`,get=(token:string,path=root+'/replay')=>fetch(base+path,{headers:{cookie:`wolf_session=${token}`}});
+ assert.equal((await fetch(base+root+'/replay')).status,401);assert.equal((await get(f.tokens[0])).status,409);now+=500000;app.store.tickNights();app.store.enterDay(f.tokens[0],f.id);
+ const nightRow=()=>String((db.prepare('SELECT state FROM night_games WHERE room_id=?').get(f.id) as {state:string}).state),night=JSON.parse(nightRow());night.events.unshift({type:'wolf_vote',at:1,seat:2,target:7},{type:'wolf_vote',at:2,seat:2,target:8},{type:'wolf_vote',at:3,seat:2,target:9});const originalNight=JSON.stringify(night);db.prepare('UPDATE night_games SET state=? WHERE room_id=?').run(originalNight,f.id);const day=JSON.parse((db.prepare('SELECT state FROM day_games WHERE room_id=?').get(f.id) as {state:string}).state);day.phase='ended';day.deadline=null;day.winner='good';day.revealed=managementRoles.map((role,i)=>({seat:i+1,role}));db.prepare('UPDATE day_games SET state=? WHERE room_id=?').run(JSON.stringify(day),f.id);
+ assert.equal((await get(outsider.tokens[0])).status,403);const result=await get(f.tokens[0]);assert.equal(result.status,200);assert.equal(result.headers.get('cache-control'),'no-store');const record=await result.json();assert.ok(record.summary.length);assert.equal(record.roles.length,12);assert.ok(record.rounds.every((r:any)=>!r.engine&&r.events.every((e:any)=>!['wolf_vote','priority_wolf_vote','command'].includes(e.type))));assert.equal(nightRow(),originalNight);
+ const saved=await fetch(base+root+'/favorite',{method:'POST',headers:{cookie:`wolf_session=${f.tokens[0]}`,'content-type':'application/json'},body:'{}'});assert.equal(saved.status,200);const stored=JSON.parse((db.prepare('SELECT record FROM saved_replays WHERE room_id=?').get(f.id) as {record:string}).record);assert.deepEqual(stored.summary,record.summary);assert.ok(stored.rounds.every((r:any)=>!r.engine&&r.events.every((e:any)=>e.type!=='wolf_vote')));const favorite=await (await get(f.tokens[0],`/api/favorites/${f.id}`)).json();assert.equal(favorite.saved,true);assert.deepEqual(favorite.summary,record.summary);assert.equal((await get(outsider.tokens[0],`/api/favorites/${f.id}`)).status,404);
+ await app.store.auth.createAccount('final_admin','correct-password','管理员','admin');const admin=await app.store.auth.login(f.tokens[11],'final_admin','correct-password');const adminReplay=await get(admin.token,`/api/admin/rooms/${f.id}/replay`);assert.equal(adminReplay.status,200);assert.deepEqual((await adminReplay.json()).summary,record.summary);assert.equal(nightRow(),originalNight);
+ }finally{db.close();await app.close();rmSync(dir,{recursive:true,force:true});}
+});

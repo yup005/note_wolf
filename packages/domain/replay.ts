@@ -26,6 +26,7 @@ function legacyVotes(events:GameEvent[],last:DayVoteResult|null|undefined):strin
  return groups.flatMap(g=>{if(g.recorded)return [];if(g.result)return [describeVote({...g.result,...(g.individual?{ballots:g.result.ballots??[...g.ballots].map(([seat,target])=>({seat,target}))}:{ballots:undefined})})];if(!g.individual||!g.ballots.size)return [];const grouped=new Map<number|null,number[]>();for(const [seat,target] of g.ballots)grouped.set(target,[...(grouped.get(target)??[]),seat]);return [`${voteName[g.purpose]}投票：${[...grouped].map(([target,voters])=>`${seats(voters)}${target===null?'弃票':`投 ${target} 号`}`).join('；')}`];});
 }
 export function summarizeReplay(record:GameReplay):ReplaySection[]{
+ if(record.summary)return record.summary.map(section=>({title:section.title,lines:[...section.lines]}));
  const roles=new Map(record.roles.map(p=>[p.seat,p.role]));const hunterSpent=new Set<number>();let sheriff:number|null=null;const applicants=new Set<number>();
  const sections=record.rounds.map(round=>{
   const lines:string[]=[];const e=round.events;
@@ -107,4 +108,19 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
   }else combined.push(section);
  }
  return combined;
+}
+
+const finalEventTypes=new Set(['knife_resolved','priority_knife','witch_save','witch_poison','witch_skip','seer_check','hunter_seen','mechanical_learn','armor_learn','guard_protect','spirit_check','mechanical_check','mechanical_poison','mechanical_knife','armor_knife','mixer_model','vote_outcome','sheriff_elected','idiot_flip','hunter_shot','white_wolf_take','death_knife','death_poison','death_shot','death_exile','death_explosion','death_white-wolf']);
+function finalVote(result:DayVoteResult):DayVoteResult{return {purpose:result.purpose,counts:result.counts.map(c=>({seat:c.seat,votes:c.votes})),leaders:[...result.leaders],...(result.ballots?{ballots:result.ballots.map(b=>({seat:b.seat,target:b.target}))}:{})};}
+/** Public ended-game facts. Raw runtime and legacy sources remain unchanged. */
+export function finalReplay(record:GameReplay):GameReplay{
+ const summary=summarizeReplay(record);
+ return {winner:record.winner,roles:record.roles.map(p=>({seat:p.seat,role:p.role})),
+  ...(record.author!==undefined?{author:record.author}:{}),...(record.board?{board:{id:record.board.id,name:record.board.name}}:{}),...(record.saved!==undefined?{saved:record.saved}:{}),
+  summary:summary.map(section=>({title:section.title,lines:[...section.lines]})),
+  rounds:record.rounds.map(round=>({kind:round.kind,round:round.round,events:round.events.flatMap((event):GameEvent[]=>{
+   const badge=event.type==='command'&&event.command?.action==='transfer_badge';if(!badge&&!finalEventTypes.has(event.type))return [];
+   return [{type:event.type,at:event.at,...(event.seat!==undefined?{seat:event.seat}:{}),...(event.target!==undefined?{target:event.target}:{}),
+    ...(event.type==='vote_outcome'&&event.result?{result:finalVote(event.result)}:{}),...(badge?{command:{action:'transfer_badge',target:event.command!.target}}:{})}];
+  }),...(round.outcome?{outcome:{sheriff:round.outcome.sheriff,badge:round.outcome.badge,result:round.outcome.result?finalVote(round.outcome.result):null}}:{})}))};
 }
