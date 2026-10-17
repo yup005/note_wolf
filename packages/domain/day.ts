@@ -1,3 +1,5 @@
+import {createNativeAbilityProfile} from './mechanicalAbilities.js';
+import type {DaySelf} from '../contracts/day.js';
 import {randomInt,randomUUID} from 'node:crypto';
 import {LobbyError,type Role} from '../contracts/index.js';
 import type {DayCommand,DayPhase,DayPublic,DayPrivate,DayVoteResult,FirstDayRules,VotePurpose} from '../contracts/day.js';
@@ -228,4 +230,15 @@ export function privateDay(s:DayState,seat:number):DayPrivate{
 
 export function dayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayCommand,now:number,choose=(n:number)=>randomInt(n)){
  const before=JSON.stringify(s);applyDayCommand(s,actor,c,now,choose);if(JSON.stringify(s)!==before)s.events.push({type:'command',at:now,seat:actor.seat,command:{...c}});
+}
+
+/** Own inventory only: never include actions, targets, receipts or copy provenance. */
+export function selfDay(s:DayState,n:NightState,seat:number):DaySelf{
+ if(s.phase==='ended'||s.day!==n.night)error();
+ const player=s.players.find(p=>p.seat===seat);if(!player)return error('NOT_SEATED',403);
+ const engine=s.engine?.players.find(p=>p.seat===seat),profile=engine?.abilities??createNativeAbilityProfile(player.role,seat,'standard');
+ return {turnId:s.turnId,seat,role:player.role,learnedRole:profile.mimickedRole,
+  modelSeat:player.role==='mixer'?engine?.model?.seat??null:null,
+  idiotRevealed:player.role==='idiot'||profile.mimickedRole==='idiot'?s.revealed.some(p=>p.seat===seat&&p.role==='idiot'):null,
+  skills:profile.skills.map(skill=>({kind:skill.kind,remaining:engine?skill.remaining:skill.kind==='antidote'?Number(n.antidote):skill.kind==='poison'?Number(n.poison):skill.kind==='shot'?Number(!s.hunterSpent):skill.remaining,availableFromNight:skill.availableFromNight}))};
 }

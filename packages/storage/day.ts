@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import {LobbyError} from '../contracts/index.js';
 import {firstDayRules,type FirstDayRules,type DayCommand} from '../contracts/day.js';
-import {createDay,dayCommand,advanceDay,publicDay,privateDay,type DayState} from '../domain/day.js';
+import {createDay,dayCommand,advanceDay,publicDay,privateDay,selfDay,type DayState} from '../domain/day.js';
 import type {NightState} from '../domain/night.js';
 import type {ControlStore} from './control.js';
 import type {MemberRow} from './preparation.js';
@@ -15,6 +15,7 @@ export class DayStore {
  private mutate(id:string,apply:(s:DayState)=>void){this.db.transaction(()=>{this.control?.assertRunning(id);const s=this.row(id);if(!s)throw new LobbyError('DAY_UNAVAILABLE',409);this.assertActive(id,s);apply(s);this.save(id,s);}).immediate();}
  command(token:string,id:string,c:DayCommand){this.mutate(id,s=>{const m=this.actor(token,id);dayCommand(s,{seat:m.seat!,isHost:!!(m.is_host||m.is_manager)},c,this.now());});return this.private(token,id);}
  private(token:string,id:string):import('../contracts/day.js').DayPrivate{const m=this.actor(token,id);this.automatic(id);const s=this.row(id);if(!s)throw new LobbyError('DAY_UNAVAILABLE',409);return this.control?.frozen(id)?{turnId:s.turnId,seat:m.seat!,canSignup:false,signup:null,canWithdraw:false,canVote:false,voted:false,myVote:null,canShoot:false,canExplode:false,canEndSpeech:false,canTransfer:false}:privateDay(s,m.seat!);}
+ self(token:string,id:string){const m=this.actor(token,id);this.automatic(id);const s=this.row(id);if(!s)throw new LobbyError('DAY_UNAVAILABLE',409);this.assertActive(id,s);return selfDay(s,this.completedNight(id),m.seat!);}
  private assertActive(id:string,s:DayState){this.automatic(id);const row=this.db.prepare('SELECT state FROM night_games WHERE room_id=?').get(id) as {state:string}|undefined;if(row&&JSON.parse(row.state).night!==s.day)throw new LobbyError('PHASE_LOCKED',409);}
  snapshot(id:string){const s=this.row(id);return s?publicDay(s,this.now()):null;}
  tick(){const changed:string[]=[];const rows=this.db.prepare("SELECT d.room_id FROM day_games d JOIN preparations p ON p.room_id=d.room_id WHERE p.game_mode='automatic'").all() as {room_id:string}[];for(const row of rows)this.db.transaction(()=>{const s=this.row(row.room_id)!;if(this.control?.frozen(row.room_id))return;if(s.deadline===null||s.deadline>this.now())return;advanceDay(s,this.now());this.save(row.room_id,s);changed.push(row.room_id);}).immediate();return changed;}

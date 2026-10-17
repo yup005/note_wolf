@@ -208,6 +208,7 @@ export async function createServer(options:ServerOptions){
  web.get('/api/rooms/:id/manual/history',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json({items:store.manualHistory(authenticated(req),req.params.id)});});
  web.post('/api/rooms/:id/manual/resolve',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const b=parse(manualResolveSchema,req.body);roomWrite(res,req.params.id,store.resolveManual(authenticated(req),req.params.id,b.version,b.hostRevision,b.accept));publish(req.params.id);});
  web.post('/api/rooms/:id/day/enter',(req,res)=>{parse(emptySchema,req.body);const result=store.enterDay(authenticated(req),req.params.id);publish(req.params.id);roomWrite(res,req.params.id,result);});
+ web.get('/api/rooms/:id/day/self',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body??{});res.json(store.daySelf(authenticated(req),req.params.id));});
  web.get('/api/rooms/:id/day/private',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.dayPrivate(authenticated(req),req.params.id));});
  web.post('/api/rooms/:id/day/command',(req,res)=>{const result=store.dayCommand(authenticated(req),req.params.id,parse(dayCommandSchema,req.body));publish(req.params.id);roomWrite(res,req.params.id,result);});
  if(testPlayersEnabled){
