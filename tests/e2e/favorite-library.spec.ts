@@ -14,7 +14,7 @@ async function fixture(page:Page,browser:Browser){
 }
 test('VIP manages searchable favorites and a private name survives independent account recovery',async({page,browser})=>{
  const f=await fixture(page,browser);try{
-  const favorites=page.getByRole('region',{name:'我的收藏'});await expect(favorites.getByLabel('搜索收藏')).toBeVisible();
+  const favorites=page.getByRole('region',{name:'我的收藏'});await favorites.getByRole('button',{name:'筛选收藏',exact:true}).click();await expect(favorites.getByLabel('搜索收藏')).toBeVisible();
   await favorites.getByLabel('搜索收藏').fill('orchard');await favorites.getByRole('button',{name:'应用筛选',exact:true}).click();await expect(favorites.locator('.favorite-game')).toHaveCount(1);
   await page.request.post(f.path+'/record',{data:{revision:1,document:{...f.document,notes:'Unpublished secret'}}});
   await favorites.getByLabel('搜索收藏').fill('Unpublished');await favorites.getByRole('button',{name:'应用筛选',exact:true}).click();await expect(favorites).toContainText('没有符合条件的收藏');
@@ -27,6 +27,14 @@ test('VIP manages searchable favorites and a private name survives independent a
   for(const width of [320,390,430]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(width);}
   await page.screenshot({path:'test-results/favorite-library-mobile.png',fullPage:true});
   const other=await browser.newContext();try{await other.request.get('/api/session');expect((await requestWithBackoff(()=>other.request.post('/api/auth/login',{data:{username:f.username,password:f.password}}))).ok()).toBe(true);const second=await other.newPage();await second.goto('/');await expect(second.getByRole('region',{name:'我的收藏'})).toContainText('保留我的输入');}finally{await other.close();}
+ }finally{await f.admin.close();}
+});
+test('favorites keep filters collapsed and use a compact mobile card',async({page,browser})=>{
+ const f=await fixture(page,browser);try{
+  const favorites=page.getByRole('region',{name:'我的收藏'});await expect(favorites.getByLabel('搜索收藏')).not.toBeVisible();await expect(favorites.getByRole('button',{name:'筛选收藏',exact:true})).toHaveAttribute('aria-expanded','false');
+  await page.setViewportSize({width:390,height:844});expect((await favorites.boundingBox())!.height).toBeLessThanOrEqual(230);await favorites.getByRole('button',{name:'筛选收藏',exact:true}).click();await expect(favorites.getByLabel('搜索收藏')).toBeVisible();await favorites.getByRole('button',{name:'筛选收藏',exact:true}).click();await expect(favorites.getByLabel('搜索收藏')).not.toBeVisible();
+  let link=await (await page.request.post(`/api/records/${f.id}/share`,{data:{action:'create',revision:0}})).json();for(let i=0;i<3;i++){expect((await page.request.post(`/api/shared-records/${link.token}/favorite`,{data:{}})).ok()).toBe(true);if(i<2)link=await (await page.request.post(`/api/records/${f.id}/share`,{data:{action:'regenerate',revision:link.revision}})).json();}await page.reload();await expect(favorites.locator('.favorite-game')).toHaveCount(3);await favorites.getByRole('button',{name:'查看全部收藏（4）',exact:true}).click();await expect(favorites.locator('.favorite-game')).toHaveCount(4);await favorites.getByRole('button',{name:'收起收藏',exact:true}).click();await expect(favorites.locator('.favorite-game')).toHaveCount(3);
+  for(const width of [320,390,430]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(width);}await page.setViewportSize({width:390,height:844});await favorites.screenshot({path:'test-results/favorites-compact-mobile.png',animations:'disabled'});
  }finally{await f.admin.close();}
 });
 test('VIP expiry hides advanced controls while keeping owned names and ordinary cancellation',async({page,browser})=>{

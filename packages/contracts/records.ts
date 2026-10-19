@@ -24,11 +24,12 @@ export const manualFinishSchema=z.object({confirmed:z.literal(true),version:z.nu
 export type ManualFinish=z.infer<typeof manualFinishSchema>;
 export type RecordOutcomeSource='computed'|'host-adjudicated'|'record-only';
 export type RecordOutcome='wolves'|'good'|null;
-export interface RecordDraft {id:string;revision:number;document:RecordDocument;publishedVersion:number|null;withdrawn:boolean;official:boolean;shareManage:boolean}
+export interface RecordDraft {id:string;revision:number;document:RecordDocument;publishedVersion:number|null;withdrawn:boolean;official:boolean;shareManage:boolean;saved?:boolean}
 export interface RecordPostSummary {deleted?:boolean;id:string;code:string;author:string;official:boolean;version:number;withdrawn:boolean;publishedAt:number}
 export interface RecordPost extends RecordPostSummary {document:RecordDocument;outcome:RecordOutcome;outcomeSource?:RecordOutcomeSource;officialUpdate?:OfficialUpdate;roles:{seat:number;role:Role}[];versions:number[];saved:boolean;shareAccess:{manage:boolean;create:boolean}}
 export interface RecordList {canRecord:boolean;own:RecordDraft|null;posts:RecordPostSummary[]}
-export interface RecordFavorite extends RecordPostSummary {savedAt:number;board?:import('./favorites.js').FavoriteBoard|null}
+export interface RecordFavorite extends RecordPostSummary {savedAt:number;privateRecord?:boolean;board?:import('./favorites.js').FavoriteBoard|null}
+export interface PrivateRecordFavorite {id:string;code:string;author:string;revision:number;document:RecordDocument}
 export interface ManualPublic {status:'playing'|'pending'|'ended';version:number;dead:number[];winner:RecordOutcome;outcomeSource?:RecordOutcomeSource;revealed:{seat:number;role:Role}[]}
 export interface OfficialRevision {version:number;at:number;document:RecordDocument;outcome:RecordOutcome;outcomeSource?:RecordOutcomeSource}
 export interface OfficialUpdate {current:OfficialRevision;history:OfficialRevision[]}

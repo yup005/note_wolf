@@ -1,6 +1,12 @@
 # Project progress
 
-## 当前：官方纠错同步（2026-10-18）
+## 当前：紧凑收藏、记录入口与房主私密收藏（2026-10-18）
+
+FUTURE-005 / H-003 / Owner6A补齐赛后“仅自己收藏”、首页本人只读入口及发布转换，不增加分享/评论或私人正文搜索。完整条件见[规则](WEREWOLF_RULES_SPEC.md#private-official-favorite-2026-10-18)，实际验证及实施SHA见[交接](PROJECT_STATUS_FOR_CHATGPT.md)/[报告](TEST_REPORT.md)。166项ID/49确认保留，不部署，实机另验。
+
+本批收到Owner新反馈后追加[收藏与记录入口调整](WEREWOLF_RULES_SPEC.md#record-entry-compact-favorites-2026-10-18)：默认3条、收起筛选，首页“我的记录”前置并直达可写对局编辑器，笔记/保存置前；延迟进入在退出/首页时取消。没有增加归档写权限。最终完整561项自动测试、类型/构建及109项Chromium回归通过；中断/睡眠超时历史及5项专项修正、独立复核见报告。
+
+## 历史：官方纠错同步（2026-10-18）
 
 H-002 / RECAP-005/007 / Owner4B：已提交官方事实/修订与冻结发布正文分开展示，入口/隐私/原链接及归档边界见[规则](WEREWOLF_RULES_SPEC.md#official-sync-2026-10-18)。实际验证及实施SHA见[交接](PROJECT_STATUS_FOR_CHATGPT.md)/[报告](TEST_REPORT.md)。完整555项/类型/构建、全量102项Chromium通过；最后后端修订编号修复的新服务专项另记于报告，不混加用例数。166项ID及49项确认保留，不部署，真实设备独立。
 

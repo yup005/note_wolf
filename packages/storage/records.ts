@@ -96,7 +96,7 @@ export class RecordsStore {
  private manual(id:string){const r=this.db.prepare('SELECT * FROM manual_games WHERE room_id=?').get(id) as ManualRow|undefined;if(!r)throw new LobbyError('MANUAL_MODE_REQUIRED',409);return r;}
  private ended(id:string){const archive=this.capture(id);if(archive.ended)return true;const manual=this.db.prepare('SELECT status FROM manual_games WHERE room_id=?').get(id) as {status:string}|undefined;const day=this.db.prepare('SELECT state FROM day_games WHERE room_id=?').get(id) as {state:string}|undefined;return manual?manual.status==='ended':!!day&&JSON.parse(day.state).phase==='ended';}
  private row(token:string,id:string,write=false){const {a,owner}=this.participant(token,id);if(write&&!this.canRecord(token,a))throw new LobbyError('RECORDER_ONLY',403);return this.db.prepare('SELECT * FROM record_drafts WHERE room_id=? AND owner=? AND deleted=0').get(id,owner) as DraftRow|undefined;}
- private draft(r:DraftRow):RecordDraft{return {id:r.id,revision:r.revision,document:JSON.parse(r.draft),publishedVersion:r.published_version,withdrawn:!!r.withdrawn,official:!!r.official,shareManage:r.owner.startsWith('account:')};}
+ private draft(r:DraftRow):RecordDraft{return {id:r.id,revision:r.revision,document:JSON.parse(r.draft),publishedVersion:r.published_version,withdrawn:!!r.withdrawn,official:!!r.official,shareManage:r.owner.startsWith('account:'),saved:!!this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(r.owner,r.id)};}
  private expected(r:DraftRow|undefined,revision:number):DraftRow{if(!r)throw new LobbyError('NOT_FOUND',404);if(r.revision!==revision)throw new LobbyError('STALE_RECORD',409);return r;}
  private summary(r:DraftRow):RecordPostSummary{const a=this.capture(r.room_id);return {id:r.id,code:a.code,author:r.author,official:!!r.official,version:r.published_version!,withdrawn:!!r.withdrawn,publishedAt:r.published_at,...(r.deleted?{deleted:true}:{})};}
  list(token:string,id:string):RecordList{return this.db.transaction(()=>{
@@ -144,8 +144,24 @@ export class RecordsStore {
   const account=this.auth.account(token),manage=!admin&&!!account&&r.owner==='account:'+account.id;
   return {...this.summary(r),version:v.version,publishedAt:v.published_at,document:JSON.parse(v.document),outcome:v.outcome,outcomeSource:(this.db.prepare('SELECT source FROM record_version_sources WHERE record_id=? AND version=?').get(recordId,v.version) as {source:RecordOutcomeSource}|undefined)?.source??'computed',...(r.official?{officialUpdate:officialUpdate(this.db,r.room_id)}:{}),roles:JSON.parse(a.roles),versions:(this.db.prepare('SELECT version FROM record_versions WHERE record_id=? ORDER BY version DESC').all(recordId) as {version:number}[]).map(x=>x.version),saved:!!this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(owner,recordId),shareAccess:{manage,create:manage&&!!account?.vip?.active}};
  }
- favorite(token:string,recordId:string){this.post(token,recordId);this.db.prepare('INSERT OR IGNORE INTO record_favorites VALUES (?,?,?)').run(this.auth.owner(token),recordId,this.now());return {saved:true};}
- favorites(token:string):RecordFavorite[]{return (this.db.prepare('SELECT d.*,f.saved_at FROM record_drafts d JOIN record_favorites f ON f.record_id=d.id WHERE f.owner=? ORDER BY f.saved_at DESC,d.id').all(this.auth.owner(token)) as (DraftRow&{saved_at:number})[]).map(r=>({...this.summary(r),savedAt:r.saved_at,board:this.capture(r.room_id).board_metadata?JSON.parse(this.capture(r.room_id).board_metadata!):null}));}
+ private ownUnpublished(token:string,recordId:string):DraftRow{
+  const owner=this.authorizedOwner(token),r=this.db.prepare('SELECT * FROM record_drafts WHERE id=? AND owner=? AND official=1 AND published_version IS NULL AND deleted=0').get(recordId,owner) as DraftRow|undefined;
+  if(!r||this.capture(r.room_id).host_owner!==owner)throw new LobbyError('NOT_FOUND',404);
+  if(!this.ended(r.room_id))throw new LobbyError('PHASE_LOCKED',409);
+  return r;
+ }
+ privateFavorite(token:string,recordId:string):import('../contracts/records.js').PrivateRecordFavorite{
+  const owner=this.authorizedOwner(token);
+  if(!this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(owner,recordId))throw new LobbyError('NOT_FOUND',404);
+  const r=this.ownUnpublished(token,recordId);
+  return {id:r.id,code:this.capture(r.room_id).code,author:r.author,revision:r.revision,document:JSON.parse(r.draft)};
+ }
+ favorite(token:string,recordId:string){
+  const r=this.db.prepare('SELECT published_version FROM record_drafts WHERE id=? AND deleted=0').get(recordId) as {published_version:number|null}|undefined;
+  if(r?.published_version===null)this.ownUnpublished(token,recordId);else this.post(token,recordId);
+  this.db.prepare('INSERT OR IGNORE INTO record_favorites VALUES (?,?,?)').run(this.auth.owner(token),recordId,this.now());return {saved:true};
+ }
+ favorites(token:string):RecordFavorite[]{return (this.db.prepare('SELECT d.*,f.saved_at FROM record_drafts d JOIN record_favorites f ON f.record_id=d.id WHERE f.owner=? ORDER BY f.saved_at DESC,d.id').all(this.auth.owner(token)) as (DraftRow&{saved_at:number})[]).map(r=>({...this.summary(r),version:r.published_version??0,...(r.published_version===null&&r.official&&!r.deleted&&r.owner===this.auth.owner(token)?{privateRecord:true}:{}),savedAt:r.saved_at,board:this.capture(r.room_id).board_metadata?JSON.parse(this.capture(r.room_id).board_metadata!):null}));}
  removeFavorite(token:string,id:string){this.db.prepare('DELETE FROM record_favorites WHERE owner=? AND record_id=?').run(this.auth.owner(token),id);return {saved:false};}
  start(id:string){const p=this.db.prepare('SELECT game_mode FROM preparations WHERE room_id=?').get(id) as {game_mode:string};this.capture(id);if(p.game_mode==='manual')this.db.prepare('INSERT OR IGNORE INTO manual_games(room_id,official) VALUES (?,?)').run(id,JSON.stringify(emptyRecord()));}
  private automaticDocument(id:string):RecordDocument{

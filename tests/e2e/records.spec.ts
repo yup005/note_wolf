@@ -1,13 +1,75 @@
 import {requestWithBackoff} from './helpers/test-admin';
 import {test,expect,type Browser,type Page,type BrowserContext} from '@playwright/test';
-async function setup(browser:Browser,mode:'manual'|'automatic'='manual'){
+async function setup(browser:Browser,mode:'manual'|'automatic'='manual',beforeStart?:(host:BrowserContext)=>Promise<void>){
  const contexts:BrowserContext[]=[];const roles=['wolf','wolf','wolf','wolf','villager','villager','villager','villager','seer','witch','hunter','idiot'];
  for(let i=0;i<12;i++){const c=await browser.newContext({viewport:{width:390,height:844}});contexts.push(c);await c.request.get('/api/session');}
- const host=contexts[0];const room=(await (await host.request.post('/api/rooms',{data:{nickname:'记录房主',requestId:crypto.randomUUID()}})).json()).room;const path=`/api/rooms/${room.id}`;await host.request.post(path+'/settings',{data:{dealMethod:'physical',gameMode:mode}});
+ const host=contexts[0];const room=(await (await host.request.post('/api/rooms',{data:{nickname:'记录房主',requestId:crypto.randomUUID()}})).json()).room;const path=`/api/rooms/${room.id}`;await host.request.post(path+'/settings',{data:{dealMethod:'physical',gameMode:mode}});if(beforeStart)await beforeStart(host);
  for(let i=0;i<12;i++){const c=contexts[i];if(i)await c.request.post('/api/rooms/join',{data:{nickname:'玩家'+(i+1),code:room.code}});await c.request.post(path+'/seat',{data:{seat:i+1}});await c.request.post(path+'/ready',{data:{ready:true,settingsRevision:1}});}await host.request.post(path+'/deal',{data:{}});for(let i=0;i<12;i++)await contexts[i].request.post(path+'/identity',{data:{role:roles[i]}});await host.request.post(path+'/start',{data:{}});
  return {contexts,host,room,path};
 }
 async function enter(c:BrowserContext){const page=await c.newPage();await page.goto('/');await page.locator('.recent-room').click();return page;}
+async function unpublished(browser:Browser){
+ const f=await setup(browser);const own=(await (await f.host.request.get(f.path+'/records')).json()).own;
+ const document={deaths:[1,2,3,4].map(seat=>({seat,round:1,period:'night',cause:'unrecorded'})),badges:[],exiles:[],votes:[],notes:'仅本人保存的记录'};
+ expect((await f.host.request.post(f.path+'/record',{data:{revision:0,document}})).ok()).toBe(true);expect((await f.host.request.post(f.path+'/manual/commit',{data:{revision:1}})).ok()).toBe(true);
+ return {...f,recordId:own.id,document};
+}
+test('returning home after the room starts exposes record editing without a page refresh',async({browser})=>{
+ let page!:Page;const f=await setup(browser,'manual',async host=>{page=await host.newPage();await page.goto('/');await page.locator('.recent-room').click();await expect(page.getByTestId('seated-count')).toBeVisible();});
+ try{await expect(page.getByRole('heading',{name:'纯手动记录',exact:true})).toBeVisible();await page.getByRole('button',{name:'← 首页',exact:true}).click();const records=page.getByRole('region',{name:'我的记录'});await records.getByRole('button',{name:'添加 / 编辑记录',exact:true}).click();const entry=records.getByRole('button',{name:`房间 ${f.room.code} · 添加 / 编辑`,exact:true});await expect(entry).toBeVisible();await entry.click();await expect(page.getByRole('dialog',{name:'独立对局记录'}).getByLabel('个人推理与补充')).toBeVisible();}finally{for(const c of f.contexts)await c.close();}
+});
+test('home record entry opens the selected game directly with notes and save action first',async({browser})=>{
+ const f=await unpublished(browser);try{
+  const page=await f.host.newPage();await page.goto('/');const records=page.getByRole('region',{name:'我的记录'}),favorites=page.getByRole('region',{name:'我的收藏'});await expect(records.getByRole('button',{name:'添加 / 编辑记录',exact:true})).toBeVisible();expect((await records.boundingBox())!.y).toBeLessThan((await favorites.boundingBox())!.y);
+  await records.getByRole('button',{name:'添加 / 编辑记录',exact:true}).click();await records.getByRole('button',{name:`房间 ${f.room.code} · 添加 / 编辑`,exact:true}).click();const editor=page.getByRole('dialog',{name:'独立对局记录'});await expect(editor).toBeVisible();const notes=editor.getByLabel('个人推理与补充');await expect(notes).toBeInViewport();expect((await notes.boundingBox())!.y).toBeLessThan((await editor.getByRole('group',{name:'死亡记录',exact:true}).boundingBox())!.y);
+  await notes.fill('从首页找到并修改的私密记录');await editor.getByRole('button',{name:'保存笔记',exact:true}).click();await expect(editor.getByRole('status')).toContainText('仅你可见');expect((await (await f.host.request.get(f.path+'/records')).json()).own.document.notes).toBe('从首页找到并修改的私密记录');expect((await (await f.host.request.get(f.path+'/records')).json()).posts).toHaveLength(0);
+  await editor.screenshot({path:'test-results/record-entry-mobile.png',animations:'disabled'});
+ }finally{for(const c of f.contexts)await c.close();}
+});
+test('delayed record navigation cannot restore a room after logout or explicit home navigation',async({browser})=>{
+ for(const mode of ['logout','home'] as const){
+  const f=await unpublished(browser);let release=()=>{};
+  try{
+   if(mode==='logout')expect((await requestWithBackoff(()=>f.host.request.post('/api/auth/register',{data:{username:'record_nav_'+crypto.randomUUID().slice(0,8),password:'record-nav-password',nickname:'记录入口账号'}}))).ok()).toBe(true);
+   const page=await f.host.newPage();await page.goto('/');const records=page.getByRole('region',{name:'我的记录'});await records.getByRole('button',{name:'添加 / 编辑记录',exact:true}).click();
+   let started!:()=>void;const waiting=new Promise<void>(resolve=>started=resolve),gate=new Promise<void>(resolve=>release=resolve);await page.route('**'+f.path,async route=>{const response=await route.fetch();started();await gate;await route.fulfill({response});});
+   await records.getByRole('button',{name:`房间 ${f.room.code} · 添加 / 编辑`,exact:true}).click();await waiting;
+   if(mode==='logout'){await page.locator('.header-account-button').click();await page.getByRole('button',{name:'退出登录',exact:true}).click();await expect(page.getByRole('button',{name:'登录 / 注册',exact:true})).toBeVisible();}else await page.getByRole('link',{name:'笔记狼人杀',exact:true}).click();
+   release();await expect(page.getByRole('heading',{name:'房间大厅',exact:true})).toBeVisible();await expect(page.getByRole('dialog',{name:'独立对局记录'})).toHaveCount(0);await expect.poll(()=>page.evaluate(()=>localStorage.getItem('wolf.room'))).toBe(null);
+  }finally{release();for(const c of f.contexts)await c.close();}
+ }
+});
+test('ordinary host collects an unpublished official record privately and publication changes only the public entry',async({browser})=>{
+ const f=await unpublished(browser);try{
+  const page=await enter(f.host);await page.getByRole('button',{name:'官方修订与发布',exact:true}).click();const editor=page.getByRole('dialog',{name:'独立对局记录'});
+  await editor.getByLabel('个人推理与补充').fill('收藏前尚未保存的私密推理');await editor.getByRole('button',{name:'仅自己收藏',exact:true}).click();await expect(editor.getByRole('status')).toContainText('仅你可见');await expect(editor.getByRole('button',{name:'已私密收藏',exact:true})).toBeDisabled();await editor.getByRole('button',{name:'关闭',exact:true}).click();
+  await page.getByRole('button',{name:'← 首页',exact:true}).click();const favorites=page.getByRole('region',{name:'我的收藏'});await expect(favorites).toContainText('未发布 · 仅本人可见');await favorites.getByRole('button',{name:new RegExp('房间 '+f.room.code+' · 官方')}).click();const dialog=page.getByRole('dialog',{name:'未发布官方记录'});await expect(dialog).toContainText('收藏前尚未保存的私密推理');await expect(dialog.getByRole('button',{name:'查看评论',exact:true})).toHaveCount(0);await expect(dialog.getByText('对外分享',{exact:true})).toHaveCount(0);
+  for(const width of [320,390,430]){await page.setViewportSize({width,height:844});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(r)));expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(width);const box=await dialog.boundingBox();expect(box!.y).toBeGreaterThanOrEqual(0);expect(box!.y+box!.height).toBeLessThanOrEqual(844);await dialog.getByRole('button',{name:'刷新记录',exact:true}).scrollIntoViewIfNeeded();await expect(dialog.getByRole('button',{name:'刷新记录',exact:true})).toBeInViewport();await dialog.getByRole('button',{name:'关闭',exact:true}).scrollIntoViewIfNeeded();await expect(dialog.getByRole('button',{name:'关闭',exact:true})).toBeInViewport();}
+  await page.setViewportSize({width:390,height:844});await dialog.screenshot({path:'test-results/private-record-favorite-mobile.png',animations:'disabled'});
+  expect((await f.contexts[1].request.get(`/api/record-favorites/${f.recordId}/private`)).status()).toBe(404);expect((await f.host.request.get(`/api/records/${f.recordId}`)).status()).toBe(404);
+  expect((await f.host.request.post(f.path+'/record/publish',{data:{revision:2}})).ok()).toBe(true);await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await expect(dialog.locator('.record-notes')).toHaveCount(0);await expect(dialog.getByRole('alert')).toBeVisible();await dialog.getByRole('button',{name:'关闭',exact:true}).click();await expect(favorites).toContainText('版本 1 · 已发布');await favorites.getByRole('button',{name:new RegExp('房间 '+f.room.code+' · 官方')}).click();await expect(page.getByRole('dialog',{name:'房主官方版本'}).locator('.record-notes')).toHaveText('收藏前尚未保存的私密推理');
+ }finally{for(const c of f.contexts)await c.close();}
+});
+test('private favorite hides pending reads, drops stale responses, and clears the body on retryable errors',async({browser})=>{
+ const f=await unpublished(browser);try{
+  expect((await f.host.request.post(`/api/records/${f.recordId}/favorite`,{data:{}})).ok()).toBe(true);const page=await f.host.newPage();await page.goto('/');const favorites=page.getByRole('region',{name:'我的收藏'}),open=()=>favorites.getByRole('button',{name:new RegExp('房间 '+f.room.code+' · 官方')}).click();
+  let release!:()=>void,started!:()=>void;const waiting=new Promise<void>(resolve=>started=resolve),gate=new Promise<void>(resolve=>release=resolve);let held=false;
+  await page.route(`**/api/record-favorites/${f.recordId}/private`,async route=>{if(!held){held=true;const response=await route.fetch();started();await gate;await route.fulfill({response});}else await route.continue();});await open();await waiting;
+  await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{value:'hidden',configurable:true});document.dispatchEvent(new Event('visibilitychange'));});release();await expect(page.getByRole('dialog',{name:'未发布官方记录'})).toHaveCount(0);await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});document.dispatchEvent(new Event('visibilitychange'));});await open();const dialog=page.getByRole('dialog',{name:'未发布官方记录'});await expect(dialog.locator('.record-notes')).toHaveText(f.document.notes);
+  await page.unroute(`**/api/record-favorites/${f.recordId}/private`);let failed=false;await page.route(`**/api/record-favorites/${f.recordId}/private`,async route=>{if(!failed){failed=true;await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'暂时读取失败'})});}else await route.continue();});await dialog.getByRole('button',{name:'刷新记录',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('暂时读取失败');await expect(dialog.locator('.record-notes')).toHaveCount(0);await dialog.getByRole('button',{name:'重新读取',exact:true}).click();await expect(dialog.locator('.record-notes')).toHaveText(f.document.notes);await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
+ }finally{for(const c of f.contexts)await c.close();}
+});
+test('backgrounding while the private dialog module loads requires a new explicit open',async({browser})=>{
+ const f=await unpublished(browser);try{
+  expect((await f.host.request.post(`/api/records/${f.recordId}/favorite`,{data:{}})).ok()).toBe(true);const page=await f.host.newPage();
+  let release!:()=>void,started!:()=>void;const waiting=new Promise<void>(resolve=>started=resolve),gate=new Promise<void>(resolve=>release=resolve);
+  await page.route('**/PrivateRecordDialog.tsx',async route=>{started();await gate;await route.continue();});await page.goto('/');const favorites=page.getByRole('region',{name:'我的收藏'}),open=()=>favorites.getByRole('button',{name:new RegExp('房间 '+f.room.code+' · 官方')}).click();
+  await open();await waiting;await expect(page.getByRole('status').filter({hasText:'正在打开私密记录'})).toBeVisible();
+  await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{value:'hidden',configurable:true});document.dispatchEvent(new Event('visibilitychange'));});release();
+  await expect(page.getByRole('status').filter({hasText:'正在打开私密记录'})).toHaveCount(0);
+  await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});document.dispatchEvent(new Event('visibilitychange'));});await expect(page.getByRole('dialog',{name:'未发布官方记录'})).toHaveCount(0);await open();await expect(page.getByRole('dialog',{name:'未发布官方记录'}).locator('.record-notes')).toHaveText(f.document.notes);
+ }finally{for(const c of f.contexts)await c.close();}
+});
 async function fit(page:Page){
  const settle=()=>page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  for(const size of [{width:320,height:568},{width:390,height:844},{width:430,height:932}]){

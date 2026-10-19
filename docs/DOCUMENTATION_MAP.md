@@ -9,6 +9,7 @@
 | Codex 每次开始/结束任务 | [简短指令入口](../AGENTS.md)、[详细工作流程](CODEX_WORKFLOW.md)中的任务前检查、Git 工作流与进度要求 | 当前分支、远程增量、本地修改及任务范围 |
 | 当前板子玩法/例外/权限 | [规则规格](WEREWOLF_RULES_SPEC.md)的相关 ID 和完整细节 | [产品决策](PRODUCT_DECISIONS.md)、[最新规则确认及未决问题](../OPEN_QUESTIONS.md)、[详细需求 V1](WEREWOLF_REQUIREMENTS_V1.md) |
 | 需求优先级、是否已实现 | [需求总表](NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md)、[当前项目进度](PROJECT_STATUS_FOR_CHATGPT.md) | 实际代码/测试与[差距审计](GAP_ANALYSIS.md)，不能把索引状态当作验收证据 |
+| 紧凑收藏 / 添加和修改记录入口 | [完整展示及权限边界](WEREWOLF_RULES_SPEC.md#record-entry-compact-favorites-2026-10-18)、[使用入口](../README.md) | [验收](WEREWOLF_TEST_CASES.md#收藏与记录入口验收2026-10-18)与当前报告；不增加归档写权限 |
 | 默认夜间播报 / 评论弹窗 / 基础诊断 | [当前规则](WEREWOLF_RULES_SPEC.md#voice-comments-diagnostics-2026-10-16)、[故障排查说明](SERVER_DIAGNOSTICS.md) | [直接确认](PRODUCT_DECISIONS.md#voice-comments-diagnostics-2026-10-16)、[验收](WEREWOLF_TEST_CASES.md#语音默认与评论显示故障定位验收2026-10-16)；测试证据不代替实机声音，运维配置未部署 |
 | 本地备份恢复 / BETA-010、GAP-06 | [操作与安全边界](DATABASE_BACKUP.md)、[继续范围](PRODUCT_DECISIONS.md#local-backup-delivery-2026-10-15) | [验收](WEREWOLF_TEST_CASES.md#本地备份恢复验收2026-10-15)、当前报告；新文件隔离恢复，生产备份配置仍待完成 |
 | 后台监督 / ADMIN-005–007、Owner27 | [管理规则](WEREWOLF_RULES_SPEC.md#admin-oversight-2026-10-14)、[继续授权](PRODUCT_DECISIONS.md#admin-oversight-delivery-2026-10-14) | [验收场景](WEREWOLF_TEST_CASES.md#后台监督管理验收2026-10-14)、当前报告；元信息导出/真实审计/原链接撤销，不新增秘密读取 |
@@ -39,3 +40,5 @@
 最终事实复盘（H-002 / RECAP-001 / GAP-04）新写入、公开投影和旧收藏只读兼容统一见[规则](WEREWOLF_RULES_SPEC.md#final-replay-2026-10-17)，[验收](WEREWOLF_TEST_CASES.md#最终事实复盘验收2026-10-17)描述期望，交接/报告记录执行；历史清理与物理擦除未包含。
 
 官方纠错同步（H-002 / RECAP-005/007 / Owner4B）的原发布与当前事实分离、修订历史及原链接边界见[规则](WEREWOLF_RULES_SPEC.md#official-sync-2026-10-18)；[用例](WEREWOLF_TEST_CASES.md#官方纠错同步验收2026-10-18)与报告分别记录期望和执行。
+
+房主未发布官方记录私密收藏（FUTURE-005 / H-003 / Owner6A）的本人权限、原发布隔离及生命周期见[规则](WEREWOLF_RULES_SPEC.md#private-official-favorite-2026-10-18)，[用例](WEREWOLF_TEST_CASES.md#未发布官方记录私密收藏验收2026-10-18)为期望，报告记录实际执行；不增加对外分享或社区读取。

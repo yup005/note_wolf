@@ -140,3 +140,6 @@
 .record-delete-overlay{z-index:120}
 .record-delete-dialog{width:min(100%,420px);max-height:calc(100dvh - 32px);overflow-y:auto;overflow-wrap:anywhere}
 .record-delete-dialog p{margin:12px 0}
+
+/* Home records stay easy to find; collections show a small initial list. */
+.collection-panel{padding:14px;margin-top:16px}.collection-panel .section-head{min-height:44px}.collection-panel .favorite-games{gap:6px;margin-top:4px}.collection-panel .favorite-game{padding-top:6px;gap:8px}.collection-panel .favorite-open{gap:2px;padding:4px 0}.collection-panel .favorite-open strong{font-size:14px;line-height:1.5}.collection-panel .favorite-open span{font-size:11px;line-height:1.5}.collection-panel .favorite-filters{margin:8px 0 12px;gap:8px}.record-entry-help{font-size:12px!important;margin:4px 0 12px!important}.record-room-picker{display:grid;gap:6px;margin-top:10px}.record-row-actions{display:grid;gap:4px;flex-shrink:0}.record-row-actions button{min-height:44px}.record-note-editor .secondary{margin-top:10px}.record-note-editor .helper{margin-top:8px}
