@@ -22,6 +22,8 @@
 本批文档复查11份/508个本地引用与锚点及差异通过，166项稳定ID/状态逐行不变，49项历史确认原文保留。规则完整条件、期望、执行结果和历史职责分开；无须删除有用来源。正常推送后核对最终远端SHA。
 
 
+实施提交：[d3b7bc7851f122cbbbd2e99420e65e647d7e6627](https://github.com/yup005/note_wolf/commit/d3b7bc7851f122cbbbd2e99420e65e647d7e6627)。本次SHA跟进仅文档，引用/差异检查通过，代码检查未重跑；同批正常推送后核对最终远端SHA。
+
 ## 历史：最终有效事实复盘（2026-10-17，RECAP-001/006 / H-002 / GAP-04）
 
 范围与来源见[规则](WEREWOLF_RULES_SPEC.md#final-replay-2026-10-17)，入口见[交接](PROJECT_STATUS_FOR_CHATGPT.md)。只用临时合成SQLite/HTTP监听和浏览器3100，未操作真实库或localhost3000，不部署。
