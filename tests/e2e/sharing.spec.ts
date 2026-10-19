@@ -9,6 +9,27 @@ async function published(browser:Browser){
  const doc={deaths:roles.filter((r:any)=>r.role==='wolf').map((r:any)=>({seat:r.seat,round:1,period:'night',cause:'unrecorded'})),badges:[],exiles:[],votes:[],notes:'公开初版复盘'};
  const recordId=(await (await host.request.get(path+'/records')).json()).own.id;await host.request.post(path+'/record',{data:{revision:0,document:doc}});await host.request.post(path+'/manual/commit',{data:{revision:1}});await host.request.post(path+'/record/publish',{data:{revision:1}});await host.request.post(`/api/records/${recordId}/favorite`,{data:{}});return {host,admin,account,room,path,recordId,doc};
 }
+test('official corrections refresh the shared phone and collected post without publishing private reasoning',async({browser})=>{
+ const f=await published(browser),visitor=await browser.newContext({viewport:{width:390,height:844}});
+ try{
+  const link=await (await f.host.request.post(`/api/records/${f.recordId}/share`,{data:{action:'create',revision:0}})).json();
+  const reader=await visitor.newPage();await reader.goto('/share/'+link.token);await expect(reader.locator('.record-notes')).toHaveText('公开初版复盘');
+  const corrected={...f.doc,deaths:[],badges:[{round:2,seat:3}],notes:'不能公开的私人推理'};
+  expect((await f.host.request.post(f.path+'/record',{data:{revision:1,document:corrected}})).ok()).toBe(true);
+  expect((await f.host.request.post(f.path+'/manual/commit',{data:{revision:2}})).ok()).toBe(true);
+  await reader.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+  const facts=reader.getByRole('region',{name:'当前官方事实'});
+  await expect(facts).toContainText('修订 2');await expect(facts).toContainText('未达成胜负');await expect(facts).toContainText('警徽交给 3 号');
+  await expect(reader.locator('body')).not.toContainText(corrected.notes);await expect(reader.locator('.record-notes')).toHaveText('公开初版复盘');
+  await reader.getByText('官方修订历史 · 2 次',{exact:true}).click();
+  await reader.getByText('修订 1 · 好人获胜',{exact:false}).click();await expect(reader.getByRole('region',{name:'官方修订历史'})).toContainText('号死亡');
+  for(const width of [320,390,430]){await reader.setViewportSize({width,height:844});expect(await reader.evaluate(()=>document.documentElement.scrollWidth)).toBe(width);}
+  await reader.setViewportSize({width:390,height:844});await reader.screenshot({path:'test-results/official-sync-mobile.png',animations:'disabled',fullPage:true});
+  const page=await f.host.newPage();await page.goto('/');await page.getByRole('region',{name:'我的收藏'}).getByRole('button',{name:new RegExp('房间 '+f.room.code+' · 官方')}).click();
+  const post=page.getByRole('dialog',{name:'房主官方版本'});await expect(post.getByRole('region',{name:'当前官方事实'})).toContainText('警徽交给 3 号');await expect(post.locator('.record-notes')).toHaveText('公开初版复盘');
+  await f.host.request.post(`/api/records/${f.recordId}/share`,{data:{action:'revoke',revision:link.revision}});await reader.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await expect(reader.getByRole('alert')).toContainText('分享链接暂不可用');await expect(facts).toHaveCount(0);await expect(reader.getByRole('region',{name:'官方修订历史'})).toHaveCount(0);
+ }finally{await visitor.close();await f.admin.close();await f.host.close();}
+});
 test('VIP author shares latest published content with an independent anonymous phone, regenerates and revokes without affecting private drafts',async({browser})=>{
  const f=await published(browser),visitor=await browser.newContext({viewport:{width:390,height:844}});try{
  const page=await f.host.newPage();await page.addInitScript(()=>{Object.defineProperty(navigator,'clipboard',{value:undefined,configurable:true});});await page.goto('/');await page.getByRole('region',{name:'我的收藏'}).getByRole('button',{name:new RegExp('房间 '+f.room.code+' · 官方')}).click();const post=page.getByRole('dialog',{name:'房主官方版本'});await post.getByText('对外分享',{exact:true}).click();await post.getByRole('button',{name:'生成分享链接',exact:true}).click();const address=post.getByLabel('分享链接');await expect(address).toHaveValue(/\/share\/[a-f0-9]{64}$/);const first=await address.inputValue();await post.getByRole('button',{name:'复制链接',exact:true}).click();await expect(post.getByRole('status').filter({hasText:'手动复制'})).toContainText('长按链接手动复制');

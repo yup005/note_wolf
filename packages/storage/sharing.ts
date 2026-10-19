@@ -3,6 +3,7 @@ import {randomBytes} from 'node:crypto';
 import {LobbyError} from '../contracts/index.js';
 import {shareCommandSchema,shareTokenSchema,type ShareCommand,type ShareStatus,type SharedRecord,type OwnShare} from '../contracts/sharing.js';
 import type {AuthStore} from './auth.js';
+import {officialUpdate} from './officialUpdate.js';
 interface Post {id:string;owner:string;published_version:number|null;withdrawn:number;ended:number}
 interface Link {record_id:string;account_id:string;token:string;revoked:number;revision:number;updated_at:number}
 export class SharingStore {
@@ -55,13 +56,13 @@ export class SharingStore {
  read(token:string):SharedRecord{
   const unavailable=()=>new LobbyError('SHARE_UNAVAILABLE',404);if(!shareTokenSchema.safeParse(token).success)throw unavailable();
   // Explicit projection: never read draft text, participant owners, or automatic secret events.
-  const r=this.db.prepare(`SELECT d.author,d.official,d.published_version AS version,v.document,v.outcome,COALESCE(src.source,'computed') AS outcomeSource,v.published_at AS publishedAt,r.code,r.roles
+  const r=this.db.prepare(`SELECT d.room_id,d.author,d.official,d.published_version AS version,v.document,v.outcome,COALESCE(src.source,'computed') AS outcomeSource,v.published_at AS publishedAt,r.code,r.roles
    FROM record_share_links l JOIN accounts a ON a.id=l.account_id JOIN vip_entitlements vip ON vip.account_id=a.id
    JOIN record_drafts d ON d.id=l.record_id JOIN record_rooms r ON r.room_id=d.room_id
    JOIN record_versions v ON v.record_id=d.id AND v.version=d.published_version
    LEFT JOIN record_version_sources src ON src.record_id=v.record_id AND src.version=v.version
    WHERE l.token=? AND l.revoked=0 AND a.status='active' AND vip.enabled=1 AND (vip.expires_at IS NULL OR vip.expires_at>?)
-   AND d.withdrawn=0 AND r.ended=1 AND d.owner='account:'||a.id`).get(token,Date.now()) as {author:string;official:number;version:number;document:string;outcome:SharedRecord['outcome'];outcomeSource:SharedRecord['outcomeSource'];publishedAt:number;code:string;roles:string}|undefined;
-  if(!r)throw unavailable();return {code:r.code,author:r.author,official:!!r.official,version:r.version,publishedAt:r.publishedAt,document:JSON.parse(r.document),outcome:r.outcome,outcomeSource:r.outcomeSource,roles:JSON.parse(r.roles)};
+   AND d.withdrawn=0 AND r.ended=1 AND d.owner='account:'||a.id`).get(token,Date.now()) as {room_id:string;author:string;official:number;version:number;document:string;outcome:SharedRecord['outcome'];outcomeSource:SharedRecord['outcomeSource'];publishedAt:number;code:string;roles:string}|undefined;
+  if(!r)throw unavailable();return {code:r.code,author:r.author,official:!!r.official,version:r.version,publishedAt:r.publishedAt,document:JSON.parse(r.document),outcome:r.outcome,outcomeSource:r.outcomeSource,...(r.official?{officialUpdate:officialUpdate(this.db,r.room_id)}:{}),roles:JSON.parse(r.roles)};
  }
 }

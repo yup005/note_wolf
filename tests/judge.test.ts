@@ -54,6 +54,26 @@ function automaticDeaths(target=5){
 }
 function dayHost(f:ReturnType<typeof setup>,action:string,extra={}){return f.store.dayCommand(f.host,f.id,{action,turnId:f.store.snapshot(f.id).day!.turnId,...extra} as never);}
 
+test('returned automatic victory is never replaced by its earlier manual checkpoint, including after cleanup',()=>{
+ const f=automaticDeaths();try{
+  dayHost(f,'close_signup');dayHost(f,'continue');dayHost(f,'continue');while(['death_skill','last_words'].includes(f.store.snapshot(f.id).day!.phase)){f.clock.now=f.store.snapshot(f.id).day!.deadline!;f.store.tickNights();}dayHost(f,'speech_mode',{mode:'free'});
+  // Synthetic earlier exiles; the last wolf's legal command produces the final victory.
+  const day=JSON.parse((f.db.prepare('SELECT state FROM day_games WHERE room_id=?').get(f.id) as {state:string}).state);
+  for(const seat of [1,2,3]){day.players.find((p:{seat:number})=>p.seat===seat).alive=false;day.deaths.push({seat,reason:'exile'});day.events.push({type:'death_exile',seat,at:f.clock.now});}
+  f.db.prepare('UPDATE day_games SET state=? WHERE room_id=?').run(JSON.stringify(day),f.id);
+  f.store.appointJudge(f.host,f.id,{confirmed:true,version:0,seat:5});f.store.switchManual(f.host,f.id,true);
+  const judge=f.players[4],v=f.store.judgePrivate(judge,f.id),d=f.store.startJudgeDraft(judge,f.id,{assignmentVersion:1,manualVersion:v.manualVersion!,requestId:randomUUID()});
+  const returned=f.store.returnJudge(judge,f.id,{assignmentVersion:1,manualVersion:v.manualVersion!,draftId:d.draft!.id,draftVersion:0,requestId:randomUUID(),confirmed:true});
+  f.store.gameControl(judge,f.id,{action:'resume',confirmed:true,version:returned.room.control!.version});f.clock.now+=5000;f.store.tickNights();
+  f.store.dayCommand(f.players[3],f.id,{action:'explode',turnId:f.store.snapshot(f.id).day!.turnId,confirmed:true});assert.equal(f.store.snapshot(f.id).day!.winner,'good');
+  const own=f.store.recordsList(f.host,f.id).own!,post=f.store.publishRecord(f.host,f.id,own.revision);
+  const check=()=>{const record=f.store.recordPost(f.host,post.id);assert.equal((record.officialUpdate?.current??record).outcome,'good');assert.ok((record.officialUpdate?.current.document??record.document).deaths.some(d=>d.seat===4));};check();
+  const ownAfter=f.store.recordsList(f.host,f.id).own!;f.store.saveRecord(f.host,f.id,ownAfter.revision,{...ownAfter.document,badges:[{round:2,seat:7}]});f.store.commitManual(f.host,f.id,ownAfter.revision+1);
+  const corrected=f.store.recordPost(f.host,post.id);assert.equal(corrected.officialUpdate?.current.outcome,'good');assert.deepEqual(corrected.officialUpdate?.current.document.badges,[{round:2,seat:7}]);
+  f.clock.now+=25*60*60*1000;assert.ok(f.store.cleanupExpiredRooms().includes(f.id));check();assert.deepEqual(f.store.recordPost(f.host,post.id).officialUpdate?.current.document.badges,[{round:2,seat:7}]);
+ }finally{f.store.close();}
+});
+
 test('unannounced deaths and live hunter queues cannot appoint; manual attestation covers frozen offline completion',()=>{
  const f=automaticDeaths(11);try{
  assert.equal(f.store.snapshot(f.id).judge!.candidates.includes(11),false);
