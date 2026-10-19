@@ -29,6 +29,8 @@ Owner追加首页UI反馈后，同批落实[紧凑收藏与记录入口](WEREWOL
 本批文档复查11份/544个本地引用与锚点及差异通过；166项稳定ID保留，仅FUTURE-005状态由规则待确认改为已实现（汇总已实现130/规则待确认2，其余不变），49项历史确认逐字保留。规则/期望/实际证据职责分开，保留有用历史，无须删除；正常推送后核对最终远端SHA。
 
 
+实施提交：[51fba2ec6ce6cb8b2110e357789f8225ddc5c8bf](https://github.com/yup005/note_wolf/commit/51fba2ec6ce6cb8b2110e357789f8225ddc5c8bf)。本次SHA跟进仅文档，引用/差异检查通过，代码检查未重跑；同批正常推送后核对最终远端SHA。
+
 ## 历史：官方纠错同步（2026-10-18，H-002 / RECAP-005/007 / Owner4B）
 
 完整期望与可信旧源边界见[规则](WEREWOLF_RULES_SPEC.md#official-sync-2026-10-18)，入口见[交接](PROJECT_STATUS_FOR_CHATGPT.md)。仅临时合成SQLite/HTTP监听/浏览器3100，未操作真实库或localhost3000，不部署。
