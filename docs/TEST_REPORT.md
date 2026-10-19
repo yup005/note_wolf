@@ -13,6 +13,8 @@
 
 本批文档复查8份/457个本地引用与锚点及差异通过；166项稳定ID、6项预定状态变化及汇总逐行核对，49项历史确认原文不变。规则/期望/执行/历史各有职责，无须删除有用来源；没有新增规则决策，README产品入口仍与当前代码一致。正常推送后核对最终远端SHA。
 
+验收提交：[3160e82ab3b09bad32e5a55a02f4f06e023f0680](https://github.com/yup005/note_wolf/commit/3160e82ab3b09bad32e5a55a02f4f06e023f0680)。2026-10-19补记SHA仅文档，引用/差异检查通过，代码检查未重跑；同批正常推送后核对最终远端SHA。
+
 ## 历史：紧凑收藏、记录入口与房主私密收藏（2026-10-18）
 
 期望与原确认见[规则](WEREWOLF_RULES_SPEC.md#private-official-favorite-2026-10-18)，入口见[交接](PROJECT_STATUS_FOR_CHATGPT.md)。只用临时合成SQLite/HTTP及浏览器3100，不操作真实库/localhost3000，不部署。
