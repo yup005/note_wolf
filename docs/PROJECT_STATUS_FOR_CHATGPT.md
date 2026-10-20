@@ -14,6 +14,8 @@
 
 本批文档复查8份/539个本地引用与锚点及差异通过；166项稳定ID仅3项预定状态变化，汇总逐行核对，49项历史确认原文保持。S-001/SYS-03旧入口措辞保留为历史并链接后续明确确认；规则、期望、实际执行和历史职责清楚，未丢失权限/实机边界，无需额外清理；README入口仍匹配代码。验收SHA同批跟进，正常推送后核对最终远端SHA。
 
+验收提交：[770c4bc93bc947ec91b5abd4830f37cf23e65c5b](https://github.com/yup005/note_wolf/commit/770c4bc93bc947ec91b5abd4830f37cf23e65c5b)。本次SHA跟进仅文档，引用/差异检查通过，代码检查未重跑；同批正常推送后核对最终远端SHA。
+
 ## 历史：房主离线与未来投票设置确认（2026-10-19）
 
 本批只改 `GameControls.tsx` 的未来投票设置确认页，列出待保存时长/票型；不新增接口、可配置参数或权限。返回不提交且保留编辑选择，重新编辑后预览同步，实际确认才保存；当前投票设置仍30秒，下一轮使用45秒/汇总。新增 `tests/host-offline-acceptance.test.ts` 2项真实LobbyStore/内存SQLite/presence计时验收，核实自动夜间继续、人工环节等原房主或已有有效临时房主，不能因失联自封管理或代交秘密技能。完整[范围](WEREWOLF_RULES_SPEC.md#host-offline-future-settings-2026-10-19)、[期望](WEREWOLF_TEST_CASES.md#房主离线与未来投票设置验收2026-10-19)与[实际报告](TEST_REPORT.md)分开。
