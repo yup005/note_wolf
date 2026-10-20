@@ -1,3 +1,4 @@
+import {RuleReferenceButton} from './RuleReference';
 import {boardRoleLabels,type RoomBoardSnapshot,type BoardRole} from '../../../packages/contracts/board';
 import {useState} from 'react';
 import {ProfileAvatar} from './ProfileEditor';
@@ -24,6 +25,7 @@ export function RoomLobby({view,connected,busy,onSeat,onHome,onAction,onPublicRe
   <nav className="room-toolbar" aria-label="房间导航">
    <button className="back" onClick={onHome}>← 首页</button>
    <button className="room-copy subtle" aria-label="复制房间号" onClick={copy}><span>房间</span><strong data-testid="room-code">{room.code}</strong><span>{copied?'已复制':'复制'}</span></button>
+   <RuleReferenceButton roomId={room.id} board={room.board}/>
    <span className="live" role="status"><i className={connected?'dot':'dot amber'}/>{connected?'已连接':'重连中'}</span>
   </nav>
   <div className="room-overview"><span>{room.board.name}</span><strong>{own?`你在 ${own} 号`:'等待入座'}{me.isHost?' · 房主':''}</strong></div>
