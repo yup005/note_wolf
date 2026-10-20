@@ -10,6 +10,7 @@
 | 当前板子玩法/例外/权限 | [规则规格](WEREWOLF_RULES_SPEC.md)的相关 ID 和完整细节 | [产品决策](PRODUCT_DECISIONS.md)、[最新规则确认及未决问题](../OPEN_QUESTIONS.md)、[详细需求 V1](WEREWOLF_REQUIREMENTS_V1.md) |
 | 需求优先级、是否已实现 | [需求总表](NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md)、[当前项目进度](PROJECT_STATUS_FOR_CHATGPT.md) | 实际代码/测试与[差距审计](GAP_ANALYSIS.md)，不能把索引状态当作验收证据 |
 | 紧凑收藏 / 添加和修改记录入口 | [完整展示及权限边界](WEREWOLF_RULES_SPEC.md#record-entry-compact-favorites-2026-10-18)、[使用入口](../README.md) | [验收](WEREWOLF_TEST_CASES.md#收藏与记录入口验收2026-10-18)与当前报告；不增加归档写权限 |
+| 终局判胜/自爆指刀资格2项复核 | [标准12人范围](WEREWOLF_RULES_SPEC.md#terminal-core-acceptance-2026-10-19) | [验收](WEREWOLF_TEST_CASES.md#终局判胜与自爆指刀资格验收2026-10-19)与报告；合成先前死亡前提，其他板子优先级不推广 |
 | 白天竞选/发言/投票6项复核 | [范围与当前语音边界](WEREWOLF_RULES_SPEC.md#day-core-acceptance-2026-10-19) | [验收](WEREWOLF_TEST_CASES.md#白天竞选发言与投票复核验收2026-10-19)与报告；白天静音，不以实现代定剩余PK规则 |
 | 夜间6项核心规则复核 | [范围与既有规则](WEREWOLF_RULES_SPEC.md#night-core-acceptance-2026-10-18) | [验收](WEREWOLF_TEST_CASES.md#夜间核心规则复核验收2026-10-18)与报告；NIGHT-006仍待真实声音验收，无新玩法 |
 | 默认夜间播报 / 评论弹窗 / 基础诊断 | [当前规则](WEREWOLF_RULES_SPEC.md#voice-comments-diagnostics-2026-10-16)、[故障排查说明](SERVER_DIAGNOSTICS.md) | [直接确认](PRODUCT_DECISIONS.md#voice-comments-diagnostics-2026-10-16)、[验收](WEREWOLF_TEST_CASES.md#语音默认与评论显示故障定位验收2026-10-16)；测试证据不代替实机声音，运维配置未部署 |
