@@ -13,6 +13,8 @@ S-003 / RESUME-009，[范围](WEREWOLF_RULES_SPEC.md#future-vote-diff-2026-10-19
 
 本批文档复查9份、592个本地引用/锚点及差异通过；166项ID与状态逐行比对不变，仅RESUME-009实现说明更新，49项历史确认原文保留。现行范围/验收/执行职责分开，旧清单限制明确由新范围覆盖；README入口与代码一致，无需额外删除历史。实施SHA同批跟进。
 
+实施提交：[59f9e66433b52dded2659fbff4e3a562f4cb563f](https://github.com/yup005/note_wolf/commit/59f9e66433b52dded2659fbff4e3a562f4cb563f)。本次SHA跟进仅文档，引用/差异检查通过，代码检查未重跑；正常推送后核对最终远端SHA。
+
 ## 历史：常亮、夜间入口与房主分享权限复核（2026-10-19）
 
 AUDIO-007/008、ACCOUNT-008，[范围](WEREWOLF_RULES_SPEC.md#wake-privacy-sharing-audit-2026-10-19)/[期望](WEREWOLF_TEST_CASES.md#常亮夜间入口与房主分享权限验收2026-10-19)。仅测试/文档，无产品逻辑/配置/UI改动；临时合成内存库和3100，不操作真实库/localhost3000或部署。
