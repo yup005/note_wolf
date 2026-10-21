@@ -492,7 +492,7 @@ v2.7将BETA-011从未实现改为部分实现，汇总未实现2/部分实现7�
 |---|---|---|---|---|---|---|
 | REMATCH-001 | 同房间再来一局与独立归档 | 已实现 | P1 | 原房主在已结束且可靠归档后原子/幂等开启新game，复用room/成员/座位/板子模式并重新准备发牌 | 固定历史权限/版本/笔记/收藏/分享/删除隔离；旧请求与迟到响应拒绝，三处故障回滚/重启/双局验证；旧无配置归档只给笔记版本UI；生产/实机另验 | [范围](WEREWOLF_RULES_SPEC.md#rematch-2026-10-20) / [报告](TEST_REPORT.md) / [Issue #2](https://github.com/yup005/note_wolf/issues/2) |
 | GUIDE-001 | 本局公开角色与特殊规则速查 | 已实现 | P1 | 候场/局中按公开板子展示角色/机制，原本人卡补技能限制 | 版本/未定义组合提示，公开目录无座位秘密/实际库存，开关不改计时；真实手机另验 | [规则](WEREWOLF_RULES_SPEC.md#rule-reference-2026-10-20) / [Issue #3](https://github.com/yup005/note_wolf/issues/3) |
-| PWA-001 | iPhone主屏幕安装与安全静态缓存 | 已确认/未实现 | P1 | Manifest/图标/standalone/安装及更新提示，前台重连校权 | SW只缓存静态，禁止身份/账号/房间/私稿/API；离线不可联机，非离线玩法/Push，平台中立 | [Issue #4](https://github.com/yup005/note_wolf/issues/4) |
+| PWA-001 | iPhone主屏幕安装与安全静态缓存 | 已确认/未实现 | P1 | Manifest/图标/standalone/安装及更新提示，前台重连校权 | SW只缓存静态，禁止身份/账号/房间/私稿/API；离线不可联机，非离线玩法/Push，平台中立；设计含后台丢弃未保存编辑/关闭所有窗口升级已确认，计划待阅，尚未实施 | [Issue #4](https://github.com/yup005/note_wolf/issues/4) / [设计边界](WEREWOLF_RULES_SPEC.md#pwa-2026-10-20) / [计划](superpowers/plans/2026-10-20-pwa.md) |
 | DISPLAY-001 | 公共信息大屏 | 已确认/未实现 | P2 | 独立只读公共阶段/发言/计时/已公告票型死讯胜负，大屏重连 | 不含隐私字段或暗示角色存活的细阶段，不授观众操作/秘密API权限 | [Issue #5](https://github.com/yup005/note_wolf/issues/5) |
 | STATS-001 | 已结束对局本人战绩 | 已确认/未实现 | P2 | 本人合法归档参赛次数/可靠胜负分母/角色胜率/常用板子 | 多局去重、绑定游客迁移、删除边界与进行中侧信道隔离；不含排行榜/好友/成就 | [Issue #6](https://github.com/yup005/note_wolf/issues/6) |
 | TUTORIAL-001 | 独立合成新手教学 | 已确认/未实现 | P2 | 游客体验入座/身份/夜间/白天/投票，可上一步/下一步/退出 | 独立合成数据，不占真实房间/座位，不借管理员测试权限，退出不改真实会话 | [Issue #7](https://github.com/yup005/note_wolf/issues/7) |
