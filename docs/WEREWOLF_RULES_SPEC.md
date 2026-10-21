@@ -787,9 +787,9 @@ B-002 v3 / CFG-001 / WIN-001 / FUTURE-007，确认来源：[Owner第11、12、17
 
 <a id="pwa-2026-10-20"></a>
 
-## iPhone PWA与恢复边界（2026-10-20，设计已确认、尚未实现）
+## iPhone PWA与恢复边界（2026-10-20，本地实施、待真实验收）
 
-来源为[Owner Issue #4](NEW_FEATURE_REQUIREMENTS_2026-10-20.md)、[已审阅设计](superpowers/specs/2026-10-20-pwa-design.md)及[确认记录](PRODUCT_DECISIONS.md#pwa-design-approved-2026-10-20)。Owner在具体设计和两项取舍交付后继续，确认以下边界；[实施计划](superpowers/plans/2026-10-20-pwa.md)待审阅，以下不是已运行的产品行为。
+来源为[Owner Issue #4](NEW_FEATURE_REQUIREMENTS_2026-10-20.md)、[已审阅设计](superpowers/specs/2026-10-20-pwa-design.md)及[实施授权](PRODUCT_DECISIONS.md#pwa-delivery-2026-10-20)。Owner在具体设计和计划分别交付后继续，以下已按[计划](superpowers/plans/2026-10-20-pwa.md)本地实现；实际执行证据见报告，物理iPhone验收仍独立。
 
 - HTTPS安装Manifest、图标、standalone及按需iPhone引导；开发模式不注册Worker，普通浏览器/注册失败不影响联网。恢复校权保护在无Worker时也必须存在，不绑定平台。
 - Worker只缓存构建清单内公开哈希JS/CSS、指定安装图标与独立断网页。在线HTML、Manifest、账号/身份/房间/私稿/分享正文/API、头像、Socket、动态语音、POST、query及跨源动态响应不入Worker缓存；无离线玩法、操作队列或Push。网络错误不伪造成功。
@@ -798,4 +798,6 @@ B-002 v3 / CFG-001 / WIN-001 / FUTURE-007，确认来源：[Owner第11、12、17
 - 新版本等待所有旧受控窗口关闭后启用，提示先保存、关闭本站所有窗口后重开；不强制skipWaiting/claim/刷新，不提前删旧窗口需用的分块缓存。安装失败不得损坏当前缓存，激活只清本应用旧缓存，不影响别的应用。
 - 保留gameId/turnId/版本、Cookie、参与者/法官/VIP/管理权限及生产限流，无新增玩法或授权；不改变生产持久化/备份、部署和iPhone真实安装/后台/锁屏弱网验收边界。
 
-期望见[验收场景](WEREWOLF_TEST_CASES.md#pwa-tests-2026-10-20)，实际结果由后续实施报告记录；目前PWA-001仍已确认未实现。
+登录、注册或退出在发起组件卸载后完成，也派发不含账号/响应体的复核信号；页面仍隐藏或离线时不启动恢复、不重新挂载。回前台取得当前权限后才显示新业务子树；账号切换同样关闭旧弹窗/评论，需主动重新打开。旧回调不得绕过可见性门禁。本段覆盖旧条目中后台保留界面或未提交选择的描述；仅前台临时接口失败时，仍沿用各模块原有输入与幂等重试规则。
+
+期望见[验收场景](WEREWOLF_TEST_CASES.md#pwa-tests-2026-10-20)，实际结果见[实施报告](TEST_REPORT.md)；PWA-001本地实现与自动化已验证，状态为待真实验收，未部署。
