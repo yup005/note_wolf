@@ -1,3 +1,5 @@
+import {DisplayStore} from './displays.js';
+import type {DisplayCommand} from '../contracts/display.js';
 import {RoomGamesStore} from './roomGames.js';
 import {rematchSchema,type RematchCommand,type RematchResult} from '../contracts/rematch.js';
 import {finalReplay} from '../domain/replay.js';
@@ -45,6 +47,9 @@ export class LobbyStore {
    this.member(token,roomId);this.games.assertCurrent(roomId,expected);return work();
   }).immediate();
  }
+ displayStatus(token:string,id:string){return this.displays.status(token,id);}
+ displayCommand(token:string,id:string,input:DisplayCommand){return this.displays.command(token,id,input);}
+ readDisplay(token:string){return this.displays.read(token);}
  currentGameId(roomId:string){return this.games.current(roomId).gameId;}
  commitCurrentManual(token:string,roomId:string,revision:number){return this.records.commit(token,this.games.current(roomId).gameId,revision);}
  rematch(token:string,roomId:string,input:RematchCommand):RematchResult{
@@ -75,6 +80,7 @@ export class LobbyStore {
  private records:RecordsStore;
  private voice:VoiceStore;
  private sharing:SharingStore;
+ private displays:DisplayStore;
  private boards:BoardsStore;
  private retention:RetentionStore;
  private community:CommunityStore;
@@ -122,6 +128,7 @@ export class LobbyStore {
   this.records=new RecordsStore(this.db,this.auth,this.now,id=>this.readReplay(id));
   this.voice=new VoiceStore(this.db,this.now,(id,memberId)=>{const m=this.db.prepare('SELECT * FROM members WHERE room_id=? AND id=?').get(id,memberId) as MemberRow|undefined;return !!m&&this.control.canManage(id,m);});
   this.sharing=new SharingStore(this.db,this.auth,this.now);
+  this.displays=new DisplayStore(this.db,id=>this.snapshot(id),(token,id)=>{if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);const member=this.member(token,id);if(!member.is_host)throw new LobbyError('HOST_ONLY',403);if(this.testPlayers.isTestRoom(id))throw new LobbyError('TEST_ROOM_PRIVATE',403);},this.now);
   this.sharedFavoritesStore=new SharedFavoritesStore(this.db,this.auth,this.sharing,this.now);
   this.community=new CommunityStore(this.db,this.auth,this.now,(token,scope)=>this.communityRoom(token,scope),{comment:(id,account,scope)=>this.notifications.comment(id,account,scope),like:(id,actor)=>this.notifications.like(id,actor),moderation:()=>this.notifications.moderation()});
   this.notifications=new NotificationsStore(this.db,this.auth,this.now,(owner,scope)=>this.validateNotificationSource(owner,scope));

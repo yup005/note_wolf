@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {api} from '../apps/web/src/api.js';
 
+test('display_recovery_never_reads_a_session_or_sends_cookies',async()=>{
+ const {loadRecovery}=await import('../apps/web/src/recoveryLoad.js'),previous=globalThis.fetch,reads:{path:string;init?:RequestInit}[]=[];
+ globalThis.fetch=async(input,init)=>{reads.push({path:String(input),init});return Response.json({roomCode:'1234'});};
+ try{const token='b'.repeat(64),signal=new AbortController().signal,result=await loadRecovery('/display/'+token,signal);assert.equal(result.kind,'display');assert.equal(reads.length,1);assert.equal(reads[0].path,'/api/displays/'+token);assert.equal(reads[0].init?.credentials,'omit');assert.equal(reads[0].init?.cache,'no-store');assert.equal(reads[0].init?.signal,signal);await assert.rejects(loadRecovery('/display/invalid',signal));assert.equal(reads.length,1);
+  let limitedReads=0;globalThis.fetch=async()=>{limitedReads++;return Response.json({error:'RATE_LIMITED'},{status:429,headers:{'Retry-After':'17'}});};await assert.rejects(loadRecovery('/display/'+token,signal),(error:unknown)=>error instanceof Error&&'retryAfterMs' in error&&error.retryAfterMs===17000);await assert.rejects(loadRecovery('/display/'+token,signal));assert.equal(limitedReads,1,'manual recovery must respect Retry-After too');
+ }finally{globalThis.fetch=previous;}
+});
+
 test('recovery_load_uses_current_authority_and_anonymous_share_credentials',async()=>{
  assert.ok(existsSync('apps/web/src/recoveryLoad.ts'),'Authoritative recovery loader is required');const {loadRecovery}=await import('../apps/web/src/recoveryLoad.js');const previous=globalThis.fetch,reads:{path:string;init?:RequestInit}[]=[];
  globalThis.fetch=async(input,init)=>{reads.push({path:String(input),init});return Response.json(String(input)==='/api/session'?{account:null,rooms:[]}:{recordId:'synthetic',version:1,document:{notes:'published'}});};

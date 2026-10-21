@@ -64,3 +64,5 @@ Object.assign(messages,{COMMENT_MUTED:'评论权限暂受限制，请查看账�
 Object.assign(messages,{EXPORT_TOO_LARGE:'导出结果超过 5000 条，请缩小筛选范围'});
 
 Object.assign(messages,{STALE_GAME:'对局已切换，请重新读取当前局',REMATCH_REQUEST_CONFLICT:'此重开请求已用于其他操作，请重新读取'});
+
+Object.assign(messages,{STALE_DISPLAY:'大屏链接已更新，请重新读取后操作',DISPLAY_UNAVAILABLE:'大屏链接暂不可用'});

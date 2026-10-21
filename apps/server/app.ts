@@ -1,3 +1,4 @@
+import {displayCommandSchema} from '../../packages/contracts/display.js';
 import {gameHeader,fixedArchivePath} from './gameScope.js';
 import {rematchSchema} from '../../packages/contracts/rematch.js';
 import {judgeAppointSchema,judgeDraftSchema,judgeSupplementSchema,judgeReturnSchema} from '../../packages/contracts/judge.js';
@@ -91,6 +92,9 @@ export async function createServer(options:ServerOptions){
   if(req.method==='POST'&&req.path==='/rematch')return next();
   store.withGameScope(authenticated(req),id,header,()=>next());
  });
+ web.get('/api/rooms/:id/display',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.displayStatus(authenticated(req),String(req.params.id)));});
+ web.post('/api/rooms/:id/display',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const result=store.displayCommand(authenticated(req),String(req.params.id),parse(displayCommandSchema,req.body));roomWrite(res,String(req.params.id),result);});
+ web.get('/api/displays/:token',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.readDisplay(String(req.params.token)));});
  web.post('/api/rooms/:id/rematch',(req,res)=>{
   if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');
   const command=parse(rematchSchema,req.body);if(gameHeader(req)!==command.expectedGameId)throw new LobbyError('INVALID_INPUT');
