@@ -18,6 +18,8 @@
 
 文档复查11份、644个本地引用/锚点与差异通过；172项稳定ID逐行核对，仅REMATCH-001状态变更，六份Issue来源字节与原49项确认历史保留。规则、验收期望、实际证据和历史说明分工一致，无需额外清理；实施SHA同批跟进。
 
+实施提交：[0648f6d75868d231cc3bc380c5a1c9ffe105a041](https://github.com/yup005/note_wolf/commit/0648f6d75868d231cc3bc380c5a1c9ffe105a041)，已正常推送work并核对远端一致，草稿[PR #8](https://github.com/yup005/note_wolf/pull/8)已更新并附加。本次SHA跟进仅文档，复查引用/差异，不重跑代码检查；文档跟进的最终远端SHA在交付消息核实。
+
 ## 历史：本局规则速查与新需求同步（2026-10-20）
 
 GUIDE-001 / Issue #3，[范围](WEREWOLF_RULES_SPEC.md#rule-reference-2026-10-20) / [验收](WEREWOLF_TEST_CASES.md#规则速查验收2026-10-20)。确认来源及其余五项见[完整新需求原文](NEW_FEATURE_REQUIREMENTS_2026-10-20.md)；未部署，原166项/49确认保持，新矩阵172项。合成内存库及隔离3100/3101，无真实玩家库或localhost3000操作。
