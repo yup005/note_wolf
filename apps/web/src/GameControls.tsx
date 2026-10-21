@@ -1,13 +1,15 @@
+import {gameApi} from './gameApi';
 import {ManagementHistoryEntry} from './ManagementHistoryEntry';
 import {PublicVoiceControls} from './PublicVoice';
 import {useEffect,useState} from 'react';
 import type {LobbyView} from '../../../packages/contracts/index';
 import type {ControlCommand,FutureVoteDefaults} from '../../../packages/contracts/control';
-import {api,errorText} from './api';
+import {errorText} from './api';
 import {canManageGame,gameFrozen} from './gameAccess';
 export {canManageGame,gameFrozen} from './gameAccess';
 interface Props {view:LobbyView;connected:boolean;onRefresh:()=>Promise<void>}
 export function GameControls({view,connected,onRefresh}:Props){
+ const api=gameApi(view.room.id,view.room.gameId);
  const {room,me}=view,control=room.control;const manager=canManageGame(view),frozen=gameFrozen(view);
  const [open,setOpen]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState('');
  const [confirm,setConfirm]=useState<ControlCommand['action']|null>(null);const [seat,setSeat]=useState('');const [duration,setDuration]=useState(30);const [visibility,setVisibility]=useState<'individual'|'totals'>('individual');const [seconds,setSeconds]=useState(0);

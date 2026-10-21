@@ -1,3 +1,4 @@
+import {gameApi} from './gameApi';
 import {RuleReferenceButton} from './RuleReference';
 import {JudgeControls} from './JudgeControls';
 import {PublicVoiceShortcut} from './PublicVoice';
@@ -9,7 +10,7 @@ import {RecordsButton} from './RecordsPanel';
 import {GameControls,canManageGame,gameFrozen} from './GameControls';
 import {useWakeLock} from './useWakeLock';
 import {useTestRoles} from './useTestRoles';
-import {api,errorText} from './api';
+import {errorText} from './api';
 type WithoutTurn<T> = T extends unknown?Omit<T,'turnId'>:never;
 interface Props {view:LobbyView;connected:boolean;busy:boolean;onHome:()=>void;onAction:(action:string,body?:unknown)=>void;onPublicRefresh:()=>Promise<void>}
 export const nightPhaseLabels={awaiting_host:'等待房主入夜',mechanical_authority:'狼刀权限确认',guard:'守卫行动',wolves:'狼人行动',eyes_closed:'闭眼间隔',witch:'女巫行动',mechanical:'机械狼行动',armor:'装甲狼行动',spiritSeer:'通灵师行动',mixer:'混血儿选择榜样',seer:'预言家行动',hunter:'猎人查看状态',rules_pending:'等待规则裁定',first_night_complete:'首夜操作完成'};
@@ -20,6 +21,7 @@ function defaultAbility(card:NightPrivate):AbilityChoice {
  if(card.canLearn)return 'learn';return card.skills?.find(skill=>skill.available)?.kind??'skip';
 }
 export function NightPanel({view,connected,busy,onHome,onAction,onPublicRefresh}:Props){
+ const api=gameApi(view.room.id,view.room.gameId);
  const frozen=gameFrozen(view);const manager=canManageGame(view);const {room,me}=view;const night=room.night!;const testing=view.testPlayersEnabled&&me.isHost&&room.testRoom;const testRoles=useTestRoles(view);
  const [actor,setActor]=useState(me.id);const [shown,setVisible]=useState(false);const [privateState,setCard]=useState<NightPrivate>();const [loadedActor,setLoadedActor]=useState('');const [target,setTarget]=useState<number|null>(null);
  const [receipt,setReceipt]=useState<{actor:string;night:number;choice:'save'|'poison'|'skip';target:number|null}>();const privacyVersion=useRef(0);

@@ -1,9 +1,11 @@
+import {gameApi} from './gameApi';
 import {useEffect,useRef,useState} from 'react';
 import type {LobbyView,PrivateIdentity} from '../../../packages/contracts/index';
 import {roleLabels} from '../../../packages/contracts/labels';
-import {api,errorText} from './api';
+import {errorText} from './api';
 interface Props {view:LobbyView;busy:boolean;connected:boolean;onAction:(action:string,body?:unknown)=>void;onPublicRefresh:()=>Promise<void>}
 export function TestPlayerPanel({view,busy,connected,onAction,onPublicRefresh}:Props){
+ const api=gameApi(view.room.id,view.room.gameId);
  const {room,me}=view;const actors=room.seats.filter(s=>s.memberId&&(s.isTestPlayer||s.memberId===me.id));
  const [selected,setSelected]=useState(me.id);const [card,setCard]=useState<PrivateIdentity>();const [loading,setLoading]=useState(false);const [error,setError]=useState('');
  const generation=useRef(0);const lock=useRef(false);const seat=actors.find(s=>s.memberId===selected);const phase=room.preparation.phase;

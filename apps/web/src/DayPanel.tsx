@@ -1,10 +1,12 @@
+import {RematchControl} from './RematchControl';
+import {gameApi} from './gameApi';
 import {RuleReferenceButton} from './RuleReference';
 import {DaySelfButton} from './DaySelf';
 import {JudgeControls} from './JudgeControls';
 import {useEffect,useRef,useState} from 'react';
 import type {LobbyView} from '../../../packages/contracts/index';
 import type {DayCommand,DayPrivate,DayPhase} from '../../../packages/contracts/day';
-import {api,errorText} from './api';
+import {errorText} from './api';
 import {RecordsButton} from './RecordsPanel';
 import {GameControls,canManageGame,gameFrozen} from './GameControls';
 import {useWakeLock} from './useWakeLock';
@@ -17,6 +19,7 @@ type WithoutTurn<T> = T extends unknown?Omit<T,'turnId'>:never;
 const phases:Record<DayPhase,string>={awaiting_host:'等待开始白天',sheriff_signup:'警长报名',sheriff_speech:'警上发言',sheriff_withdraw:'退水 / 自爆',vote_setup:'投票设置',voting:'投票中',vote_result:'投票结果',night_announcement:'死亡公告',death_skill:'死亡技能询问',hunter_target:'猎人指定目标',white_wolf_target:'白狼王指定目标',last_words:'遗言',badge_transfer:'警徽移交',day_direction:'白天发言设置',day_speech:'白天发言',free_speech:'自由发言',day_complete:'第一天结束',ended:'游戏结束',rules_pending:'等待规则确认'};
 const voteNames={sheriff:'警长竞选',sheriff_pk:'警长 PK',exile:'放逐',exile_pk:'放逐 PK'};
 export function DayPanel({view,connected,busy,onHome,onAction,onPublicRefresh}:Props){
+ const api=gameApi(view.room.id,view.room.gameId);
  const frozen=gameFrozen(view);const {room,me}=view;const day=room.day!;const testing=view.testPlayersEnabled&&me.isHost&&room.testRoom;
  const testRoles=useTestRoles(view);const [replay,setReplay]=useState(false);const [startSeat,setStartSeat]=useState(0);
  const [actor,setActor]=useState(me.id);const [card,setCard]=useState<DayPrivate>();const [foreground,setForeground]=useState(document.visibilityState==='visible');const [autoFollow,setAutoFollow]=useState(true);
@@ -86,7 +89,8 @@ export function DayPanel({view,connected,busy,onHome,onAction,onPublicRefresh}:P
     {p==='rules_pending'&&<p className="helper">{day.reason}</p>}
    </div>
   </section>
-  {replay&&<ReplayDialog roomId={room.id} onClose={()=>setReplay(false)}/>}
+  <RematchControl view={view} connected={connected} onResult={()=>void onPublicRefresh()}/>
+  {replay&&<ReplayDialog roomId={room.gameId} onClose={()=>setReplay(false)}/>}
   {confirm&&<div className="modal-backdrop"><section className="card modal" role="dialog" aria-modal="true" aria-labelledby="day-confirm"><h2 id="day-confirm">{confirm==='explode'?'确认自爆？':'确认接管警徽移交？'}</h2><p>{confirm==='explode'?'自爆后中断当前白天流程。':'房主按线下决定录入警徽去向。'}</p><button className="primary full" disabled={blocked} onClick={()=>{const action=confirm;setConfirm(null);void send(action==='explode'?{action:'explode',confirmed:true}:{action:'transfer_badge',target,takeover:true},action==='badge');}}>确认</button><button className="text-button full" onClick={()=>setConfirm(null)}>取消</button></section></div>}
  </div>;
 }

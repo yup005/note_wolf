@@ -1,3 +1,4 @@
+import {runtimeRoom} from './roomGames.js';
 import type Database from 'better-sqlite3';
 import {recordDocumentSchema,type OfficialUpdate,type RecordDocument,type RecordOutcome,type RecordOutcomeSource} from '../contracts/records.js';
 
@@ -6,9 +7,10 @@ import {recordDocumentSchema,type OfficialUpdate,type RecordDocument,type Record
 export function officialUpdate(db:Database.Database,roomId:string):OfficialUpdate|undefined{
  // Judge returns retain old checkpoints. Only an explicitly current revision
  // (live manual state or preserved head) can override a frozen publication.
- const preparation=db.prepare('SELECT game_mode FROM preparations WHERE room_id=?').get(roomId) as {game_mode:string}|undefined;
+ const live=runtimeRoom(db,roomId)??'';
+ const preparation=db.prepare('SELECT game_mode FROM preparations WHERE room_id=?').get(live) as {game_mode:string}|undefined;
  if(preparation?.game_mode==='automatic')return undefined;
- const current=db.prepare("SELECT version FROM manual_games WHERE room_id=? AND status='ended' UNION ALL SELECT version FROM record_official_heads WHERE room_id=? LIMIT 1").get(roomId,roomId) as {version:number}|undefined;
+ const current=db.prepare("SELECT version FROM manual_games WHERE room_id=? AND status='ended' UNION ALL SELECT version FROM record_official_heads WHERE room_id=? LIMIT 1").get(live,roomId) as {version:number}|undefined;
  if(!current)return undefined;
  const rows=db.prepare(`SELECT r.version,r.at,r.document,r.outcome,COALESCE(s.source,'computed') AS source
   FROM manual_revisions r LEFT JOIN manual_revision_sources s ON s.room_id=r.room_id AND s.version=r.version

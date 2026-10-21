@@ -17,8 +17,9 @@ export function listenRoomExpiration(socket:{on:(event:string,listener:(input:un
 export function expireRoomNavigation<T extends {room:{id:string}}>(state:{view:T|undefined;previous:readonly T[];rememberedRoom:string|null},roomId:string){
  return {view:state.view?.room.id===roomId?undefined:state.view,previous:state.previous.filter(room=>room.room.id!==roomId),rememberedRoom:state.rememberedRoom===roomId?null:state.rememberedRoom,wasCurrent:state.view?.room.id===roomId};
 }
-export function acceptRoomActionView<T extends {room:{id:string;revision:number};me:unknown}>(current:T|undefined,next:T):T|undefined{
+export function acceptRoomActionView<T extends {room:{id:string;revision:number;gameId?:string};me:unknown}>(current:T|undefined,next:T):T|undefined{
  if(!current||current.room.id!==next.room.id)return current;
+ if(current.room.gameId!==next.room.gameId&&current.room.revision>next.room.revision)return current;
  return current.room.revision>next.room.revision?{...current,me:next.me}:next;
 }
 export function useRoom(roomId:string|undefined,onSnapshot:(room:RoomSnapshot)=>void,sessionRevision=0,onExpired?:(event:RoomExpiration)=>void){

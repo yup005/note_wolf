@@ -1,3 +1,4 @@
+import {RoomGamesStore} from '../packages/storage/roomGames.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
@@ -38,15 +39,16 @@ test('manual victory uses actual mechanical and armor roles rather than the stan
 });
 test('physical identity stays concealed in initial HTML for a custom board',()=>{
  // The selector is revealed through an authenticated request; its role list must be derived before rendering.
- const markup=renderToStaticMarkup(createElement(IdentityPanel,{roomId:'synthetic',phase:'identity_collection',dealMethod:'physical',connected:true,onPublicRefresh:async()=>{},roleCounts:{mechanicalWolf:1,villager:2,guard:1}}));
+ const markup=renderToStaticMarkup(createElement(IdentityPanel,{roomId:'synthetic',gameId:'synthetic',phase:'identity_collection',dealMethod:'physical',connected:true,onPublicRefresh:async()=>{},roleCounts:{mechanicalWolf:1,villager:2,guard:1}}));
  assert.match(markup,/你的身份/); // SSR remains concealed; no actual role or option may be revealed by initial HTML.
  assert.doesNotMatch(markup,/机械狼|守卫|<option/);
 });
 test('record archive captures the configured roster size and rejects missing identities',()=>{
  const db=new Database(':memory:');try{
  db.exec('CREATE TABLE rooms(id TEXT PRIMARY KEY,code TEXT); CREATE TABLE preparations(room_id TEXT,phase TEXT,game_mode TEXT); CREATE TABLE members(id TEXT,room_id TEXT,session_hash TEXT,nickname TEXT,is_host INTEGER,seat INTEGER); CREATE TABLE identities(room_id TEXT,member_id TEXT,role TEXT); CREATE TABLE room_boards(room_id TEXT,id TEXT,name TEXT,composition TEXT);');
+ const games=new RoomGamesStore(db,()=>1000);
  const store=new RecordsStore(db,{owner:()=> 'owner1'} as unknown as AuthStore,()=>1000,()=>{throw Error('not used');});
- db.prepare('INSERT INTO rooms VALUES (?,?)').run('custom','1234');db.prepare('INSERT INTO preparations VALUES (?,?,?)').run('custom','started','automatic');db.prepare('INSERT INTO room_boards VALUES (?,?,?,?)').run('custom','custom-13','Synthetic 13',JSON.stringify({seatCount:13,roles:{wolf:1,villager:12}}));
+ db.prepare('INSERT INTO rooms VALUES (?,?)').run('custom','1234');games.initialize('custom');db.prepare('INSERT INTO preparations VALUES (?,?,?)').run('custom','started','automatic');db.prepare('INSERT INTO room_boards VALUES (?,?,?,?)').run('custom','custom-13','Synthetic 13',JSON.stringify({seatCount:13,roles:{wolf:1,villager:12}}));
  for(let i=1;i<=13;i++){db.prepare('INSERT INTO members VALUES (?,?,?,?,?,?)').run('member'+i,'custom','owner'+i,'玩家'+i,i===1?1:0,i);db.prepare('INSERT INTO identities VALUES (?,?,?)').run('custom','member'+i,i===1?'wolf':'villager');}
  assert.equal(JSON.parse(store.capture('custom').roles).length,13);
  db.prepare('INSERT INTO record_drafts(id,room_id,owner,author,official,draft) VALUES (?,?,?,?,?,?)').run('draft','custom','owner1','房主',1,JSON.stringify(emptyRecord()));

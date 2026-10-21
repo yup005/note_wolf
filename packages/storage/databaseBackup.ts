@@ -36,6 +36,12 @@ async function privateParent(path:string){
 async function sha256(path:string){const hash=createHash('sha256');for await(const chunk of createReadStream(path))hash.update(chunk);return hash.digest('hex');}
 function application(db:Database.Database){
  const names=new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {name:string}[]).map(row=>row.name));
+ if(names.has('room_games')){
+  if(!names.has('room_game_heads')||!names.has('rematch_receipts'))fail('INVALID_DATABASE');
+  if(db.prepare('SELECT 1 FROM room_game_heads h LEFT JOIN room_games g ON g.id=h.game_id WHERE g.id IS NULL OR g.room_id<>h.room_id LIMIT 1').get())fail('INVALID_DATABASE');
+  if(db.prepare('SELECT 1 FROM rooms r LEFT JOIN room_game_heads h ON h.room_id=r.id WHERE h.room_id IS NULL LIMIT 1').get())fail('INVALID_DATABASE');
+  if(db.prepare('SELECT 1 FROM rematch_receipts r LEFT JOIN room_games g ON g.id=r.result_id WHERE g.id IS NULL OR g.room_id<>r.room_id LIMIT 1').get())fail('INVALID_DATABASE');
+ }
  const quoted=(name:string)=>'"'+name.replaceAll('"','""')+'"';
  for(const [name,shape] of Object.entries(coreShapes)){
   if(!names.has(name))fail('INVALID_DATABASE');

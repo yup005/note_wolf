@@ -1,12 +1,14 @@
+import {gameApi} from './gameApi';
 import {useEffect,useRef,useState} from 'react';
 import type {LobbyView} from '../../../packages/contracts/index';
 import type {DaySelf} from '../../../packages/contracts/day';
 import {boardRoleLabels} from '../../../packages/contracts/board';
-import {api,ApiError,errorText} from './api';
+import {ApiError,errorText} from './api';
 import {roleRuleNotes,copiedRoleNotes} from '../../../packages/domain/ruleReference';
 import './ruleReference.css';
 const skillLabels:Record<DaySelf['skills'][number]['kind'],string>={antidote:'解药',poison:'毒药',guard:'守护',inspect:'查验',shot:'开枪','extra-knife':'独立狼刀','explode-take':'自爆带人'};
 export default function DaySelfDialog({view,onClose,onRefresh}:{view:LobbyView;onClose:()=>void;onRefresh:()=>Promise<void>}){
+ const api=gameApi(view.room.id,view.room.gameId);
  const [card,setCard]=useState<DaySelf>(),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const dialog=useRef<HTMLElement>(null),alive=useRef(false),sequence=useRef(0),{room,me}=view;
  async function load(){const seq=++sequence.current;setCard(undefined);setError('');setBusy(true);try{const result=await api<DaySelf>(`/api/rooms/${room.id}/day/self`);if(!alive.current||sequence.current!==seq||document.visibilityState!=='visible')return;if(result.turnId!==room.day!.turnId||result.seat!==me.seat){onClose();void onRefresh().catch(()=>{});return;}setCard(result);}catch(e){if(!alive.current||sequence.current!==seq)return;setError(errorText(e));if(e instanceof ApiError&&[401,403,404,409].includes(e.status))void onRefresh().catch(()=>{});}finally{if(alive.current&&sequence.current===seq)setBusy(false);}}
