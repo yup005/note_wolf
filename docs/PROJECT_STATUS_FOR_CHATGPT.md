@@ -1,6 +1,24 @@
 # 笔记狼人杀：当前功能与下一步讨论材料
 
-## 当前：本人已结束对局战绩（2026-10-21，STATS-001）
+## 当前：独立合成新手教学（2026-10-21，TUTORIAL-001）
+
+起始work / 48c99ca77013cf0708c32ce8359ccd9998ccf504干净，显式fetch main/work无待集成增量，Owner Issue #7原文/评论无新内容。连续授权下顺序完成[设计](superpowers/specs/2026-10-21-tutorial-design.md)、[计划](superpowers/plans/2026-10-21-tutorial.md)和本地教学，未逐阶段等待“继续”；[现行规则](WEREWOLF_RULES_SPEC.md#tutorial-2026-10-21)与[期望](WEREWOLF_TEST_CASES.md#tutorial-tests-2026-10-21)、[实际报告](TEST_REPORT.md)各有归属。
+
+普通游客首页体验标准12人七步：选座/合成预言家确认/模拟查验/发言/投票，可上一步、退出/重来。无真实业务数据参数、房间/session/Socket/管理员接口、成员/记录或持久写入；原会话/资格/昵称保持。加载外壳始终可退出，模块失败局部提示，关闭/后台后迟到不重开；根恢复清除旧教学。合法自验/自投/弃票沿用现有标准规则，90秒仅示例，机械/装甲教学后续。
+
+最终unit652 pass /0 fail /0 skip（160.1s），typecheck/build通过，主包551.23KB（gzip168.78KB），按需教学内容7.56KB（gzip2.78KB）。最终完整开发Chromium144 pass /0 fail /0 skip（15.4m），含5项教学及修正后的迟到身份回归；独立生产PWA7/7（1.1m）。教学专项5/5（20.9s）及其他定向重复不累加到完整总数；仅合成隔离环境，430px截图目视检查。
+
+唯一完整只读审查1项Important（控件移除/禁用后焦点BODY导致Escape失效），主代理正式浏览器RED→GREEN修正，五种操作后立即断言，最终教学5/5（20.9s）；无Critical或另列Minor，未复验审查。中间失败/候选中断详见[报告](TEST_REPORT.md)，不重复堆叠为完整结果。
+
+随后完整144项候选113通过/1失败/1中断/29未跑（11.4m）：旧recovery迟到身份夹具在启动session完成前POST建房，trace证明GET session200但POST rooms401，随后undefined.id即失败，未进入隐私断言。补等待真实首页会话就绪并显式检查建房响应；原隐藏/迟到私密断言不改，独立3102专项1/1（9.7s）通过，重新跑完整144项。仅E2E夹具变更，最终产品代码与此前652unit/type/build/PWA通过版本相同；类型检查另重跑。
+
+本批复查11份文档、773个本地引用/锚点与差异通过；172稳定ID逐行仅TUTORIAL-001变化，原166项、六份Issue原文字节与原决策后缀/49确认保留。现行规则、预期、实际与历史职责分开，无需删减历史或裁定玩法。发布前再核对。
+
+六项导入需求均有本地实现，PWA/实体设备、生产配置和未定玩法继续保留原边界；下一步修复已独立复现的既有首页可选模块加载失败白屏；本次教学自身模块503已局部处理，不把两个范围混称同一审查。无部署合并、无真实玩家操作，原166项/六份Issue原文/49历史确认不变。
+
+实施SHA同批文档跟进，核实推送后记录结果。
+
+## 历史：本人已结束对局战绩（2026-10-21，STATS-001）
 
 起始work / edfcc937cccc08b2cdc9ecb83165ec8357b47267干净，显式fetch main/work无待集成增量，Owner Issue #6及评论无新增。[完整规则](WEREWOLF_RULES_SPEC.md#statistics-2026-10-21)、[设计](superpowers/specs/2026-10-21-statistics-design.md)、[计划](superpowers/plans/2026-10-21-statistics.md)与[验收期望](WEREWOLF_TEST_CASES.md#statistics-tests-2026-10-21)分别维护。仅合成内存/临时库与隔离3100/3101/3102，不使用真实玩家数据，不部署或合并。
 

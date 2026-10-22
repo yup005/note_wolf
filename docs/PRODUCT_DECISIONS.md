@@ -1,5 +1,13 @@
 # 笔记狼人杀 — 产品决定与对话同步记录
 
+<a id="tutorial-delivery-2026-10-21"></a>
+
+## 连续开发：独立合成教学（2026-10-21，TUTORIAL-001）
+
+沿用Owner连续自主授权和[Issue #7原文](NEW_FEATURE_REQUIREMENTS_2026-10-20.md)，不逐阶段等待“继续”。选择完全本地、无真实数据参数的七步教学；不用服务器练习房或管理员测试权限，普通游客可体验标准12人流程，机械/装甲教学留后续。现有标准预言家合法自验、合法本人投票和明确弃票保持，不创设新规则。
+
+动态模块局部失败提示、关闭/后台代际、真实成员/输入/会话隔离及确认后的焦点见[完整边界](WEREWOLF_RULES_SPEC.md#tutorial-2026-10-21)。[设计](superpowers/specs/2026-10-21-tutorial-design.md)、[计划](superpowers/plans/2026-10-21-tutorial.md)、[预期](WEREWOLF_TEST_CASES.md#tutorial-tests-2026-10-21)与[实际](TEST_REPORT.md)分别维护。六项新需求均有本地代码，PWA/实机与生产验收不提升，原49确认/历史保留；不合并部署。
+
 <a id="statistics-delivery-2026-10-21"></a>
 
 ## 连续开发：本人战绩（2026-10-21，STATS-001）
