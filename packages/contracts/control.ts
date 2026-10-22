@@ -1,4 +1,5 @@
 import {z} from 'zod';
+export interface FutureVoteSettings {version:number;seconds:number;visibility:'individual'|'totals'}
 export interface GameControl {
  status:'running'|'paused'|'resuming';version:number;remainingMs:number|null;resumeAt:number|null;serverNow:number;tempSeat:number|null;reconnecting:boolean;
  voteDefaults?:{seconds:number;visibility:'individual'|'totals'};
