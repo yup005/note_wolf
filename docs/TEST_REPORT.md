@@ -14,7 +14,7 @@
 
 仅增加首页错误隔离，不新增依赖/接口/存储/授权，保留原根认证/后台/离线恢复，不代表所有懒加载入口均已处理。既有500KB/Zod提示保留；真实iPhone Safari/VoiceOver、系统后台快照、锁屏弱网和物理多人仍待验，未合并或部署。
 
-实施SHA同批文档跟进，正常推送核实后记录结果。
+实施提交：[722b920e5e0ebf56810ca5d68f1de064d884ae75](https://github.com/yup005/note_wolf/commit/722b920e5e0ebf56810ca5d68f1de064d884ae75)，已正常推送work并核对远端一致，草稿[PR #8](https://github.com/yup005/note_wolf/pull/8)已更新。此SHA跟进仅文档，复核引用/差异，代码与浏览器检查未重跑；最终文档SHA在交付消息核实。
 
 ## 历史：独立合成新手教学（2026-10-21，TUTORIAL-001）
 

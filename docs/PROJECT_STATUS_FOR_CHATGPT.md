@@ -14,7 +14,7 @@
 
 不改172需求行状态、原166项、六份Issue原文字节与49历史确认，不新增依赖/服务端/存储，不操作真实玩家、合并或部署。
 
-实施SHA同批文档跟进，正常推送核实后记录结果。
+实施提交：[722b920e5e0ebf56810ca5d68f1de064d884ae75](https://github.com/yup005/note_wolf/commit/722b920e5e0ebf56810ca5d68f1de064d884ae75)，已正常推送work并核对远端一致，草稿[PR #8](https://github.com/yup005/note_wolf/pull/8)已更新。此SHA跟进仅文档，复核引用/差异，代码与浏览器检查未重跑；最终文档SHA在交付消息核实。
 
 ## 历史：独立合成新手教学（2026-10-21，TUTORIAL-001）
 
