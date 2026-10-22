@@ -1,3 +1,4 @@
+import {OptionalPanelBoundary} from './OptionalPanelBoundary';
 import {TutorialEntry} from './TutorialEntry';
 import {GameRecordPanel} from './GameRecordPanel';
 import {DisplayControls} from './DisplayControls';
@@ -92,9 +93,9 @@ export function App({initialSession,onSessionChange}:{initialSession:AccountSess
     </div>
     <TutorialEntry/>
     {previous.length>0&&<section className="recent"><h2>{account?'我的房间':'这台设备加入的房间'}</h2><div>{previous.map(r=><button className="recent-room" key={r.room.id} onClick={()=>void run(()=>api<LobbyView>(`/api/rooms/${r.room.id}`))}><strong>{r.room.code}</strong><span>{r.room.board.composition.seatCount} 人 · {r.room.board.name}</span><span>返回 →</span></button>)}</div></section>}
-    <Suspense fallback={<p role="status">正在读取…</p>}><MyRecordsPanel key={`records:${sessionRevision}`} rooms={previous} vip={!!account?.vip?.active} busy={busy} onOpenRoom={openRecordRoom} onOpenGame={setRecordGame}/></Suspense>
-    {account&&<Suspense fallback={null}><StatisticsPanel key={`statistics:${account.id}:${sessionRevision}`} accountId={account.id}/></Suspense>}
-    <Suspense fallback={<section className="card favorites-panel" aria-label="我的收藏"><h2>我的收藏</h2><p className="helper" role="status">正在读取…</p></section>}><FavoritesPanel key={`favorites:${sessionRevision}`}/></Suspense>
+    <OptionalPanelBoundary name="我的记录"><Suspense fallback={<p role="status">正在读取…</p>}><MyRecordsPanel key={`records:${sessionRevision}`} rooms={previous} vip={!!account?.vip?.active} busy={busy} onOpenRoom={openRecordRoom} onOpenGame={setRecordGame}/></Suspense></OptionalPanelBoundary>
+    {account&&<OptionalPanelBoundary name="我的战绩"><Suspense fallback={null}><StatisticsPanel key={`statistics:${account.id}:${sessionRevision}`} accountId={account.id}/></Suspense></OptionalPanelBoundary>}
+    <OptionalPanelBoundary name="我的收藏"><Suspense fallback={<section className="card favorites-panel" aria-label="我的收藏"><h2>我的收藏</h2><p className="helper" role="status">正在读取…</p></section>}><FavoritesPanel key={`favorites:${sessionRevision}`}/></Suspense></OptionalPanelBoundary>
     {account&&<MySharesPanel key={`shares:${sessionRevision}`}/>}
    </>}
   </main>
