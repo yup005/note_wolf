@@ -18,7 +18,7 @@
 
 既有500KB主包/Zod提示保留，无新增依赖、服务端/存储/权限变更。真实iPhone Safari/VoiceOver、系统后台快照/锁屏弱网、实际语音与物理多人独立待验；PWA状态不提升，未合并/部署、未改变生产持久化/备份证据。
 
-实施SHA同批文档跟进，核实推送后记录结果。
+实施提交：[86a23550ad2ff958bc9c0d61f1b09b521c587e8a](https://github.com/yup005/note_wolf/commit/86a23550ad2ff958bc9c0d61f1b09b521c587e8a)，已正常推送work并核对远端一致，草稿[PR #8](https://github.com/yup005/note_wolf/pull/8)已更新。此SHA跟进仅文档，引用/差异复核，代码与浏览器检查未重跑；最终文档SHA在交付消息核实。
 
 ## 历史：本人已结束对局战绩（2026-10-21，STATS-001）
 
