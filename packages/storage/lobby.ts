@@ -342,6 +342,7 @@ export class LobbyStore {
  renameFavorite(token:string,kind:FavoriteKind,id:string,input:FavoriteName){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.rename(token,kind,id,input);}
  recordContext(token:string,id:string){return this.records.context(token,id);}
  myRecords(token:string){return this.records.myRecords(token);}
+ statistics(token:string){return this.records.statistics(token);}
  deleteRecord(token:string,id:string,input:import('../contracts/records.js').RecordDelete){return this.records.delete(token,id,input);}
  createRecord(token:string,id:string,input:import('../contracts/records.js').RecordCreate){return this.records.create(token,id,input);}
  recordsList(token:string,id:string){return this.records.list(token,id);}

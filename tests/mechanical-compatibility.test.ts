@@ -51,6 +51,7 @@ test('record archive captures the configured roster size and rejects missing ide
  db.prepare('INSERT INTO rooms VALUES (?,?)').run('custom','1234');games.initialize('custom');db.prepare('INSERT INTO preparations VALUES (?,?,?)').run('custom','started','automatic');db.prepare('INSERT INTO room_boards VALUES (?,?,?,?)').run('custom','custom-13','Synthetic 13',JSON.stringify({seatCount:13,roles:{wolf:1,villager:12}}));
  for(let i=1;i<=13;i++){db.prepare('INSERT INTO members VALUES (?,?,?,?,?,?)').run('member'+i,'custom','owner'+i,'玩家'+i,i===1?1:0,i);db.prepare('INSERT INTO identities VALUES (?,?,?)').run('custom','member'+i,i===1?'wolf':'villager');}
  assert.equal(JSON.parse(store.capture('custom').roles).length,13);
+ assert.equal((db.prepare('SELECT COUNT(*) AS n FROM game_statistics_eligibility').get() as {n:number}).n,0); // No confirmation evidence: no statistics admission.
  db.prepare('INSERT INTO record_drafts(id,room_id,owner,author,official,draft) VALUES (?,?,?,?,?,?)').run('draft','custom','owner1','房主',1,JSON.stringify(emptyRecord()));
  assert.equal(store.save('token','custom',0,{...emptyRecord(),deaths:[{seat:13,round:1,period:'night',cause:'unrecorded'}]}).revision,1);
  assert.throws(()=>store.save('token','custom',1,{...emptyRecord(),badges:[{seat:14,round:1}]}),/INVALID_INPUT/);

@@ -1,4 +1,6 @@
 import {createBoardConfiguration} from '../domain/boardConfig.js';
+import {ParticipationStore} from './participation.js';
+import {aggregateStatistics,type StatisticsEvidence} from '../domain/statistics.js';
 import {runtimeRoom} from './roomGames.js';
 import type {GameRecordContext} from '../contracts/rematch.js';
 import type Database from 'better-sqlite3';
@@ -14,10 +16,26 @@ import type {GameReplay} from '../contracts/game.js';
 import {sessionHash} from './auth.js';
 import {officialUpdate} from './officialUpdate.js';
 import type {AuthStore} from './auth.js';
-interface Archive {room_id:string;code:string;roles:string;participants:string;host_owner:string;ended:number;victory_facts:string|null;board_metadata:string|null;idiot_policy:IdiotPolicy|null;record_only_ended:number}
+interface Archive {room_id:string;code:string;roles:string;participants:string;host_owner:string;ended:number;victory_facts:string|null;board_metadata:string|null;idiot_policy:IdiotPolicy|null;record_only_ended:number;automatic_winner:'wolves'|'good'|null}
 interface DraftRow {id:string;room_id:string;owner:string;author:string;official:number;draft:string;revision:number;published_version:number|null;withdrawn:number;published_at:number;deleted:number}
 interface ManualRow {room_id:string;status:ManualPublic['status'];version:number;official:string;winner:'wolves'|'good'|null;request:string|null}
 export class RecordsStore {
+ private participation:ParticipationStore;
+ statistics(token:string){return this.db.transaction(()=>{
+  const account=this.auth.requireAccount(token),owner='account:'+account.id,evidence:StatisticsEvidence[]=[];
+  for(const id of this.participation.games(owner)){
+   if(!this.ended(id,false))continue;
+   const identity=this.participation.identity(id,owner);if(!identity)continue;
+   if(this.db.prepare('SELECT 1 FROM record_deletion_blocks WHERE room_id=? AND owner=?').get(id,owner)&&!this.db.prepare('SELECT 1 FROM record_drafts WHERE room_id=? AND owner=? AND deleted=0').get(id,owner))continue;
+   const archive=this.capture(id,false);let winner:'wolves'|'good'|null=null,camp:'wolves'|'good'|null=identity.role==='mixer'?null:isWolfRole(identity.role)?'wolves':'good';
+   try{if(!archive.record_only_ended)winner=this.automaticWinner(id,archive)??this.outcome(id,archive,this.officialDocument(id,false),false);if(identity.role==='mixer')camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.modelCamp??null;}
+   catch(e){if(!(e instanceof SyntaxError||e instanceof LobbyError&&['NOT_FOUND','INVALID_VICTORY_STATE'].includes(e.code)))throw e;winner=null;}
+   let board={key:'unknown-board',name:'未知板子'};
+   try{const stored=archive.board_metadata??(this.db.prepare('SELECT document FROM game_board_archives WHERE game_id=?').get(id) as {document:string}|undefined)?.document,parsed=stored?JSON.parse(stored):null;if(parsed&&typeof parsed.id==='string'&&parsed.id&&typeof parsed.name==='string'&&parsed.name.trim()&&parsed.name.length<=60)board={key:parsed.id,name:parsed.name};}catch{/* Unknown legacy public metadata stays unknown. */}
+   evidence.push({gameId:id,ended:true,ordinary:true,role:identity.role,camp,winner,board});
+  }
+  return aggregateStatistics(evidence);
+ }).deferred();}
  archivedReplay(token:string,id:string):GameReplay{
   this.participant(token,id);if(!this.ended(id))throw new LobbyError('PHASE_LOCKED',409);
   const r=this.db.prepare('SELECT document FROM game_replay_archives WHERE game_id=?').get(id) as {document:string}|undefined;
@@ -62,12 +80,16 @@ export class RecordsStore {
   if(!(db.prepare('PRAGMA table_info(record_rooms)').all() as {name:string}[]).some(c=>c.name==='board_metadata'))db.exec('ALTER TABLE record_rooms ADD COLUMN board_metadata TEXT');
   if(!(db.prepare('PRAGMA table_info(record_rooms)').all() as {name:string}[]).some(c=>c.name==='idiot_policy'))db.exec('ALTER TABLE record_rooms ADD COLUMN idiot_policy TEXT');
   if(!(db.prepare('PRAGMA table_info(record_rooms)').all() as {name:string}[]).some(c=>c.name==='record_only_ended'))db.exec('ALTER TABLE record_rooms ADD COLUMN record_only_ended INTEGER NOT NULL DEFAULT 0');
+  if(!(db.prepare('PRAGMA table_info(record_rooms)').all() as {name:string}[]).some(c=>c.name==='automatic_winner'))db.exec('ALTER TABLE record_rooms ADD COLUMN automatic_winner TEXT');
+  this.participation=new ParticipationStore(db);
   db.exec("UPDATE record_rooms SET idiot_policy=(SELECT json_extract(composition,'$.idiotPolicy') FROM room_boards b WHERE b.room_id=record_rooms.room_id) WHERE idiot_policy IS NULL AND EXISTS (SELECT 1 FROM room_game_heads h WHERE h.room_id=record_rooms.room_id AND h.game_id=record_rooms.room_id);");
   db.exec("UPDATE record_rooms SET board_metadata=(SELECT json_object('id',id,'name',name) FROM room_boards b WHERE b.room_id=record_rooms.room_id) WHERE board_metadata IS NULL AND EXISTS (SELECT 1 FROM room_game_heads h WHERE h.room_id=record_rooms.room_id AND h.game_id=record_rooms.room_id);");
   db.transaction(()=>{for(const r of db.prepare("SELECT room_id FROM preparations WHERE phase='started' AND game_mode='manual'").all() as {room_id:string}[])this.start((this.db.prepare('SELECT game_id FROM room_game_heads WHERE room_id=?').get(r.room_id) as {game_id:string}).game_id);}).immediate();
+  this.participation.backfillLive();
  }
- capture(id:string):Archive {
-  const archived=this.db.prepare('SELECT * FROM record_rooms WHERE room_id=?').get(id) as Archive|undefined;if(archived){this.preserveBoard(id);return archived;}
+ capture(id:string,persist=true):Archive {
+  const archived=this.db.prepare('SELECT * FROM record_rooms WHERE room_id=?').get(id) as Archive|undefined;if(archived){if(persist)this.preserveBoard(id);return archived;}
+  if(!persist)throw new LobbyError('NOT_FOUND',404);
   const prep=this.db.prepare('SELECT phase FROM preparations WHERE room_id=?').get(this.live(id)) as {phase:string}|undefined;if(prep?.phase!=='started')throw new LobbyError('PHASE_LOCKED',409);
   const members=this.db.prepare('SELECT m.session_hash AS owner,m.nickname,m.is_host,m.seat,i.role FROM members m JOIN identities i ON i.room_id=m.room_id AND i.member_id=m.id WHERE m.room_id=? ORDER BY m.seat').all(this.live(id)) as {owner:string;nickname:string;is_host:number;seat:number;role:Role}[];
   const composition=JSON.parse((this.db.prepare('SELECT composition FROM room_boards WHERE room_id=?').get(this.live(id)) as {composition:string}).composition) as BoardComposition;
@@ -77,6 +99,7 @@ export class RecordsStore {
   this.db.prepare('INSERT INTO record_rooms(room_id,code,roles,participants,host_owner,ended) VALUES (?,?,?,?,?,0)').run(id,room.code,JSON.stringify(members.map(({seat,role})=>({seat,role}))),JSON.stringify(members.map(m=>m.owner)),members.find(m=>m.is_host)!.owner);
   this.db.prepare("UPDATE record_rooms SET board_metadata=(SELECT json_object('id',id,'name',name) FROM room_boards WHERE room_id=?) WHERE room_id=?").run(this.live(id),id);
   this.db.prepare('UPDATE record_rooms SET idiot_policy=? WHERE room_id=?').run(composition.idiotPolicy??null,id);
+  this.participation.capture(id);
   return this.db.prepare('SELECT * FROM record_rooms WHERE room_id=?').get(id) as Archive;
  }
  // Capture authorized record evidence before runtime foreign-key cascades remove it.
@@ -87,6 +110,8 @@ export class RecordsStore {
   const ended=this.ended(id),document=this.officialDocument(id);
   const manual=this.db.prepare("SELECT version FROM manual_games WHERE room_id=? AND status='ended'").get(this.live(id)) as {version:number}|undefined;
   this.preserveOfficial(id,document,manual?.version);
+  const winner=ended?this.automaticWinner(id,this.capture(id)):null;
+  if(winner)this.db.prepare('UPDATE record_rooms SET automatic_winner=? WHERE room_id=?').run(winner,id);
   if(ended)this.db.prepare('UPDATE record_rooms SET ended=1 WHERE room_id=?').run(id);
  }
  private preserveOfficial(id:string,document:RecordDocument,version?:number):void{
@@ -94,11 +119,21 @@ export class RecordsStore {
   if(version===undefined)this.db.prepare('DELETE FROM record_official_heads WHERE room_id=?').run(id);
   else this.db.prepare('INSERT INTO record_official_heads VALUES (?,?) ON CONFLICT(room_id) DO UPDATE SET version=excluded.version').run(id,version);
  }
+ // Engine terminal results remain authoritative until an official manual revision exists.
+ private automaticWinner(id:string,archive:Archive):'wolves'|'good'|null{
+  if(this.db.prepare('SELECT 1 FROM manual_games WHERE room_id=?').get(this.live(id))||this.db.prepare('SELECT 1 FROM manual_revisions WHERE room_id=?').get(id))return null;
+  const live=this.db.prepare('SELECT state FROM day_games WHERE room_id=?').get(this.live(id)) as {state:string}|undefined;
+  if(live){const day=JSON.parse(live.state) as DayState;if(day.phase==='ended'&&(day.winner==='good'||day.winner==='wolves'))return day.winner;}
+  if(archive.automatic_winner==='good'||archive.automatic_winner==='wolves')return archive.automatic_winner;
+  const replay=this.db.prepare('SELECT document FROM game_replay_archives WHERE game_id=?').get(id) as {document:string}|undefined;
+  if(replay){const winner=JSON.parse(replay.document).winner;if(winner==='good'||winner==='wolves')return winner;}
+  return null;
+ }
  private preservedDocument(id:string):RecordDocument|null{
   const row=this.db.prepare('SELECT document FROM record_official_snapshots WHERE room_id=?').get(id) as {document:string}|undefined;
   return row?JSON.parse(row.document):null;
  }
- private victoryFacts(id:string,archive:Archive):ManualVictoryFact[]{
+ private victoryFacts(id:string,archive:Archive,persist=true):ManualVictoryFact[]{
   const rows=this.db.prepare('SELECT state FROM day_games WHERE room_id=? UNION ALL SELECT state FROM night_games WHERE room_id=?').all(this.live(id),this.live(id)) as {state:string}[];
   const states=rows.map(r=>JSON.parse(r.state) as {engine?:EngineState;extraNightSeat?:number|null}).filter(s=>s.engine).sort((a,b)=>b.engine!.night-a.engine!.night);
   const latest=states[0],engine=latest?.engine;
@@ -108,14 +143,14 @@ export class RecordsStore {
   // Successful learning is frozen; a dead unlearned actor cannot learn later.
   // Alive unlearned actors can learn offline after switching to manual.
   const facts=engine.players.map(p=>({seat:p.seat,learnedRole:p.abilities.mimickedRole,learningKnown:!!p.learning||!p.alive,extraNightPending:latest.extraNightSeat!==undefined&&latest.extraNightSeat!==null,...(p.model?{modelSeat:p.model.seat,modelCamp:p.model.camp}:{})}));
-  this.db.prepare('UPDATE record_rooms SET victory_facts=? WHERE room_id=?').run(JSON.stringify(facts),id);return facts;
+  if(persist)this.db.prepare('UPDATE record_rooms SET victory_facts=? WHERE room_id=?').run(JSON.stringify(facts),id);return facts;
  }
  private adjudicated(id:string){return this.db.prepare('SELECT winner FROM manual_adjudications WHERE room_id=?').get(id) as {winner:'wolves'|'good'}|undefined;}
  private outcomeSource(id:string):RecordOutcomeSource{if(this.capture(id).record_only_ended)return 'record-only';return this.adjudicated(id)?'host-adjudicated' as const:'computed' as const;}
- private decision(id:string,archive:Archive,document:RecordDocument){
-  return manualDecision(JSON.parse(archive.roles),document.deaths.map(d=>d.seat),this.victoryFacts(id,archive),{idiotPolicy:archive.idiot_policy??undefined,flippedIdiots:document.exiles.flatMap(e=>e.seat===null?[]:[e.seat])});
+ private decision(id:string,archive:Archive,document:RecordDocument,persist=true){
+  return manualDecision(JSON.parse(archive.roles),document.deaths.map(d=>d.seat),this.victoryFacts(id,archive,persist),{idiotPolicy:archive.idiot_policy??undefined,flippedIdiots:document.exiles.flatMap(e=>e.seat===null?[]:[e.seat])});
  }
- private outcome(id:string,archive:Archive,document:RecordDocument){return this.adjudicated(id)?.winner??this.decision(id,archive,document).outcome;}
+ private outcome(id:string,archive:Archive,document:RecordDocument,persist=true){return this.adjudicated(id)?.winner??this.decision(id,archive,document,persist).outcome;}
  private validateRoster(document:RecordDocument,archive:Archive){
   const seats=new Set((JSON.parse(archive.roles) as {seat:number}[]).map(p=>p.seat));
   const referenced=[...document.deaths.map(d=>d.seat),...document.badges.map(d=>d.seat),...document.exiles.map(d=>d.seat),...document.votes.flatMap(v=>v.ballots.flatMap(b=>[b.voter,b.target]))];
@@ -125,7 +160,7 @@ export class RecordsStore {
  private canRecord(token:string,a:Archive){return a.host_owner===this.auth.owner(token)||this.auth.account(token)?.vip?.active===true;}
  private host(token:string,id:string){const p=this.participant(token,id);if(p.a.host_owner!==p.owner)throw new LobbyError('HOST_ONLY',403);return p;}
  private manual(id:string){const r=this.db.prepare('SELECT * FROM manual_games WHERE room_id=?').get(this.live(id)) as ManualRow|undefined;if(!r)throw new LobbyError('MANUAL_MODE_REQUIRED',409);return r;}
- private ended(id:string){const archive=this.capture(id);if(archive.ended)return true;const manual=this.db.prepare('SELECT status FROM manual_games WHERE room_id=?').get(this.live(id)) as {status:string}|undefined;const day=this.db.prepare('SELECT state FROM day_games WHERE room_id=?').get(this.live(id)) as {state:string}|undefined;return manual?manual.status==='ended':!!day&&JSON.parse(day.state).phase==='ended';}
+ private ended(id:string,persist=true){const archive=this.capture(id,persist);if(archive.ended)return true;const manual=this.db.prepare('SELECT status FROM manual_games WHERE room_id=?').get(this.live(id)) as {status:string}|undefined;const day=this.db.prepare('SELECT state FROM day_games WHERE room_id=?').get(this.live(id)) as {state:string}|undefined;return manual?manual.status==='ended':!!day&&JSON.parse(day.state).phase==='ended';}
  private row(token:string,id:string,write=false){const {a,owner}=this.participant(token,id);if(write&&!this.canRecord(token,a))throw new LobbyError('RECORDER_ONLY',403);return this.db.prepare('SELECT * FROM record_drafts WHERE room_id=? AND owner=? AND deleted=0').get(id,owner) as DraftRow|undefined;}
  private draft(r:DraftRow):RecordDraft{return {id:r.id,revision:r.revision,document:JSON.parse(r.draft),publishedVersion:r.published_version,withdrawn:!!r.withdrawn,official:!!r.official,shareManage:r.owner.startsWith('account:'),saved:!!this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(r.owner,r.id)};}
  private expected(r:DraftRow|undefined,revision:number):DraftRow{if(!r)throw new LobbyError('NOT_FOUND',404);if(r.revision!==revision)throw new LobbyError('STALE_RECORD',409);return r;}
@@ -155,12 +190,12 @@ export class RecordsStore {
  create(token:string,id:string,input:RecordCreate):RecordDraft{const parsed=recordCreateSchema.safeParse(input);if(!parsed.success)throw new LobbyError('INVALID_INPUT');return this.db.transaction(()=>{const owner=this.authorizedOwner(token),c=parsed.data,payload=JSON.stringify(c),receipt=this.receipt(owner,c.requestId,'create',id,payload);const {a}=this.participant(token,id);if(receipt){const old=this.db.prepare('SELECT * FROM record_drafts WHERE id=? AND owner=? AND deleted=0').get(receipt.result_id,owner) as DraftRow|undefined;if(!old)throw new LobbyError('NOT_FOUND',404);return this.draft(old);}if(!this.canRecord(token,a))throw new LobbyError('RECORDER_ONLY',403);if(this.row(token,id))throw new LobbyError('STALE_RECORD',409);const floor=this.db.prepare('SELECT revision FROM record_deletion_blocks WHERE room_id=? AND owner=?').get(id,owner) as {revision:number}|undefined;const recordId=randomUUID(),revision=floor?floor.revision+1:0;const document=owner===a.host_owner?{...this.officialDocument(id),notes:''}:emptyRecord();this.db.prepare('INSERT INTO record_drafts(id,room_id,owner,author,official,draft,revision) VALUES (?,?,?,?,?,?,?)').run(recordId,id,owner,this.auth.account(token)?.nickname??'记录者',owner===a.host_owner?1:0,JSON.stringify(document),revision);this.db.prepare('INSERT INTO record_command_receipts VALUES (?,?,?,?,?,?)').run(owner,c.requestId,'create',id,payload,recordId);return this.draft(this.row(token,id)!);}).immediate();}
  save(token:string,id:string,revision:number,document:RecordDocument){const parsed=recordDocumentSchema.safeParse(document);if(!parsed.success)throw new LobbyError('INVALID_INPUT');return this.db.transaction(()=>{const r=this.expected(this.row(token,id,true),revision);this.validateRoster(parsed.data,this.capture(id));this.db.prepare('UPDATE record_drafts SET draft=?,revision=revision+1 WHERE id=?').run(JSON.stringify(parsed.data),r.id);return this.draft(this.row(token,id)!);}).immediate();}
  importAutomatic(token:string,id:string,revision:number){return this.db.transaction(()=>{const r=this.expected(this.row(token,id,true),revision);const document=this.automaticDocument(id);const existing=JSON.parse(r.draft) as RecordDocument;if(existing.notes)document.notes=existing.notes;return this.save(token,id,revision,document);}).immediate();}
- private officialDocument(id:string):RecordDocument{
+ private officialDocument(id:string,persist=true):RecordDocument{
   const manual=this.db.prepare('SELECT official FROM manual_games WHERE room_id=?').get(this.live(id)) as {official:string}|undefined;if(manual)return JSON.parse(manual.official);
-  if(this.db.prepare("SELECT 1 FROM preparations WHERE room_id=? AND game_mode='automatic'").get(this.live(id)))return this.automaticDocument(id);
+  if(this.db.prepare("SELECT 1 FROM preparations WHERE room_id=? AND game_mode='automatic'").get(this.live(id)))return this.automaticDocument(id,persist);
   if(!this.live(id)){const preserved=this.preservedDocument(id);if(preserved)return preserved;}
   const history=this.db.prepare('SELECT document FROM manual_revisions WHERE room_id=? ORDER BY version DESC LIMIT 1').get(id) as {document:string}|undefined;if(history)return JSON.parse(history.document);
-  if(this.db.prepare('SELECT 1 FROM rooms WHERE id=?').get(this.live(id)))return this.automaticDocument(id);
+  if(this.db.prepare('SELECT 1 FROM rooms WHERE id=?').get(this.live(id)))return this.automaticDocument(id,persist);
   const published=this.db.prepare('SELECT v.document FROM record_drafts d JOIN record_versions v ON v.record_id=d.id AND v.version=d.published_version WHERE d.room_id=? AND d.official=1').get(id) as {document:string}|undefined;
   if(!published)throw new LobbyError('NOT_FOUND',404);return JSON.parse(published.document);
  }
@@ -195,9 +230,9 @@ export class RecordsStore {
  favorites(token:string):RecordFavorite[]{return (this.db.prepare('SELECT d.*,f.saved_at FROM record_drafts d JOIN record_favorites f ON f.record_id=d.id WHERE f.owner=? ORDER BY f.saved_at DESC,d.id').all(this.auth.owner(token)) as (DraftRow&{saved_at:number})[]).map(r=>({...this.summary(r),version:r.published_version??0,...(r.published_version===null&&r.official&&!r.deleted&&r.owner===this.auth.owner(token)?{privateRecord:true}:{}),savedAt:r.saved_at,board:this.capture(r.room_id).board_metadata?JSON.parse(this.capture(r.room_id).board_metadata!):null}));}
  removeFavorite(token:string,id:string){this.db.prepare('DELETE FROM record_favorites WHERE owner=? AND record_id=?').run(this.auth.owner(token),id);return {saved:false};}
  start(id:string){const p=this.db.prepare('SELECT game_mode FROM preparations WHERE room_id=?').get(this.live(id)) as {game_mode:string};this.capture(id);if(p.game_mode==='manual')this.db.prepare('INSERT OR IGNORE INTO manual_games(room_id,official) VALUES (?,?)').run(this.live(id),JSON.stringify(emptyRecord()));}
- private automaticDocument(id:string):RecordDocument{
+ private automaticDocument(id:string,persist=true):RecordDocument{
   if(!this.live(id)){const preserved=this.preservedDocument(id);if(preserved)return preserved;}
-  const doc=emptyRecord(),ended=this.ended(id);
+  const doc=emptyRecord(),ended=this.ended(id,persist);
   const rows=this.db.prepare("SELECT state FROM game_history WHERE room_id=? AND kind='day' UNION ALL SELECT state FROM day_games WHERE room_id=?").all(this.live(id),this.live(id)) as {state:string}[];
   for(const {state} of rows.sort((a,b)=>JSON.parse(a.state).day-JSON.parse(b.state).day)){
    const day=JSON.parse(state) as DayState;

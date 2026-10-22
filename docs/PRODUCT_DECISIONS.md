@@ -1,5 +1,13 @@
 # 笔记狼人杀 — 产品决定与对话同步记录
 
+<a id="statistics-delivery-2026-10-21"></a>
+
+## 连续开发：本人战绩（2026-10-21，STATS-001）
+
+沿用Owner连续自主开发授权及[Issue #6原文](NEW_FEATURE_REQUIREMENTS_2026-10-20.md)，不等待逐阶段“继续”，不授权合并/部署或新玩法。工程选择：私密原参赛对应及来源证明、当前账号只读即时聚合、首页按需面板；无VIP条件或他人入口。不能zip旧数组，旧资料无法可靠证明则排除；游客绑定保留多席歧义，本人删除不复活。可靠自动终局及当前官方修订优先关系、未知分母、完整只读链和恢复边界见[现行规则](WEREWOLF_RULES_SPEC.md#statistics-2026-10-21)。
+
+[设计](superpowers/specs/2026-10-21-statistics-design.md)、[计划](superpowers/plans/2026-10-21-statistics.md)、[预期](WEREWOLF_TEST_CASES.md#statistics-tests-2026-10-21)与[实际验证](TEST_REPORT.md)分开维护；随后继续独立合成教学。原49项确认与历史正文保留。
+
 <a id="display-delivery-2026-10-21"></a>
 
 ## 连续自主开发与公共大屏（2026-10-21，DISPLAY-001）

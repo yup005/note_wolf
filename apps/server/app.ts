@@ -52,13 +52,16 @@ export async function createServer(options:ServerOptions){
  const limiter=setInterval(()=>{for(const [key,v] of hits)if(v.until<Date.now())hits.delete(key);},60000);limiter.unref();
  function authenticated(req:IncomingMessage){const token=cookieToken(req);if(!token||!store.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return token;}
  web.use((req,res,next)=>{
+  const statisticsRead=(req.method==='GET'||req.method==='HEAD')&&/^\/api\/my-stats\/?$/i.test(req.path);
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');
-  if(req.path.startsWith('/api/')){res.locals.requestId=randomUUID();res.setHeader('X-Request-ID',res.locals.requestId);res.setHeader('Cache-Control','no-store');}
+  if(req.path.startsWith('/api/')||statisticsRead){res.locals.requestId=randomUUID();res.setHeader('X-Request-ID',res.locals.requestId);res.setHeader('Cache-Control','no-store');}
   if(!validOrigin(req))return next(new LobbyError('FORBIDDEN',403));
   // Readiness must remain reachable when ticking or session storage is broken.
   if(req.path==='/api/health')return next();
-  if(req.path.startsWith('/api/')){
-   for(const id of store.tickNights())publish(id);
+  if(req.path.startsWith('/api/')||statisticsRead){
+   // This account-only read must not acquire a gameplay writer lock.
+   // The existing 250ms background timer still advances active games.
+   if(!statisticsRead)for(const id of store.tickNights())publish(id);
    res.setHeader('Cache-Control','no-store');
    const session=cookieToken(req);
    const key=session&&store.hasSession(session)?`session:${session}`:`ip:${req.socket.remoteAddress??'unknown'}`;const now=Date.now();let entry=hits.get(key);
@@ -220,6 +223,7 @@ export async function createServer(options:ServerOptions){
  web.post('/api/favorites/:id/remove',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body);res.json(store.removeFavorite(authenticated(req),req.params.id));});
  // Private drafts never enter room snapshots. Published records use archived participant authorization.
  web.get('/api/my-records',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json({items:store.myRecords(authenticated(req))});});
+ web.get('/api/my-stats',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body??{});res.json(store.statistics(authenticated(req)));});
  web.post('/api/records/:id/delete',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const token=authenticated(req),own=store.myRecords(token).find(r=>r.id===req.params.id);const result=store.deleteRecord(token,req.params.id,parse(recordDeleteSchema,req.body));if(own)publish(own.roomId);recordWrite(res,req.params.id,result);});
  web.post('/api/rooms/:id/record/create',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');roomWrite(res,req.params.id,store.createRecord(authenticated(req),req.params.id,parse(recordCreateSchema,req.body)));});
  web.get('/api/rooms/:id/records',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.recordsList(authenticated(req),req.params.id));});

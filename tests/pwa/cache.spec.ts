@@ -17,7 +17,7 @@ test('actual Worker caches only build assets after private and shared API usage'
  await page.evaluate(id=>localStorage.setItem('wolf.room',id),room.id);await page.reload();await expect(page.locator('.live').first()).toContainText('已连接');
  const display=await page.request.post(path+'/display',{data:{action:'create',revision:0,confirmed:true},headers:{'X-Wolf-Game-Id':room.gameId}});expect(display.ok()).toBe(true);const displayToken=(await display.json()).token,screen=await page.context().newPage();await screen.goto('/display/'+displayToken);await expect(screen.getByRole('heading',{name:'记录已结束',exact:true})).toBeVisible();await screen.close();
  const result=await page.evaluate(async({path,avatar,token,displayToken})=>{
-  for(const url of ['/api/session',path+'/identity',path+'/records',avatar,`/api/shared-records/${token}`,`/api/displays/${displayToken}`,`/display/${displayToken}`,'/api/unknown.js'])await (await fetch(url)).text();
+  for(const url of ['/api/session','/api/my-stats',path+'/identity',path+'/records',avatar,`/api/shared-records/${token}`,`/api/displays/${displayToken}`,`/display/${displayToken}`,'/api/unknown.js']){const response=await fetch(url);if(url==='/api/my-stats'&&!response.ok)throw Error('Actual account statistics must be available');await response.text();}
   await fetch('/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
   const worker=await (await fetch('/sw.js')).text(),build=JSON.parse(worker.match(/^const BUILD=(.*);$/m)![1]);await fetch(build.assets.find((a:{mime:string})=>a.mime==='javascript').url+'?account=PWA_QUERY_SENTINEL');
   const names=(await caches.keys()).filter(n=>n.startsWith('note-wolf-static-')),entries=[];
