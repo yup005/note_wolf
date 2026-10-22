@@ -2,7 +2,7 @@ import {test,expect,type Page,type APIResponse} from '@playwright/test';
 let adminCookie:string|undefined;
 // The synthetic suite shares one admin. Respect real backpressure rather than
 // replacing its session or weakening the service's request/auth limits.
-async function waitForBackpressure(response:Pick<APIResponse,'headers'>){
+export async function waitForBackpressure(response:Pick<APIResponse,'headers'>){
  const seconds=Number(response.headers()['retry-after']??'60');
  const wait=Number.isFinite(seconds)&&seconds>0?Math.min(seconds*1000,60000):60000;
  test.info().setTimeout(test.info().timeout+wait+5000);

@@ -36,7 +36,7 @@ test('three independent browsers create, join, see seats, race and refresh',asyn
   await loser.getByRole('button',{name:'3 号座位，空位',exact:true}).click();
   for(const p of [host.page,a.page,b.page])await expect(p.getByTestId('seated-count')).toHaveText('3 / 12');
   await a.page.reload();await expect(a.page.getByRole('heading',{name:'选择你的座位'})).toBeVisible();await expect(a.page.getByRole('button',{name:/，你的座位$/})).toBeDisabled();
-  await b.ctx.setOffline(true);await expect(b.page.getByRole('status')).toContainText('重连中');
+  await b.ctx.setOffline(true);await expect(b.page.getByText('目前无法联机',{exact:true})).toBeVisible();await expect(b.page.getByTestId('seated-count')).toHaveCount(0);
   await b.ctx.setOffline(false);await expect(b.page.getByRole('status')).toContainText('已连接');
   await expect(b.page.getByTestId('seated-count')).toHaveText('3 / 12');
   await expect(host.page.locator('body')).toHaveJSProperty('scrollWidth',390);

@@ -1,3 +1,7 @@
+import {DisplayStore} from './displays.js';
+import type {DisplayCommand} from '../contracts/display.js';
+import {RoomGamesStore} from './roomGames.js';
+import {rematchSchema,type RematchCommand,type RematchResult} from '../contracts/rematch.js';
 import {finalReplay} from '../domain/replay.js';
 import {ManagementHistoryStore} from './managementHistory.js';
 import type {ManagementState} from '../contracts/management.js';
@@ -37,7 +41,32 @@ import type {RoomSettings,Role} from '../contracts/index.js';
 interface RoomRow {id:string;code:string;revision:number}
 const sessionKey=(token:string)=>createHash('sha256').update(token).digest('hex');
 export class LobbyStore {
+ withGameScope<T>(token:string,roomId:string,expected:string|undefined,work:()=>T):T{
+  return this.db.transaction(()=>{
+   if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);
+   this.member(token,roomId);this.games.assertCurrent(roomId,expected);return work();
+  }).immediate();
+ }
+ displayStatus(token:string,id:string){return this.displays.status(token,id);}
+ displayCommand(token:string,id:string,input:DisplayCommand){return this.displays.command(token,id,input);}
+ readDisplay(token:string){return this.displays.read(token);}
+ currentGameId(roomId:string){return this.games.current(roomId).gameId;}
+ commitCurrentManual(token:string,roomId:string,revision:number){return this.records.commit(token,this.games.current(roomId).gameId,revision);}
+ rematch(token:string,roomId:string,input:RematchCommand):RematchResult{
+  const parsed=rematchSchema.safeParse(input);if(!parsed.success)throw new LobbyError('INVALID_INPUT');
+  return this.db.transaction(()=>{
+   if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);
+   const m=this.member(token,roomId);if(!m.is_host)throw new LobbyError('HOST_ONLY',403);
+   const owner=this.auth.owner(token),command=parsed.data,prior=this.games.receipt(owner,roomId,command);
+   if(prior)return {game:prior,view:this.view(token,roomId)};
+   this.games.assertCurrent(roomId,command.expectedGameId);
+   this.records.archiveEnded(roomId,command.expectedGameId);
+   this.games.preserveAudits(roomId);
+   const game=this.games.advance(owner,roomId,command);return {game,view:this.view(token,roomId)};
+  }).immediate();
+ }
  private db:Database.Database;
+ private games:RoomGamesStore;
  readonly auth:AuthStore;
  private preparation:PreparationStore;
  private testPlayers:TestPlayersStore;
@@ -51,6 +80,7 @@ export class LobbyStore {
  private records:RecordsStore;
  private voice:VoiceStore;
  private sharing:SharingStore;
+ private displays:DisplayStore;
  private boards:BoardsStore;
  private retention:RetentionStore;
  private community:CommunityStore;
@@ -86,6 +116,7 @@ export class LobbyStore {
   }).immediate();
   migrateBoardSeats(this.db);
   migrateIdentityRoles(this.db);
+  this.games=new RoomGamesStore(this.db,this.now);
   this.auth=new AuthStore(this.db,(id,body)=>this.notifications?.account(id,body),change=>this.oversight.accountChange(change));
   this.boards=new BoardsStore(this.db,token=>this.auth.owner(token));
   this.judge=new JudgeStore(this.db,(token,id)=>this.member(token,id),token=>this.hasSession(token),id=>this.boards.snapshot(id),this.dayRules,this.now);
@@ -97,13 +128,15 @@ export class LobbyStore {
   this.records=new RecordsStore(this.db,this.auth,this.now,id=>this.readReplay(id));
   this.voice=new VoiceStore(this.db,this.now,(id,memberId)=>{const m=this.db.prepare('SELECT * FROM members WHERE room_id=? AND id=?').get(id,memberId) as MemberRow|undefined;return !!m&&this.control.canManage(id,m);});
   this.sharing=new SharingStore(this.db,this.auth,this.now);
+  this.displays=new DisplayStore(this.db,id=>this.snapshot(id),(token,id)=>{if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);const member=this.member(token,id);if(!member.is_host)throw new LobbyError('HOST_ONLY',403);if(this.testPlayers.isTestRoom(id))throw new LobbyError('TEST_ROOM_PRIVATE',403);},this.now);
   this.sharedFavoritesStore=new SharedFavoritesStore(this.db,this.auth,this.sharing,this.now);
   this.community=new CommunityStore(this.db,this.auth,this.now,(token,scope)=>this.communityRoom(token,scope),{comment:(id,account,scope)=>this.notifications.comment(id,account,scope),like:(id,actor)=>this.notifications.like(id,actor),moderation:()=>this.notifications.moderation()});
   this.notifications=new NotificationsStore(this.db,this.auth,this.now,(owner,scope)=>this.validateNotificationSource(owner,scope));
   this.oversight=new AdminOversightStore(this.db,this.auth,this.now,(id,body)=>this.notifications.account(id,body));
   this.favoriteLibraryStore=new FavoriteLibraryStore(this.db,this.auth,token=>this.favoriteSources(token));
   this.preparation=new PreparationStore(this.db,(token,id)=>this.member(token,id),id=>this.snapshot(id).seats,id=>this.boards.configuration(id));
-  this.retention=new RetentionStore(this.db,this.now,id=>this.records.preserveForRoomCleanup(id));
+  this.games.migrate();
+  this.retention=new RetentionStore(this.db,this.now,id=>{this.records.preserveForRoomCleanup(this.games.current(id).gameId);this.games.preserveAudits(id);});
  }
  private validateNotificationSource(owner:string,scope:CommunityScope){
   if(scope.kind==='share'){this.sharing.read(scope.token);return;}
@@ -142,8 +175,9 @@ export class LobbyStore {
  communityAudit(token:string,input:unknown){this.communitySession(token);return this.community.audit(token,input);}
  communityModerate(token:string,input:unknown){this.communitySession(token);return this.community.moderate(token,input);}
  // Internal lifecycle hooks; neither reads nor background game/voice work renew rooms.
+ touchGameRoom(gameId:string){const roomId=(this.db.prepare('SELECT room_id FROM room_games WHERE id=?').get(gameId) as {room_id:string}|undefined)?.room_id??gameId;this.retention.touch([roomId]);return roomId;}
  touchRooms(ids:readonly string[]){this.retention.touch(ids);}
- touchRecordRoom(recordId:string){const row=this.db.prepare('SELECT room_id FROM record_drafts WHERE id=?').get(recordId) as {room_id:string}|undefined;if(row)this.retention.touch([row.room_id]);}
+ touchRecordRoom(recordId:string){const row=this.db.prepare('SELECT room_id FROM record_drafts WHERE id=?').get(recordId) as {room_id:string}|undefined;if(row)this.touchGameRoom(row.room_id);}
  cleanupExpiredRooms(){const ids=this.retention.expiredcleanup();this.control.forgetRooms(ids);return ids;}
  publicVoice(token:string,id:string,command:VoiceCommand){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);const m=this.member(token,id);return this.voice.command(token,m.id,this.snapshot(id),command);}
  private nickname(value:string){const p=nameSchema.safeParse(value);if(!p.success)throw new LobbyError('INVALID_NAME');return p.data;}
@@ -171,6 +205,7 @@ export class LobbyStore {
    const roomId=randomUUID();
    this.db.prepare('INSERT INTO rooms(id,code,created_at) VALUES (?,?,?)').run(roomId,code,Date.now());
    this.retention.touch([roomId]);
+   this.games.initialize(roomId);
    this.boards.initialize(roomId);
    this.db.prepare('INSERT INTO preparations(room_id) VALUES (?)').run(roomId);
    this.db.prepare('INSERT INTO members(id,room_id,session_hash,nickname,is_host) VALUES (?,?,?,?,1)').run(randomUUID(),roomId,this.auth.owner(token),name);
@@ -215,7 +250,7 @@ export class LobbyStore {
   if(!r)throw new LobbyError('ROOM_NOT_FOUND',404);
   const members=this.db.prepare("SELECT m.id,m.nickname,m.is_host,m.seat,m.ready,v.account_id AS avatar_account_id,v.revision AS avatar_revision FROM members m LEFT JOIN accounts a ON m.session_hash='account:'||a.id AND a.status='active' LEFT JOIN account_avatars v ON v.account_id=a.id WHERE m.room_id=? AND m.seat IS NOT NULL").all(roomId) as (MemberRow&{avatar_account_id:string|null;avatar_revision:string|null})[];
   const board=this.boards.snapshot(roomId);
-  return {board,judge:this.judge.public(roomId),manual:this.records.public(roomId),...(this.night.snapshot(roomId)&&!this.records.public(roomId)?{control:this.control.snapshot(roomId)}:{}),testRoom:this.testPlayers.isTestRoom(roomId),id:r.id,code:r.code,boardId:board.id==='standard-12'?'seer-witch-hunter-idiot-12':board.id,revision:r.revision,night:this.night.snapshot(roomId),day:this.day.snapshot(roomId),preparation:this.preparation.snapshot(roomId),seats:Array.from({length:board.composition.seatCount},(_,i)=>{
+  return {gameId:this.games.current(roomId).gameId,gameNumber:this.games.current(roomId).gameNumber,board,judge:this.judge.public(roomId),manual:this.records.public(this.games.current(roomId).gameId),...(this.night.snapshot(roomId)&&!this.records.public(this.games.current(roomId).gameId)?{control:this.control.snapshot(roomId)}:{}),testRoom:this.testPlayers.isTestRoom(roomId),id:r.id,code:r.code,boardId:board.id==='standard-12'?'seer-witch-hunter-idiot-12':board.id,revision:r.revision,night:this.night.snapshot(roomId),day:this.day.snapshot(roomId),preparation:this.preparation.snapshot(roomId),seats:Array.from({length:board.composition.seatCount},(_,i)=>{
    const m=members.find(m=>m.seat===i+1);return {number:i+1,memberId:m?.id??null,nickname:m?.nickname??null,avatarUrl:m?.avatar_account_id&&m.avatar_revision?avatarUrl(m.avatar_account_id,m.avatar_revision):null,isHost:m?.is_host===1,isTestPlayer:m?this.testPlayers.isActor(m.id):false,ready:!!m?.ready};
   })};
  }
@@ -231,7 +266,7 @@ export class LobbyStore {
  configureBoard(token:string,id:string,input:BoardConfigure){return this.db.transaction(()=>{const previous=this.preparation.snapshot(id).settingsRevision;this.boards.configure(token,id,input);if(this.preparation.snapshot(id).settingsRevision!==previous)this.testPlayers.prepareActors(token,id);return this.view(token,id);}).immediate();}
  setReady(token:string,id:string,ready:boolean,settingsRevision:number){this.preparation.setReady(token,id,ready,settingsRevision);return this.view(token,id);}
  deal(token:string,id:string){return this.db.transaction(()=>{this.preparation.deal(token,id);this.testPlayers.confirmActors(token,id);return this.view(token,id);}).immediate();}
- start(token:string,id:string){return this.db.transaction(()=>{this.preparation.start(token,id);this.records.start(id);return this.view(token,id);}).immediate();}
+ start(token:string,id:string){return this.db.transaction(()=>{this.preparation.start(token,id);this.records.start(this.games.current(id).gameId);return this.view(token,id);}).immediate();}
  identity(token:string,id:string){return this.preparation.identity(token,id);}
  submitIdentity(token:string,id:string,role:Role){return this.preparation.submitIdentity(token,id,role);}
  confirmIdentity(token:string,id:string){return this.preparation.confirmIdentity(token,id);}
@@ -245,8 +280,9 @@ export class LobbyStore {
  nightPrivate(token:string,id:string){const m=this.member(token,id);if(this.judge.isJudge(id,m))return {turnId:this.night.snapshot(id)?.turnId??'',kind:'waiting' as const};return this.night.private(token,id);}
  nightCommand(token:string,id:string,c:NightCommand){const m=this.member(token,id);this.judge.assertPlayer(id,m);this.judge.assertFreshTurn(id,c.turnId);return this.night.command(token,id,c);}
  tickNights(){const restored=this.control.tick();return [...new Set([...restored,...this.night.tick(),...this.day.tick(),...this.control.tick()])];}
- private managementState(id:string):ManagementState{const control=this.control.snapshot(id),defaults=this.control.defaults(id),day=this.day.snapshot(id),night=this.night.snapshot(id),manual=this.records.public(id);const currentDay=day&&(!night||day.day>=night.night);return {phase:manual?.status==='ended'||currentDay&&day.phase==='ended'?'ended':manual?'manual':currentDay?'day':night?'night':'preparation',round:currentDay?day.day:night?.night??null,version:control.version,status:control.status,tempSeat:control.tempSeat,voteSeconds:defaults.seconds,voteVisibility:defaults.visibility,sheriff:day?.sheriff??null,badge:day?.badge??null};}
+ private managementState(id:string):ManagementState{const control=this.control.snapshot(id),defaults=this.control.defaults(id),day=this.day.snapshot(id),night=this.night.snapshot(id),manual=this.records.public(this.games.current(id).gameId);const currentDay=day&&(!night||day.day>=night.night);return {phase:manual?.status==='ended'||currentDay&&day.phase==='ended'?'ended':manual?'manual':currentDay?'day':night?'night':'preparation',round:currentDay?day.day:night?.night??null,version:control.version,status:control.status,tempSeat:control.tempSeat,voteSeconds:defaults.seconds,voteVisibility:defaults.visibility,sheriff:day?.sheriff??null,badge:day?.badge??null};}
  managementHistory(token:string,id:string,query:unknown={}){return this.db.transaction(()=>{if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);const m=this.member(token,id);if(!this.control.canManage(id,m))throw new LobbyError('HOST_ONLY',403);return this.managementAudit.page(id,query);}).immediate();}
+ futureVoteDefaults(token:string,id:string){return this.db.transaction(()=>{if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);const m=this.member(token,id);if(!this.control.canManage(id,m))throw new LobbyError('HOST_ONLY',403);return {version:this.control.snapshot(id).version,...this.control.defaults(id)};}).immediate();}
  gameControl(token:string,id:string,c:ControlCommand){return this.management(token,id,'control',c,()=>{const m=this.member(token,id),before=this.managementState(id);this.control.command(id,m,c);this.managementAudit.append(id,m,c.action,before,this.managementState(id));return this.view(token,id);});}
  connectMember(id:string,memberId:string,connectionId:string){return [...new Set([...this.tickNights(),...this.control.connect(id,memberId,connectionId)])];}
  disconnectMember(connectionId:string){return [...new Set([...this.tickNights(),...this.control.disconnect(connectionId)])];}
@@ -275,7 +311,8 @@ export class LobbyStore {
   return {roles};
  }
  gameReplay(token:string,id:string):import('../contracts/game.js').GameReplay{
-  const member=this.member(token,id);if(member.seat===null||!this.db.prepare('SELECT 1 FROM identities WHERE room_id=? AND member_id=?').get(id,member.id))throw new LobbyError('PARTICIPANT_ONLY',403);return this.readReplay(id);
+  const live=this.games.runtime(id);if(!live)return this.records.archivedReplay(token,id);
+  const member=this.member(token,live);if(member.seat===null||!this.db.prepare('SELECT 1 FROM identities WHERE room_id=? AND member_id=?').get(live,member.id))throw new LobbyError('PARTICIPANT_ONLY',403);return this.readReplay(live);
  }
  private readReplay(id:string):import('../contracts/game.js').GameReplay{const day=this.day.snapshot(id);if(day?.phase!=='ended')throw new LobbyError('PHASE_LOCKED',409);
   const saved=this.db.prepare('SELECT kind,round,state FROM game_history WHERE room_id=?').all(id) as {kind:'night'|'day';round:number;state:string}[];
@@ -284,26 +321,28 @@ export class LobbyStore {
   return finalReplay({board:{id:board.id,name:board.name},author:host?.nickname,winner:day.winner!,roles:day.revealed,rounds:saved.sort((a,b)=>a.round-b.round||(a.kind==='night'?-1:1)).map(r=>({kind:r.kind,round:r.round,events:JSON.parse(r.state).events,...(JSON.parse(r.state).engine?{engine:JSON.parse(r.state).engine}:{}),...(r.kind==='day'?{outcome:{sheriff:JSON.parse(r.state).sheriff,badge:JSON.parse(r.state).badge,result:JSON.parse(r.state).result}}:{})}))});
  }
  isFavorite(token:string,id:string){return !!this.db.prepare('SELECT 1 FROM saved_replays WHERE owner_hash=? AND room_id=?').get(this.auth.owner(token),id);}
- saveFavorite(token:string,id:string){return this.db.transaction(()=>{const record=this.gameReplay(token,id);const room=this.snapshot(id);this.db.prepare('INSERT OR IGNORE INTO saved_replays VALUES (?,?,?,?,?,?)').run(this.auth.owner(token),id,room.code,record.winner,this.now(),JSON.stringify({...record,board:{id:room.board.id,name:room.board.name}}));return {saved:true};}).immediate();}
+ saveFavorite(token:string,id:string){return this.db.transaction(()=>{const record=this.gameReplay(token,id);const context=this.recordContext(token,id);this.db.prepare('INSERT OR IGNORE INTO saved_replays VALUES (?,?,?,?,?,?)').run(this.auth.owner(token),id,context.code,record.winner,this.now(),JSON.stringify({...record,...(context.board?{board:{id:context.board.id,name:context.board.name}}:{})}));return {saved:true};}).immediate();}
  favorites(token:string):import('../contracts/game.js').FavoriteGame[]{return this.db.prepare('SELECT room_id AS roomId,code,winner,saved_at AS savedAt FROM saved_replays WHERE owner_hash=? ORDER BY saved_at DESC,room_id').all(this.auth.owner(token)) as import('../contracts/game.js').FavoriteGame[];}
  favoriteReplay(token:string,id:string):import('../contracts/game.js').GameReplay{const row=this.db.prepare('SELECT record FROM saved_replays WHERE owner_hash=? AND room_id=?').get(this.auth.owner(token),id) as {record:string}|undefined;if(!row)throw new LobbyError('NOT_FOUND',404);return finalReplay({...JSON.parse(row.record),saved:true});}
- removeFavorite(token:string,id:string){return this.db.transaction(()=>{const result=this.db.prepare('DELETE FROM saved_replays WHERE owner_hash=? AND room_id=?').run(this.auth.owner(token),id);if(result.changes){this.favoriteLibraryStore.clearName(token,'game',id);this.retention.touch([id]);}return {saved:false};}).immediate();}
+ removeFavorite(token:string,id:string){return this.db.transaction(()=>{const result=this.db.prepare('DELETE FROM saved_replays WHERE owner_hash=? AND room_id=?').run(this.auth.owner(token),id);if(result.changes){this.favoriteLibraryStore.clearName(token,'game',id);this.touchGameRoom(id);}return {saved:false};}).immediate();}
  private favoriteSources(token:string):FavoriteSource[]{
   const games=this.favorites(token).map(item=>{
    const replay=this.favoriteReplay(token,item.roomId);
    const board=replay.board??(this.db.prepare('SELECT id,name FROM room_boards WHERE room_id=?').get(item.roomId) as {id:string;name:string}|undefined)??null;
-   return {kind:'game' as const,id:item.roomId,code:item.code,author:replay.author??'',title:`房间 ${item.code}`,savedAt:item.savedAt,board,available:true,detail:item.winner==='wolves'?'狼人获胜':'好人获胜',searchText:JSON.stringify(replay)};
+   return {kind:'game' as const,id:item.roomId,code:item.code,author:replay.author??'',title:`房间 ${item.code} · 第 ${((this.db.prepare('SELECT number FROM room_games WHERE id=?').get(item.roomId) as {number:number}|undefined)?.number??1)} 局`,savedAt:item.savedAt,board,available:true,detail:item.winner==='wolves'?'狼人获胜':'好人获胜',searchText:JSON.stringify(replay)};
   });
   const records=this.recordFavorites(token).map(item=>{
    let available=true,searchText='';try{if(!item.privateRecord)searchText=JSON.stringify(this.records.post(token,item.id).document);}catch(error){if(!(error instanceof LobbyError&&['RECORD_WITHDRAWN','PARTICIPANT_ONLY','NOT_FOUND','PHASE_LOCKED'].includes(error.code)))throw error;available=false;}
-   return {kind:'record' as const,id:item.id,code:item.code,author:item.author,title:`房间 ${item.code} · ${item.official?'官方':item.author}`,savedAt:item.savedAt,board:item.board??null,available,...(item.privateRecord?{privateRecord:true}:{}),hasUpdate:!item.privateRecord&&available&&this.notifications.hasUpdate(this.auth.owner(token),'record',item.id,item.version),detail:item.privateRecord?'未发布 · 仅本人可见':`版本 ${item.version} · ${available?'已发布':item.deleted?'已永久删除':item.withdrawn?'作者已撤回，暂不可读':'暂不可读'}`,searchText};
+   return {kind:'record' as const,id:item.id,code:item.code,author:item.author,title:`房间 ${item.code} · ${item.official?'官方':item.author} · 第 ${item.gameNumber??1} 局`,savedAt:item.savedAt,board:item.board??null,available,...(item.privateRecord?{privateRecord:true}:{}),hasUpdate:!item.privateRecord&&available&&this.notifications.hasUpdate(this.auth.owner(token),'record',item.id,item.version),detail:item.privateRecord?'未发布 · 仅本人可见':`版本 ${item.version} · ${available?'已发布':item.deleted?'已永久删除':item.withdrawn?'作者已撤回，暂不可读':'暂不可读'}`,searchText};
   });
   const shares=this.sharedFavoritesStore.sources(token).map(item=>{let hasUpdate=false;if(item.available){const post=this.sharedFavoritesStore.read(token,item.id);hasUpdate=this.notifications.hasUpdate(this.auth.owner(token),'share',item.id,post.version);}return {...item,hasUpdate};});
   return [...games,...records,...shares];
  }
  favoriteLibrary(token:string,query:Partial<FavoriteQuery>={}){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.view(token,query);}
  renameFavorite(token:string,kind:FavoriteKind,id:string,input:FavoriteName){if(!this.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return this.favoriteLibraryStore.rename(token,kind,id,input);}
+ recordContext(token:string,id:string){return this.records.context(token,id);}
  myRecords(token:string){return this.records.myRecords(token);}
+ statistics(token:string){return this.records.statistics(token);}
  deleteRecord(token:string,id:string,input:import('../contracts/records.js').RecordDelete){return this.records.delete(token,id,input);}
  createRecord(token:string,id:string,input:import('../contracts/records.js').RecordCreate){return this.records.create(token,id,input);}
  recordsList(token:string,id:string){return this.records.list(token,id);}
@@ -338,13 +377,13 @@ export class LobbyStore {
  startJudgeDraft(token:string,id:string,c:JudgeDraftCommand){return this.judge.start(token,id,c);}
  supplementJudge(token:string,id:string,c:JudgeSupplement){return this.judge.supplement(token,id,c);}
  returnJudge(token:string,id:string,c:JudgeReturn){this.judge.return(token,id,c);return this.view(token,id);}
- switchManual(token:string,id:string,confirmed:boolean){return this.db.transaction(()=>{this.judge.captureManualCheckpoint(token,id);this.records.switch(token,id,confirmed);return this.view(token,id);}).immediate();}
- finishManualRecord(token:string,id:string,input:import('../contracts/records.js').ManualFinish){return this.records.finishRecord(token,id,input);}
- adjudicateManual(token:string,id:string,input:import('../contracts/records.js').ManualAdjudicate){return this.records.adjudicate(token,id,input);}
+ switchManual(token:string,id:string,confirmed:boolean){return this.db.transaction(()=>{this.judge.captureManualCheckpoint(token,id);this.records.switch(token,this.games.current(id).gameId,confirmed);return this.view(token,id);}).immediate();}
+ finishManualRecord(token:string,id:string,input:import('../contracts/records.js').ManualFinish){return this.records.finishRecord(token,this.games.current(id).gameId,input);}
+ adjudicateManual(token:string,id:string,input:import('../contracts/records.js').ManualAdjudicate){return this.records.adjudicate(token,this.games.current(id).gameId,input);}
  commitManual(token:string,id:string,revision:number){return this.records.commit(token,id,revision);}
- requestManualEnd(token:string,id:string,revision:number){return this.records.requestEnd(token,id,revision);}
- manualRequest(token:string,id:string){return this.records.request(token,id);}
- resolveManual(token:string,id:string,version:number,hostRevision:number,accept:boolean){return this.records.resolve(token,id,version,hostRevision,accept);}
+ requestManualEnd(token:string,id:string,revision:number){return this.records.requestEnd(token,this.games.current(id).gameId,revision);}
+ manualRequest(token:string,id:string){return this.records.request(token,this.games.current(id).gameId);}
+ resolveManual(token:string,id:string,version:number,hostRevision:number,accept:boolean){return this.records.resolve(token,this.games.current(id).gameId,version,hostRevision,accept);}
  manualHistory(token:string,id:string){return this.records.history(token,id);}
  roomsFor(token:string):LobbyView[]{
   const rows=this.db.prepare('SELECT room_id,is_host FROM members WHERE session_hash=? ORDER BY rowid DESC').all(this.auth.owner(token)) as {room_id:string;is_host:number}[];

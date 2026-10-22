@@ -1,13 +1,15 @@
+import {gameApi} from './gameApi';
 import {useEffect,useRef,useState} from 'react';
 import type {LobbyView} from '../../../packages/contracts/index';
 import type {JudgePrivate,JudgeSupplement} from '../../../packages/contracts/judge';
 import {roleLabels} from '../../../packages/contracts/labels';
-import {api,errorText,requestId} from './api';
+import {errorText,requestId} from './api';
 import {judgeActions,judgeOperation,judgePhaseNames} from './judgeActions';
 interface Props {view:LobbyView;connected:boolean;onRefresh:()=>Promise<void>;onClose:()=>void}
 const skillLabels:Record<string,string>={guard:'守护',poison:'毒药',antidote:'解药',inspect:'查验',shot:'开枪','extra-knife':'额外狼刀','explode-take':'自爆带人'};
 const eventLabels:Record<string,string>={night_created:'进入夜晚',day_created:'进入白天',knife_resolved:'狼刀确认',wolf_vote:'狼队选择',witch_save:'使用解药',witch_poison:'使用毒药',witch_skip:'不用药',seer_check:'预言家查验',hunter_seen:'查看猎人状态',mechanical_learn:'机械狼学习',armor_learn:'装甲狼学习',mixer_model:'选择榜样',sheriff_elected:'警长当选',vote_outcome:'投票结果',death_knife:'夜间死亡',death_poison:'夜间死亡',death_exile:'放逐',death_shot:'开枪死亡',death_explosion:'自爆','death_white-wolf':'白狼王带走',hunter_shot:'开枪目标',white_wolf_take:'白狼王目标',idiot_flip:'白痴翻牌'};
 export default function JudgePanel({view,connected,onRefresh,onClose}:Props){
+ const api=gameApi(view.room.id,view.room.gameId);
  const base=`/api/rooms/${view.room.id}/judge`,assigned=view.room.judge?.seat===view.me.seat&&view.me.seat!==null,assignmentVersion=view.room.judge?.version;
  const [data,setData]=useState<JudgePrivate|null>(null),[foreground,setForeground]=useState(document.visibilityState==='visible'),[revealed,setRevealed]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[confirm,setConfirm]=useState(false);
  const [seat,setSeat]=useState(0),[action,setAction]=useState(''),[target,setTarget]=useState<number|null>(null),[method,setMethod]=useState<'phone'|'offline'>('offline'),[seconds,setSeconds]=useState(30),[speech,setSpeech]=useState<'phone'|'free'>('free'),[counts,setCounts]=useState<Record<number,string>>({});

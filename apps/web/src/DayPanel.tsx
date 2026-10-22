@@ -1,9 +1,12 @@
+import {RematchControl} from './RematchControl';
+import {gameApi} from './gameApi';
+import {RuleReferenceButton} from './RuleReference';
 import {DaySelfButton} from './DaySelf';
 import {JudgeControls} from './JudgeControls';
 import {useEffect,useRef,useState} from 'react';
 import type {LobbyView} from '../../../packages/contracts/index';
 import type {DayCommand,DayPrivate,DayPhase} from '../../../packages/contracts/day';
-import {api,errorText} from './api';
+import {errorText} from './api';
 import {RecordsButton} from './RecordsPanel';
 import {GameControls,canManageGame,gameFrozen} from './GameControls';
 import {useWakeLock} from './useWakeLock';
@@ -16,6 +19,7 @@ type WithoutTurn<T> = T extends unknown?Omit<T,'turnId'>:never;
 const phases:Record<DayPhase,string>={awaiting_host:'等待开始白天',sheriff_signup:'警长报名',sheriff_speech:'警上发言',sheriff_withdraw:'退水 / 自爆',vote_setup:'投票设置',voting:'投票中',vote_result:'投票结果',night_announcement:'死亡公告',death_skill:'死亡技能询问',hunter_target:'猎人指定目标',white_wolf_target:'白狼王指定目标',last_words:'遗言',badge_transfer:'警徽移交',day_direction:'白天发言设置',day_speech:'白天发言',free_speech:'自由发言',day_complete:'第一天结束',ended:'游戏结束',rules_pending:'等待规则确认'};
 const voteNames={sheriff:'警长竞选',sheriff_pk:'警长 PK',exile:'放逐',exile_pk:'放逐 PK'};
 export function DayPanel({view,connected,busy,onHome,onAction,onPublicRefresh}:Props){
+ const api=gameApi(view.room.id,view.room.gameId);
  const frozen=gameFrozen(view);const {room,me}=view;const day=room.day!;const testing=view.testPlayersEnabled&&me.isHost&&room.testRoom;
  const testRoles=useTestRoles(view);const [replay,setReplay]=useState(false);const [startSeat,setStartSeat]=useState(0);
  const [actor,setActor]=useState(me.id);const [card,setCard]=useState<DayPrivate>();const [foreground,setForeground]=useState(document.visibilityState==='visible');const [autoFollow,setAutoFollow]=useState(true);
@@ -49,7 +53,7 @@ export function DayPanel({view,connected,busy,onHome,onAction,onPublicRefresh}:P
  const note=error|| (day.interjection?`${day.interjection.seat} 号插话 · ${day.interjection.originalSpeaker} 号发言计时已暂停`:p==='sheriff_signup'?`已选择 ${day.signupCount} / ${participatingSeats.length} · 房主结束报名。`:p==='sheriff_speech'||p==='day_speech'?`${p==='sheriff_speech'&&voting?.purpose==='sheriff_pk'||p==='day_speech'&&voting?.purpose==='exile_pk'?'PK · ':''}当前 ${day.speaker} 号发言`:p==='sheriff_withdraw'?`${day.badge==='deferred'?'继续昨日竞选 · ':''}留警：${day.candidates.join('、')||'无人'} 号`:p==='voting'?voting!.method==='offline'?`${voteNames[voting!.purpose]} · 线下举手后由房主录票${voting!.purpose.startsWith('exile')&&day.sheriff!==null&&voting!.eligible.includes(day.sheriff)?'，警长算 1.5 票':''}`:`${voteNames[voting!.purpose]} · 已提交 ${voting!.submittedCount} / ${voting!.eligible.length}`:p==='vote_result'?`${voteNames[day.result!.purpose]} · ${day.result!.leaders.length?`最高票：${day.result!.leaders.join('、')} 号`:'全员弃票'}`:p==='night_announcement'?day.announcement===null?`${day.sheriff?`警长 ${day.sheriff} 号当选`:'无警徽'}，等待公布第 ${day.day} 夜死讯。`:day.announcement.length?`${day.announcement.join('、')} 号死亡，死亡顺序不分先后。`:'平安夜，无人死亡。':p==='death_skill'?`${day.currentDeath} 号玩家是否发动技能？`:p==='hunter_target'?`${gunName}线下指定目标，由房主录入。`:p==='white_wolf_target'?`${day.announcement?.join('、')} 号死亡。白狼王线下指定目标，由房主录入。`:p==='last_words'?`${day.currentDeath} 号遗言`:p==='badge_transfer'?`${day.currentDeath} 号选择移交或撕掉警徽`:p==='day_direction'?'房主选择发言模式；警长选择发言方向。':p==='free_speech'?'请在线下自由发言，房主结束后进入投票。':p==='day_complete'?`第 ${day.day} 天结束，等待房主开始第 ${day.day+1} 夜。`:p==='ended'?day.winner==='wolves'?'狼人获胜':'好人获胜':p==='rules_pending'?day.reason??'规则待确认':p==='vote_setup'?`${voteNames[voting!.purpose]} · 房主选择本轮投票方式`:'等待房主');
  useEffect(()=>{if(day.phase==='vote_setup'&&room.control?.voteDefaults){setDuration(room.control.voteDefaults.seconds);setVisibility(room.control.voteDefaults.visibility);}},[day.turnId]);
  return <div className={`night-screen day-screen${frozen?' is-frozen':''}`}>
-  <nav className="night-nav" aria-label="游戏导航"><button className="back" onClick={onHome}>← 首页</button><span>房间 {room.code} · 你在 {me.seat} 号</span><span className="live" role="status"><i className={connected?'dot':'dot amber'}/>{connected?room.control?.reconnecting?'连接异常':'已连接':'重连中'}</span>{p!=='ended'&&<GameControls view={view} connected={connected} onRefresh={onPublicRefresh}/>}<RecordsButton view={view} onRefresh={onPublicRefresh}/><JudgeControls view={view} connected={connected} onRefresh={onPublicRefresh}/></nav>
+  <nav className="night-nav" aria-label="游戏导航"><button className="back" onClick={onHome}>← 首页</button><span>房间 {room.code} · 你在 {me.seat} 号</span><RuleReferenceButton roomId={room.id} board={room.board}/><span className="live" role="status"><i className={connected?'dot':'dot amber'}/>{connected?room.control?.reconnecting?'连接异常':'已连接':'重连中'}</span>{p!=='ended'&&<GameControls view={view} connected={connected} onRefresh={onPublicRefresh}/>}<RecordsButton view={view} onRefresh={onPublicRefresh}/><JudgeControls view={view} connected={connected} onRefresh={onPublicRefresh}/></nav>
   {testing&&<div className="night-test-tools"><label>测试<select aria-label="操作的测试玩家" value={actor} disabled={pending} onChange={e=>{setAutoFollow(false);setActor(e.target.value);}}>{room.seats.filter(s=>s.memberId&&(s.isTestPlayer||s.memberId===me.id)).map(s=><option key={s.memberId!} value={s.memberId!}>{s.number} 号 · {testRoles[s.number]?roleLabels[testRoles[s.number]]:s.memberId===me.id?'你':s.nickname}</option>)}</select></label><label className="test-follow"><input type="checkbox" checked={autoFollow} onChange={e=>{setAutoFollow(e.target.checked);}}/>自动跟随</label>{day.deadline!==null&&<button className="text-button" disabled={blocked} onClick={()=>onAction('day/test-advance')}>推进测试阶段</button>}</div>}
   {p!=='ended'&&<DaySelfButton key={`${day.turnId}:${connected}`} view={view} connected={connected} onRefresh={onPublicRefresh}/>}
   <section className="card night-stage day-stage" aria-label="白天操作">
@@ -85,7 +89,8 @@ export function DayPanel({view,connected,busy,onHome,onAction,onPublicRefresh}:P
     {p==='rules_pending'&&<p className="helper">{day.reason}</p>}
    </div>
   </section>
-  {replay&&<ReplayDialog roomId={room.id} onClose={()=>setReplay(false)}/>}
+  <RematchControl view={view} connected={connected} onResult={()=>void onPublicRefresh()}/>
+  {replay&&<ReplayDialog roomId={room.gameId} onClose={()=>setReplay(false)}/>}
   {confirm&&<div className="modal-backdrop"><section className="card modal" role="dialog" aria-modal="true" aria-labelledby="day-confirm"><h2 id="day-confirm">{confirm==='explode'?'确认自爆？':'确认接管警徽移交？'}</h2><p>{confirm==='explode'?'自爆后中断当前白天流程。':'房主按线下决定录入警徽去向。'}</p><button className="primary full" disabled={blocked} onClick={()=>{const action=confirm;setConfirm(null);void send(action==='explode'?{action:'explode',confirmed:true}:{action:'transfer_badge',target,takeover:true},action==='badge');}}>确认</button><button className="text-button full" onClick={()=>setConfirm(null)}>取消</button></section></div>}
  </div>;
 }

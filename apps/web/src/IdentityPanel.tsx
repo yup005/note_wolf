@@ -1,10 +1,12 @@
+import {gameApi} from './gameApi';
 import {useEffect,useRef,useState} from 'react';
 import type {PrivateIdentity,Role,PreparationState} from '../../../packages/contracts/index';
 import {roleLabels} from '../../../packages/contracts/labels';
 import type {BoardComposition} from '../../../packages/contracts/board';
-import {api,errorText} from './api';
-interface Props {roomId:string;phase:PreparationState['phase'];dealMethod:'online'|'physical';connected:boolean;roleCounts:BoardComposition['roles'];onPublicRefresh:()=>Promise<void>}
-export function IdentityPanel({roomId,phase,dealMethod,connected,roleCounts,onPublicRefresh}:Props){
+import {errorText} from './api';
+interface Props {roomId:string;gameId:string;phase:PreparationState['phase'];dealMethod:'online'|'physical';connected:boolean;roleCounts:BoardComposition['roles'];onPublicRefresh:()=>Promise<void>}
+export function IdentityPanel({roomId,gameId,phase,dealMethod,connected,roleCounts,onPublicRefresh}:Props){
+ const api=gameApi(roomId,gameId);
  const [visible,setVisible]=useState(false);const [card,setCard]=useState<PrivateIdentity>();const [selection,setSelection]=useState<Role|''>('');
  const [busy,setBusy]=useState(false);const [error,setError]=useState('');const generation=useRef(0);const lock=useRef(false);
  const path=`/api/rooms/${roomId}/identity`;
@@ -12,7 +14,7 @@ export function IdentityPanel({roomId,phase,dealMethod,connected,roleCounts,onPu
  useEffect(()=>{
   hide();const conceal=()=>hide();document.addEventListener('visibilitychange',conceal);window.addEventListener('pagehide',conceal);
   return ()=>{generation.current++;document.removeEventListener('visibilitychange',conceal);window.removeEventListener('pagehide',conceal);};
- },[roomId,phase,connected]);
+ },[roomId,gameId,phase,connected]);
  async function reveal(){
   if(lock.current||!connected)return;lock.current=true;setBusy(true);setError('');const version=++generation.current;
   try{const result=await api<PrivateIdentity>(path);if(version===generation.current){setCard(result);setSelection(result.role??'');setVisible(true);}}

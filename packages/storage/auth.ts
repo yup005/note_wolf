@@ -114,6 +114,14 @@ export class AuthStore {
     this.db.prepare('INSERT INTO record_deletion_blocks SELECT room_id,?,revision FROM record_deletion_blocks WHERE owner=? ON CONFLICT(room_id,owner) DO UPDATE SET revision=MAX(revision,excluded.revision)').run(owner,old);this.db.prepare('DELETE FROM record_deletion_blocks WHERE owner=?').run(old);
     if(this.db.prepare('SELECT 1 FROM record_command_receipts g JOIN record_command_receipts a ON a.request_id=g.request_id AND a.owner=? WHERE g.owner=?').get(owner,old))throw new LobbyError('RECORD_ACCOUNT_CONFLICT',409);
     this.db.prepare('UPDATE record_command_receipts SET owner=? WHERE owner=?').run(owner,old);
+    if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='rematch_receipts'").get()){
+     if(this.db.prepare('SELECT 1 FROM rematch_receipts g JOIN rematch_receipts a ON a.owner=? AND a.room_id=g.room_id AND a.request_id=g.request_id WHERE g.owner=?').get(owner,old))throw new LobbyError('RECORD_ACCOUNT_CONFLICT',409);
+     this.db.prepare('UPDATE rematch_receipts SET owner=? WHERE owner=?').run(owner,old);
+    }
+    if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='game_participants'").get()){
+     this.db.prepare('INSERT OR IGNORE INTO game_participants SELECT game_id,?,seat,role FROM game_participants WHERE owner=?').run(owner,old);
+     this.db.prepare('DELETE FROM game_participants WHERE owner=?').run(old);
+    }
     for(const r of this.db.prepare('SELECT room_id,participants FROM record_rooms').all() as {room_id:string;participants:string}[]){const p=JSON.parse(r.participants) as string[];if(p.includes(old))this.db.prepare('UPDATE record_rooms SET participants=? WHERE room_id=?').run(JSON.stringify([...new Set(p.map(x=>x===old?owner:x))]),r.room_id);}
     this.db.prepare('UPDATE record_rooms SET host_owner=? WHERE host_owner=?').run(owner,old);
     this.db.prepare('INSERT OR IGNORE INTO record_favorites SELECT ?,record_id,saved_at FROM record_favorites WHERE owner=?').run(owner,old);this.db.prepare('DELETE FROM record_favorites WHERE owner=?').run(old);

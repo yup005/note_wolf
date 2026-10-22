@@ -1,10 +1,10 @@
 import {lazy,Suspense,useEffect,useState} from 'react';
 const CommunityNotices=lazy(()=>import('./CommunityNotices'));
 import type {Account} from '../../../packages/contracts/auth';
-import type {LobbyView} from '../../../packages/contracts/index';
+import type {AccountSession} from './sessionTypes';
 import {api,errorText} from './api';
 import {ProfileAvatar,ProfileEditor} from './ProfileEditor';
-export interface AccountSession {account:Account|null;rooms:LobbyView[]}
+export type {AccountSession} from './sessionTypes';
 export function AccountDialog({account,onClose,onSession,onProfileSession}:{account:Account|null;onClose:()=>void;onSession:(s:AccountSession)=>void;onProfileSession:(s:AccountSession)=>void}){
  useEffect(()=>{const close=()=>onClose();window.addEventListener('wolf:open-notifications',close);return()=>window.removeEventListener('wolf:open-notifications',close);},[onClose]);
  const [editing,setEditing]=useState(false);const [register,setRegister]=useState(false);const [username,setUsername]=useState('');const [password,setPassword]=useState('');const [nickname,setNickname]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState('');

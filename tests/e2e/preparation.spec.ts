@@ -57,8 +57,8 @@ test('mobile seat correction clears preparation and dealing response loss does n
   await f.page.getByRole('button',{name:'12 号座位，空位',exact:true}).click();
   await f.guests[10].request.post(f.path+'/seat',{data:{seat:1}});await f.guests[10].request.post(f.path+'/ready',{data:{ready:true,settingsRevision:0}});
   await f.page.getByRole('button',{name:'准备',exact:true}).click();
-  let original:string|null=null;await f.page.route('**/deal',async r=>{await r.fetch();original=(await (await f.host.request.get(f.path+'/identity')).json()).role;await r.abort('failed');});
-  await f.page.getByRole('button',{name:'开始发牌',exact:true}).click();await expect(f.page.getByRole('button',{name:'查看身份',exact:true})).toBeVisible();
+  let original:string|null=null,handled!:()=>void;const dropped=new Promise<void>(resolve=>handled=resolve);await f.page.route('**/deal',async r=>{await r.fetch();original=(await (await f.host.request.get(f.path+'/identity')).json()).role;await r.abort('failed');handled();});
+  await f.page.getByRole('button',{name:'开始发牌',exact:true}).click();await dropped;await expect(f.page.getByRole('button',{name:'查看身份',exact:true})).toBeVisible();
   await f.page.unroute('**/deal');await f.page.reload();expect((await f.host.request.post(f.path+'/deal',{data:{}})).ok()).toBeTruthy();
   expect((await (await f.host.request.get(f.path+'/identity')).json()).role).toBe(original);
  }finally{await f.close();}

@@ -7,7 +7,7 @@ export const createSchema=z.object({nickname:nameSchema,requestId:z.string().uui
 export const joinSchema=z.object({nickname:nameSchema,code:codeSchema});
 export const selectSchema=z.object({seat:z.number().int().positive().max(256)}).strict();
 export interface PublicSeat { number:number; memberId:string|null; nickname:string|null; avatarUrl?:string|null; isHost:boolean; isTestPlayer:boolean; ready:boolean }
-export interface RoomSnapshot { judge?:import('./judge.js').JudgePublic; board:import('./board.js').RoomBoardSnapshot; manual?:import('./records.js').ManualPublic|null; control?:import('./control.js').GameControl; testRoom:boolean; id:string; code:string; boardId:string; revision:number; seats:PublicSeat[]; preparation:PreparationState; night?:import('./night.js').NightPublic|null; day?:import('./day.js').DayPublic|null }
+export interface RoomSnapshot { gameId:string;gameNumber:number; judge?:import('./judge.js').JudgePublic; board:import('./board.js').RoomBoardSnapshot; manual?:import('./records.js').ManualPublic|null; control?:import('./control.js').GameControl; testRoom:boolean; id:string; code:string; boardId:string; revision:number; seats:PublicSeat[]; preparation:PreparationState; night?:import('./night.js').NightPublic|null; day?:import('./day.js').DayPublic|null }
 export interface MyMembership { id:string; nickname:string; isHost:boolean; seat:number|null }
 export interface LobbyView { testPlayersEnabled:boolean; room:RoomSnapshot; me:MyMembership }
 export interface ApiFailure { error:string; message:string }
@@ -62,3 +62,7 @@ Object.assign(messages,{JUDGE_ONLY:'只有当前有效临时法官可以操作',
 Object.assign(messages,{COMMENT_MUTED:'评论权限暂受限制，请查看账号消息',COMMENT_DELETED:'评论已移除',STALE_COMMUNITY:'审核状态已更新，请重新读取',COMMUNITY_REQUEST_CONFLICT:'请求已用于其他操作，请刷新后重试'});
 
 Object.assign(messages,{EXPORT_TOO_LARGE:'导出结果超过 5000 条，请缩小筛选范围'});
+
+Object.assign(messages,{STALE_GAME:'对局已切换，请重新读取当前局',REMATCH_REQUEST_CONFLICT:'此重开请求已用于其他操作，请重新读取'});
+
+Object.assign(messages,{STALE_DISPLAY:'大屏链接已更新，请重新读取后操作',DISPLAY_UNAVAILABLE:'大屏链接暂不可用'});

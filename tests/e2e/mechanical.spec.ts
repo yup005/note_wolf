@@ -38,7 +38,7 @@ test('saved 15-player board deals and privately learns a civilian before spirit-
  await expect(page.getByRole('status',{name:'私人技能反馈'}).getByText('普通村民',{exact:true})).toHaveCSS('color','rgb(180, 35, 24)');
  const learned:NightPrivate=await (await page.request.get(privatePath(mechanical)+'/private')).json();expect(learned.learningReceipt?.role).toBe('villager');
  const deadline=(await state()).room.night!.deadline;await page.getByRole('button',{name:'确认结果已查看',exact:true}).click();expect((await state()).room.night).toMatchObject({phase:'mechanical',deadline});
- await visibility(page,false);await expect(page.getByText('学习成功：村民',{exact:true})).toHaveCount(0);await expect(page.getByText('普通村民',{exact:true})).toHaveCount(0);await visibility(page,true);await expect(page.getByText('学习成功：村民',{exact:true})).toBeVisible();
+ await visibility(page,false);await expect(page.getByText('学习成功：村民',{exact:true})).toHaveCount(0);await expect(page.getByText('普通村民',{exact:true})).toHaveCount(0);await visibility(page,true);await page.getByRole('checkbox',{name:'自动跟随',exact:true}).uncheck();await actor(mechanical);await expect(page.getByText('学习成功：村民',{exact:true})).toBeVisible();
  await actor(civilian);await expect(page.getByRole('status',{name:'私人技能反馈'})).toHaveCount(0);await expect(page.getByText('普通村民',{exact:true})).toHaveCount(0);
  const publicNight=JSON.stringify((await state()).room.night);expect(publicNight).not.toMatch(/learnedRole|learningReceipt|inspectionRole|skills|modelSeat/);
  await advanceTo('spiritSeer');await expect(page.getByRole('heading',{name:'通灵师行动',exact:true})).toBeVisible();await actor(spirit);

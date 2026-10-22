@@ -11,3 +11,4 @@ export const controlSchema=z.discriminatedUnion('action',[
  z.object({...base,action:z.literal('defaults'),voteSeconds:z.number().int().min(5).max(300),voteVisibility:z.enum(['individual','totals'])}).strict()
 ]);
 export type ControlCommand=z.infer<typeof controlSchema>;
+export interface FutureVoteDefaults {version:number;seconds:number;visibility:'individual'|'totals'}
