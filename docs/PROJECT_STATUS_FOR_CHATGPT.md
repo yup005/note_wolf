@@ -26,7 +26,7 @@
 
 既有500KB主包/Zod提示保留。真实iPhone Safari/VoiceOver、系统后台快照、锁屏弱网、实际语音与物理多人仍待验，PWA状态不变。172稳定ID仅STATS-001行变更，原166项、六份Issue原文与49历史确认保留；下一步继续TUTORIAL-001，未定玩法及生产门禁不变。
 
-实施SHA同批文档跟进，核实正常推送后记录发布结果。
+实施提交：[3b73ffe89f8a3c666af2438b20d4a065ed15465f](https://github.com/yup005/note_wolf/commit/3b73ffe89f8a3c666af2438b20d4a065ed15465f)，已正常推送work并核对远端一致，草稿[PR #8](https://github.com/yup005/note_wolf/pull/8)已更新。此SHA跟进仅文档，复核链接/差异，代码与浏览器检查不重跑；最终文档SHA在交付消息核实。
 
 ## 历史：公共信息大屏（2026-10-21，DISPLAY-001）
 
