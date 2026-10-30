@@ -24,6 +24,6 @@ test('published record comments stay inside a scrollable dialog and its record r
  }
  await page.setViewportSize({width:390,height:844});await dialog.getByLabel('评论内容').fill('滚动弹窗仍能发表评论');await dialog.getByRole('button',{name:'发布评论',exact:true}).click();await expect(dialog.getByText('滚动弹窗仍能发表评论',{exact:true})).toBeVisible();
  await reachable(dialog,dialog.locator('article').first().getByRole('button',{name:'回复',exact:true}));await dialog.locator('article').first().getByRole('button',{name:'回复',exact:true}).click();await dialog.getByLabel('回复内容').fill('布局回复');await dialog.getByRole('button',{name:'发布回复',exact:true}).click();await dialog.locator('article').first().getByRole('button',{name:'展开回复 1',exact:true}).click();await expect(dialog.getByText('布局回复',{exact:true})).toBeVisible();
- await reachable(dialog,dialog.getByRole('button',{name:'发布评论',exact:true}));await page.screenshot({path:'/private/tmp/note-wolf-comment-dialog-fixed.png',animations:'disabled'});
+ await reachable(dialog,dialog.getByRole('button',{name:'发布评论',exact:true}));await page.screenshot({path:test.info().outputPath('note-wolf-comment-dialog-fixed.png'),animations:'disabled'});
  }finally{await f.close();}
 });

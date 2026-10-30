@@ -4,7 +4,7 @@ import {LobbyError} from '../contracts/index.js';
 import {boardSaveSchema,boardConfigureSchema,boardRuleVersion,type BoardSave,type BoardConfigure,type BoardTemplate,type BoardLibrary,type RoomBoardSnapshot,type BoardConfiguration} from '../contracts/board.js';
 import {boardPreset,createBoardConfiguration} from '../domain/boardConfig.js';
 
-const names={'standard-12':'12 人 · 预女猎白','mechanical-12':'12 人 · 机械狼通灵师','mechanical-armor-12':'12 人 · 机械装甲'} as const;
+const names={'standard-12':'12 人 · 预女猎白','mechanical-12':'12 人 · 机械狼通灵师','mechanical-armor-12':'12 人 · 机械装甲','wolf-girl-12':'12 人 · 狼女孩'} as const;
 interface Row {id:string;name:string;revision:number;rule_version:string;composition:string}
 function template(row:Row):BoardTemplate{
  if(row.rule_version!==boardRuleVersion)throw new LobbyError('BOARD_VERSION_UNSUPPORTED',409);

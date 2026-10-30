@@ -41,8 +41,11 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
   cancel();if(!eligible())return;const seq=audio.current;audioScope.current=scope;setLastText(text);
   if(mode.current){
    const current=()=>seq===audio.current&&eligible()&&audioScope.current===scope;
-   void import('./recordedPublicVoice').then(async module=>{if(!current()||!context.current)return;recordings.current??=new module.RecordedPublicVoice(context.current);await recordings.current.play(text,current,()=>{if(current())setStatus('正在播报');},()=>{if(current())setStatus(on.current?'已开启':'未开启');});}).catch(()=>{if(current()){stop('播放失败');setError('内置语音未能播放，请重新开启。');}});return;
+   void import('./recordedPublicVoice').then(async module=>{if(!current()||!context.current)return;recordings.current??=new module.RecordedPublicVoice(context.current);await recordings.current.play(text,current,()=>{if(current())setStatus('正在播报');},()=>{if(current())setStatus(on.current?'已开启':'未开启');});}).catch(error=>{if(current()){if(nativeSupported&&error instanceof Error&&error.message==='UNSUPPORTED_PUBLIC_PROMPT'){playNative(text,seq);return;}stop('播放失败');setError('内置语音未能播放，请重新开启。');}});return;
   }
+  playNative(text,seq);
+ }
+ function playNative(text:string,seq:number){
   const utterance=new SpeechSynthesisUtterance(text);utterance.lang='zh-CN';utterance.rate=1;
   const voice=speechSynthesis.getVoices().find(v=>/^zh[-_]CN$/i.test(v.lang))??speechSynthesis.getVoices().find(v=>/^zh/i.test(v.lang));if(voice)utterance.voice=voice;
   const fail=()=>{if(seq!==audio.current||!alive.current)return;stop('播放失败');setError('浏览器未能播放语音，请使用内置语音。');};

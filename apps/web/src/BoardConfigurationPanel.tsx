@@ -46,7 +46,7 @@ export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction
    })}</div>
    {!!draft.roles.idiot&&<label>白痴规则<select aria-label="白痴规则" value={draft.idiotPolicy??'standard'} disabled={blocked||saving} onChange={e=>{const {idiotPolicy:_,...base}=draft;setDraft(e.target.value==='dual-category-14'?{...base,idiotPolicy:'dual-category-14'}:base);}}><option value="standard">默认规则</option><option value="dual-category-14" disabled={draft.seatCount!==14||draft.roles.idiot!==1}>14 人双边白痴</option></select></label>}
    {draft.idiotPolicy==='dual-category-14'&&<p className="helper">须为 14 人且有一名白痴。翻牌后无发言、插嘴或投票权，仍可被刀或毒杀。</p>}
-   <p className="helper">{config?config.ruleset==='mechanical-armor'?'机械装甲':config.ruleset==='standard'?'预女猎白':'机械狼通灵师':'请选择 1–256 个角色'}</p>
+   <p className="helper">{config?config.ruleset==='wolf-girl'?'狼女孩（首版支持固定12人阵容及其副本）':config.ruleset==='mechanical-armor'?'机械装甲':config.ruleset==='standard'?'预女猎白':'机械狼通灵师':'请选择 1–256 个角色'}</p>
    <button className="secondary full" disabled={blocked||saving||!valid||!name.trim()} onClick={()=>void save()}>{saving?'保存中…':'另存板子'}</button>
    <button className="text-button" disabled={blocked||saving||!valid} onClick={()=>onAction('board',{settingsRevision,selection:{kind:'composition',composition:draft}})}>应用本局配置</button>
   </details>

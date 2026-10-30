@@ -1,5 +1,22 @@
 # WEREWOLF_TEST_CASES.md
 
+## 狼女孩验收（2026-10-30）
+
+对应[WG-001–010](WEREWOLF_RULES_SPEC.md#wolf-girl-2026-10-30)。以下为期望，执行结果见[报告](TEST_REPORT.md)。
+
+| 覆盖 | 期望 | 自动化 |
+|---|---|---|
+| 模板/自定义/旧配置 | 独立规则、阵容正确、混搭阻断、原模板不变 | wolf-girl.test.ts、board-store/server |
+| 首夜与跨夜 | 首夜相认无刀，之后正常狼刀；固定虚拟阶段 | wolf-girl-night.test.ts |
+| 表白/超时/重启 | 非狼目标、一次随机、无身份泄漏、重启不重抽 | wolf-girl-night/server.test.ts |
+| 平民/神/验人 | 平民狼混仍查好人/需屠；神不知女孩，狼队不知目标 | wolf-girl-night/server.test.ts |
+| 毒师/守卫/猎人 | 自毒、守不挡毒、仅一毒无救药/刀口、有效毒禁枪 | wolf-girl-night.test.ts |
+| 自爆/废票/竞争 | 报复拒绝猎人无枪无遗言，目标已死仍可爆；废票原放逐不生效，旧请求拒绝 | wolf-girl-day/server.test.ts |
+| 完整批次/个人结果/指刀 | 先报复再真狼全灭优先；狼混个人负；女孩次夜指刀，狼混无刀 | wolf-girl-day.test.ts |
+| 复盘/导入/收藏 | 废票不复活，二次投影幂等且保留警长票，个人胜负不丢 | wolf-girl-replay/server.test.ts |
+| 法官补录/回执 | 缺表白不得随机补，空守可录，查验闭眼回执/通知确认重试有效 | wolf-girl-night.test.ts |
+| 手机/刷新/主动查看 | 选择模板到表白/相认/毒师/拒绝通知/票后自爆；320/390/430无横溢 | e2e/wolf-girl.spec.ts |
+
 ## 未来投票设置差异与重开恢复验收（2026-10-22）
 
 RESUME-009 / S-003，完整范围见[规格](WEREWOLF_RULES_SPEC.md#future-vote-diff-2026-10-22)，实际执行另见报告。

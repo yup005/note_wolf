@@ -1,12 +1,12 @@
 import {z} from 'zod';
 
 // This catalog is for the new domain foundation, not the public playable Role contract.
-export const boardRoleSchema=z.enum(['wolf','villager','seer','witch','hunter','idiot','spiritSeer','guard','mechanicalWolf','armoredWolf','mixer','blackWolf','whiteWolf']);
+export const boardRoleSchema=z.enum(['wolf','villager','seer','witch','hunter','idiot','spiritSeer','guard','mechanicalWolf','armoredWolf','mixer','blackWolf','whiteWolf','wolfGirl','poisoner']);
 export type BoardRole=z.infer<typeof boardRoleSchema>;
-export const isSharedWolfRole=(role:BoardRole)=>role==='wolf'||role==='blackWolf'||role==='whiteWolf';
+export const isSharedWolfRole=(role:BoardRole)=>role==='wolf'||role==='blackWolf'||role==='whiteWolf'||role==='wolfGirl';
 export const isWolfRole=(role:BoardRole)=>isSharedWolfRole(role)||role==='mechanicalWolf'||role==='armoredWolf';
-export const isRepeatableRole=(role:BoardRole)=>isSharedWolfRole(role)||role==='villager';
-export const rulesetSchema=z.enum(['standard','mechanical-seer','mechanical-armor']);
+export const isRepeatableRole=(role:BoardRole)=>['wolf','blackWolf','whiteWolf','villager'].includes(role);
+export const rulesetSchema=z.enum(['standard','mechanical-seer','mechanical-armor','wolf-girl']);
 export type Ruleset=z.infer<typeof rulesetSchema>;
 export const idiotPolicySchema=z.enum(['standard','dual-category-14']);
 export type IdiotPolicy=z.infer<typeof idiotPolicySchema>;
@@ -22,7 +22,7 @@ export type BoardComposition=z.infer<typeof boardCompositionSchema>;
 export interface BoardConfiguration extends BoardComposition {ruleset:Ruleset;playable:boolean}
 
 export const boardRuleVersion='2026-10-10-v1' as const;
-export const systemPresetIdSchema=z.enum(['standard-12','mechanical-12','mechanical-armor-12']);
+export const systemPresetIdSchema=z.enum(['standard-12','mechanical-12','mechanical-armor-12','wolf-girl-12']);
 export type SystemPresetId=z.infer<typeof systemPresetIdSchema>;
 // Service capability limit, not a gameplay rule; the domain supports larger compositions.
 export const serviceCompositionSchema=boardCompositionSchema.refine(value=>value.seatCount<=256);
@@ -38,4 +38,4 @@ export type BoardConfigure=z.infer<typeof boardConfigureSchema>;
 export interface BoardTemplate {id:string;name:string;revision:number;ruleVersion:typeof boardRuleVersion;composition:BoardConfiguration}
 export interface BoardLibrary {presets:BoardTemplate[];custom:BoardTemplate[]}
 export interface RoomBoardSnapshot {id:string;name:string;ruleVersion:typeof boardRuleVersion;composition:{seatCount:number;roleCounts:BoardComposition['roles'];ruleset:Ruleset;playable:boolean;idiotPolicy?:IdiotPolicy}}
-export const boardRoleLabels:Record<BoardRole,string>={wolf:'狼人',villager:'村民',seer:'预言家',witch:'女巫',hunter:'猎人',idiot:'白痴',spiritSeer:'通灵师',guard:'守卫',mechanicalWolf:'机械狼',armoredWolf:'装甲狼',mixer:'混血儿',blackWolf:'黑狼王',whiteWolf:'白狼王'};
+export const boardRoleLabels:Record<BoardRole,string>={wolf:'狼人',villager:'村民',seer:'预言家',witch:'女巫',hunter:'猎人',idiot:'白痴',spiritSeer:'通灵师',guard:'守卫',mechanicalWolf:'机械狼',armoredWolf:'装甲狼',mixer:'混血儿',blackWolf:'黑狼王',whiteWolf:'白狼王',wolfGirl:'狼女孩',poisoner:'毒师'};

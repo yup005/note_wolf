@@ -5,7 +5,7 @@ import {emptyRecord,recordDocumentSchema,recordDeleteSchema,recordCreateSchema,t
 import {manualDecision,type ManualVictoryFact} from '../domain/manual.js';
 import type {EngineState} from '../contracts/engine.js';
 import {type BoardComposition,type IdiotPolicy,isWolfRole} from '../contracts/board.js';
-import {summarizeReplay} from '../domain/replay.js';
+import {summarizeReplay,effectiveGameEvents} from '../domain/replay.js';
 import type {DayState} from '../domain/day.js';
 import type {GameReplay} from '../contracts/game.js';
 import {sessionHash} from './auth.js';
@@ -170,7 +170,7 @@ export class RecordsStore {
   const rows=this.db.prepare("SELECT state FROM game_history WHERE room_id=? AND kind='day' UNION ALL SELECT state FROM day_games WHERE room_id=?").all(id,id) as {state:string}[];
   for(const {state} of rows.sort((a,b)=>JSON.parse(a.state).day-JSON.parse(b.state).day)){
    const day=JSON.parse(state) as DayState;
-   for(const event of day.events){
+   for(const event of effectiveGameEvents(day.events)){
     if(event.type.startsWith('death_')&&event.seat!==undefined&&!doc.deaths.some(d=>d.seat===event.seat)){
      doc.deaths.push({seat:event.seat,round:day.day,period:['death_knife','death_poison'].includes(event.type)?'night':'day',cause:ended?event.type.slice(6) as RecordDocument['deaths'][number]['cause']:'unrecorded'});
     }

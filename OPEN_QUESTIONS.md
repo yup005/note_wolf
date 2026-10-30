@@ -1,5 +1,9 @@
 # 未决问题
 
+## 狼女孩本轮确认（2026-10-30）
+
+[Issue #9](https://github.com/yup005/note_wolf/issues/9)的首夜自毒边界已由Owner确认允许；表白超时随机非狼人、女孩沿用普通狼下一夜指刀也已明确，整份[设计](docs/superpowers/specs/2026-10-30-wolf-girl-design.md)已批准实施。警上/PK按既有确认资格及新板专属废放逐票窗口处理；现行细节在[WG-001–010](docs/WEREWOLF_RULES_SPEC.md#wolf-girl-2026-10-30)，确认不等于部署或实机验收。
+
 ## 当前未来投票设置差异补齐（2026-10-22）
 
 继续实施既有S-003/RESUME-009，按[范围](docs/WEREWOLF_RULES_SPEC.md#future-vote-diff-2026-10-22)补现有投票秒数/公开范围的新旧值对照、服务器已存值恢复及版本失效/读取失败边界。只覆盖此前新旧对照缺口，不新增可配置参数、权限或玩法；更广发言/语音设置仍未完成，RESUME-009继续部分实现。不部署，物理设备另验。

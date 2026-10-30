@@ -15,7 +15,7 @@ function legacyVotes(events:GameEvent[],last:DayVoteResult|null|undefined):strin
  for(const e of events){
   if(e.type==='sheriff_signup')purpose='sheriff';if(e.type==='sheriff_speech')purpose=groups.some(g=>g.purpose.startsWith('sheriff'))?'sheriff_pk':'sheriff';
   if(['day_direction','free_speech'].includes(e.type))purpose='exile';if(e.type==='day_speech')purpose=groups.some(g=>g.purpose.startsWith('exile'))?'exile_pk':'exile';
-  if(e.type==='vote_outcome'&&active)active.recorded=true;
+  if((e.type==='vote_outcome'||e.type==='vote_cancelled')&&active)active.recorded=true;
   const c=e.command;if(e.type!=='command'||!c)continue;
   if(c.action==='start_vote'){active={purpose,individual:c.visibility==='individual',ballots:new Map()};groups.push(active);}
   if(active&&(c.action==='vote'||c.action==='offline_vote')){const voter=c.action==='offline_vote'?Number(c.voter):e.seat!;active.ballots.set(voter,typeof c.target==='number'?c.target:null);}
@@ -25,14 +25,18 @@ function legacyVotes(events:GameEvent[],last:DayVoteResult|null|undefined):strin
  if(!groups.length)return last&&!events.some(e=>e.type==='vote_outcome')?[describeVote(last)]:[];
  return groups.flatMap(g=>{if(g.recorded)return [];if(g.result)return [describeVote({...g.result,...(g.individual?{ballots:g.result.ballots??[...g.ballots].map(([seat,target])=>({seat,target}))}:{ballots:undefined})})];if(!g.individual||!g.ballots.size)return [];const grouped=new Map<number|null,number[]>();for(const [seat,target] of g.ballots)grouped.set(target,[...(grouped.get(target)??[]),seat]);return [`${voteName[g.purpose]}投票：${[...grouped].map(([target,voters])=>`${seats(voters)}${target===null?'弃票':`投 ${target} 号`}`).join('；')}`];});
 }
+export function effectiveGameEvents(events:GameEvent[]){const cancelled=new Set<number>();for(let i=0;i<events.length;i++)if(events[i].type==='vote_cancelled'){for(let j=i-1;j>=0;j--)if(events[j].type==='vote_outcome'&&!cancelled.has(j)&&events[j].result?.purpose.startsWith('exile')&&JSON.stringify(events[j].result)===JSON.stringify(events[i].result)){cancelled.add(j);break;}}return events.filter((_,i)=>!cancelled.has(i));}
 export function summarizeReplay(record:GameReplay):ReplaySection[]{
  if(record.summary)return record.summary.map(section=>({title:section.title,lines:[...section.lines]}));
  const roles=new Map(record.roles.map(p=>[p.seat,p.role]));const hunterSpent=new Set<number>();let sheriff:number|null=null;const applicants=new Set<number>();
  const sections=record.rounds.map(round=>{
-  const lines:string[]=[];const e=round.events;
+  const lines:string[]=[];const e=effectiveGameEvents(round.events);
   if(round.kind==='night'){
    const knife=e.findLast(x=>x.type==='knife_resolved');const priority=e.find(x=>x.type==='priority_knife');if(knife)lines.push(knife.target==null?'狼人空刀':`狼刀 ${knife.target} 号${priority?`（${priority.seat} 号自爆狼指刀）`:''}`);
    for(const action of e){
+    if(action.type==='girl_confession')lines.push(`${action.seat} 号狼女孩表白 ${action.target} 号${roles.get(action.target!)==='villager'?'，平民成为狼混，个人胜负随狼方':'，神职拒绝'}`);
+    if(action.type==='wolves_recognized')lines.push('首夜狼队仅相认，无狼刀');
+    if(action.type==='poisoner_poison')lines.push(action.target==null?'毒师未用毒':`毒师毒 ${action.target} 号`);
     if(action.type==='witch_save')lines.push(`女巫救 ${action.target} 号`);
     if(action.type==='witch_poison')lines.push(`女巫毒 ${action.target} 号`);
     if(action.type==='witch_skip')lines.push('女巫未用药');
@@ -77,13 +81,14 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
    lines.push(...legacyVotes(e,round.outcome?.result));
    const shotTargets=new Set(e.filter(x=>x.type==='hunter_shot'||x.type==='white_wolf_take').map(x=>x.target));
    for(const action of e){
+    if(action.type==='vote_cancelled')lines.push('狼女孩投票后自爆，本轮放逐投票作废');
     if(action.type==='vote_outcome'&&action.result)lines.push(describeVote(action.result));
     if(action.type==='sheriff_elected'){sheriff=action.seat!;lines.push(`${sheriff} 号当选警长`);}
     if(action.type==='idiot_flip')lines.push(`${action.seat} 号白痴翻牌，神边出局、民边存活`);
     if(action.type.startsWith('death_')){
      const who=`${action.seat} 号`;const reason=action.type.slice(6);if(['shot','white-wolf'].includes(reason)&&shotTargets.has(action.seat))continue;
-     const description:Record<string,string>={knife:'被狼刀杀死',poison:'被毒死',shot:'被开枪带走',exile:roles.get(action.seat!)==='idiot'?'被放逐，白痴翻牌死亡':'被放逐',explosion:'狼人自爆','white-wolf':'被白狼王带走'};
-     if(description[reason])lines.push(`${who}${description[reason]}${roles.get(action.seat!)==='hunter'&&(reason==='poison'||hunterSpent.has(action.seat!))?'（技能不可发动）':''}`);
+     const description:Record<string,string>={knife:'被狼刀杀死',poison:'被毒死',shot:'被开枪带走',exile:roles.get(action.seat!)==='idiot'?'被放逐，白痴翻牌死亡':'被放逐',explosion:'狼人自爆','white-wolf':'被白狼王带走','girl-retaliation':'被狼女孩自爆报复带走'};
+     if(description[reason])lines.push(`${who}${description[reason]}${roles.get(action.seat!)==='hunter'&&(reason==='poison'||reason==='girl-retaliation'||hunterSpent.has(action.seat!))?'（技能不可发动）':''}`);
     }
     if(action.type==='white_wolf_take')lines.push(`${action.seat} 号白狼王自爆，带走 ${action.target} 号`);
     if(action.type==='hunter_shot'){lines.push(`${action.seat} 号${boardRoleLabels[roles.get(action.seat!)??'hunter']}开枪，带走 ${action.target} 号`);hunterSpent.add(action.seat!);}
@@ -110,17 +115,19 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
  return combined;
 }
 
-const finalEventTypes=new Set(['knife_resolved','priority_knife','witch_save','witch_poison','witch_skip','seer_check','hunter_seen','mechanical_learn','armor_learn','guard_protect','spirit_check','mechanical_check','mechanical_poison','mechanical_knife','armor_knife','mixer_model','vote_outcome','sheriff_elected','idiot_flip','hunter_shot','white_wolf_take','death_knife','death_poison','death_shot','death_exile','death_explosion','death_white-wolf']);
+const finalEventTypes=new Set(['girl_confession','wolves_recognized','poisoner_poison','vote_cancelled','death_girl-retaliation','knife_resolved','priority_knife','witch_save','witch_poison','witch_skip','seer_check','hunter_seen','mechanical_learn','armor_learn','guard_protect','spirit_check','mechanical_check','mechanical_poison','mechanical_knife','armor_knife','mixer_model','vote_outcome','sheriff_elected','idiot_flip','hunter_shot','white_wolf_take','death_knife','death_poison','death_shot','death_exile','death_explosion','death_white-wolf']);
 function finalVote(result:DayVoteResult):DayVoteResult{return {purpose:result.purpose,counts:result.counts.map(c=>({seat:c.seat,votes:c.votes})),leaders:[...result.leaders],...(result.ballots?{ballots:result.ballots.map(b=>({seat:b.seat,target:b.target}))}:{})};}
 /** Public ended-game facts. Raw runtime and legacy sources remain unchanged. */
 export function finalReplay(record:GameReplay):GameReplay{
  const summary=summarizeReplay(record);
- return {winner:record.winner,roles:record.roles.map(p=>({seat:p.seat,role:p.role})),
+ const personalResults=record.personalResults??record.rounds.findLast(r=>r.engine?.victory?.status==='ended')?.engine?.victory;
+ const results=Array.isArray(personalResults)?personalResults:personalResults?.status==='ended'?personalResults.personalResults:undefined;
+ return {...(results?{personalResults:results.map(p=>({seat:p.seat,won:p.won}))}:{}),winner:record.winner,roles:record.roles.map(p=>({seat:p.seat,role:p.role})),
   ...(record.author!==undefined?{author:record.author}:{}),...(record.board?{board:{id:record.board.id,name:record.board.name}}:{}),...(record.saved!==undefined?{saved:record.saved}:{}),
   summary:summary.map(section=>({title:section.title,lines:[...section.lines]})),
-  rounds:record.rounds.map(round=>({kind:round.kind,round:round.round,events:round.events.flatMap((event):GameEvent[]=>{
+  rounds:record.rounds.map(round=>({kind:round.kind,round:round.round,events:effectiveGameEvents(round.events).flatMap((event):GameEvent[]=>{
    const badge=event.type==='command'&&event.command?.action==='transfer_badge';if(!badge&&!finalEventTypes.has(event.type))return [];
    return [{type:event.type,at:event.at,...(event.seat!==undefined?{seat:event.seat}:{}),...(event.target!==undefined?{target:event.target}:{}),
-    ...(event.type==='vote_outcome'&&event.result?{result:finalVote(event.result)}:{}),...(badge?{command:{action:'transfer_badge',target:event.command!.target}}:{})}];
+    ...(['vote_outcome','vote_cancelled'].includes(event.type)&&event.result?{result:finalVote(event.result)}:{}),...(badge?{command:{action:'transfer_badge',target:event.command!.target}}:{})}];
   }),...(round.outcome?{outcome:{sheriff:round.outcome.sheriff,badge:round.outcome.badge,result:round.outcome.result?finalVote(round.outcome.result):null}}:{})}))};
 }

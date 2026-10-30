@@ -1,5 +1,9 @@
 # 文档职责与阅读导航
 
+## 狼女孩板子（2026-10-30）
+
+[现行规则WG-001–010](WEREWOLF_RULES_SPEC.md#wolf-girl-2026-10-30) → [直接确认](PRODUCT_DECISIONS.md#wolf-girl-2026-10-30) / [批准设计](superpowers/specs/2026-10-30-wolf-girl-design.md) → [验收用例](WEREWOLF_TEST_CASES.md) / [执行报告](TEST_REPORT.md)。仅固定12人及同阵容副本；实现、自动验证、部署与实机验收分别记录。
+
 更新：2026-10-22。本页只说明去哪里查阅和如何避免重复，不新增玩法或改变已确认细节。
 
 ## 按任务查阅

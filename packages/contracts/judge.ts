@@ -21,6 +21,7 @@ export type JudgeReturn=z.infer<typeof judgeReturnSchema>;
 export interface JudgePublic {seat:number|null;version:number;candidates:number[]}
 export interface JudgeDraft {id:string;version:number;manualVersion:number;assignmentVersion:number;kind:'night'|'day';round:number;phase:string;turnId:string}
 export interface JudgePrivate {
+ confession?:import('./engine.js').EngineState['confession'];
  assignmentVersion:number;manualVersion:number|null;
  roles:{seat:number;role:Role;alive:boolean;inventory?:{antidote?:boolean;poison?:boolean;hunterSpent?:boolean};abilities?:EnginePlayer['abilities'];learning?:EnginePlayer['learning'];model?:EnginePlayer['model']}[];
  night:NightPublic|null;day:DayPublic|null;
