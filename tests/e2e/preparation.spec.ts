@@ -1,14 +1,15 @@
+import {configureRoom} from './helpers/preparation-settings';
 import {test,expect,type Browser,type BrowserContext,type Page} from '@playwright/test';
 const roles=['wolf','wolf','wolf','wolf','villager','villager','villager','villager','seer','witch','hunter','idiot'];
 async function room(browser:Browser,physical=false){
  const host=await browser.newContext({viewport:{width:390,height:844}});const page=await host.newPage();const guests:BrowserContext[]=[];
  await page.goto('/');await page.getByLabel('你的昵称').fill('房主');await page.getByRole('button',{name:'创建房间',exact:true}).click();await page.getByRole('button',{name:'以游客身份继续'}).click();
  await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();
- if(physical){if(!await page.getByLabel('发牌方式').isVisible())await page.locator('.host-settings summary').click();await page.getByLabel('发牌方式').selectOption('physical');await page.getByLabel('游戏模式').selectOption('manual');}
+ if(physical)await configureRoom(page,{dealMethod:'physical',gameMode:'manual'});
  const view=await page.evaluate(async()=> (await (await fetch('/api/session')).json()).rooms[0]);const path=`/api/rooms/${view.room.id}`;
  for(let i=1;i<12;i++){
   const c=await browser.newContext();guests.push(c);await c.request.get('/api/session');await c.request.post('/api/rooms/join',{data:{nickname:'玩家'+i,code:view.room.code}});
-  await c.request.post(path+'/seat',{data:{seat:i+1}});await c.request.post(path+'/ready',{data:{ready:true,settingsRevision:physical?2:0}});
+  await c.request.post(path+'/seat',{data:{seat:i+1}});await c.request.post(path+'/ready',{data:{ready:true,settingsRevision:view.room.preparation.settingsRevision}});
  }
  return {host,page,guests,path,code:view.room.code,async close(){await Promise.all([host,...guests].map(c=>c.close()));}};
 }
@@ -29,7 +30,7 @@ test('mobile host participates, online cards stay private through refresh and st
   await f.page.getByRole('button',{name:'开始对局',exact:true}).click();await expect(f.page.getByRole('heading',{name:'身份已锁定',exact:true})).toBeVisible();
   await f.page.reload();await expect(f.page.getByRole('heading',{name:'身份已锁定',exact:true})).toBeVisible();
   const guest=await f.guests[0].newPage();await guest.goto('/');await guest.locator('.recent-room').click();
-  await expect(guest.getByLabel('发牌方式')).toHaveCount(0);await expect(guest.getByRole('button',{name:'开始对局',exact:true})).toHaveCount(0);
+  await expect(guest.getByRole('group',{name:'发牌方式',exact:true})).toHaveCount(0);await expect(guest.getByRole('button',{name:'开始对局',exact:true})).toHaveCount(0);
   await guest.getByRole('button',{name:'查看身份',exact:true}).click();await expect(guest.getByTestId('private-role')).toBeVisible();
   await guest.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await expect(guest.getByTestId('private-role')).toHaveCount(0);
   await expect(f.page.locator('body')).toHaveJSProperty('scrollWidth',390);
@@ -74,9 +75,9 @@ test('phone controls fit narrow screens and essential text has readable contrast
    expect(ready!.y+ready!.height).toBeLessThan(844);
    await expect(f.page.locator('.room-details')).not.toHaveAttribute('open','');
   }
-  if(!await f.page.getByLabel('发牌方式').isVisible())await f.page.locator('.host-settings summary').click();
+  if(!await f.page.getByRole('group',{name:'发牌方式',exact:true}).isVisible())await f.page.locator('.host-settings summary').click();
   await f.page.locator('.room-details summary').click();
-  await expect(f.page.locator('select').first()).toHaveCSS('font-size','16px');
+  await expect(f.page.getByRole('button',{name:'更换板子',exact:true})).toHaveCSS('font-size','16px');
   for(const button of [f.page.getByRole('button',{name:'准备',exact:true}),f.page.getByRole('button',{name:'复制房间号',exact:true})]){
    const box=await button.boundingBox();expect(box!.height).toBeGreaterThanOrEqual(44);
   }

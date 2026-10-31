@@ -2,12 +2,15 @@ import {useEffect,useId,useState} from 'react';
 import {api,errorText} from './api';
 import {boardRoleSchema,boardRoleLabels,serviceCompositionSchema,type BoardRole,type BoardLibrary,type BoardTemplate,type BoardComposition,type RoomBoardSnapshot} from '../../../packages/contracts/board';
 import {createBoardConfiguration} from '../../../packages/domain/boardConfig';
+import {BoardPickerDialog,boardRosterText} from './BoardPickerDialog';
 interface Props {board:RoomBoardSnapshot;settingsRevision:number;blocked:boolean;onAction:(action:string,body?:unknown)=>void}
 export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction}:Props){
  const countId=useId();
  const [library,setLibrary]=useState<BoardLibrary|null>(null);const [error,setError]=useState('');const [saving,setSaving]=useState(false);
+ const [pickerRevision,setPickerRevision]=useState<number|null>(null);
  const [draft,setDraft]=useState<BoardComposition>({seatCount:board.composition.seatCount,roles:{...board.composition.roleCounts},...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});const [name,setName]=useState('');
  const compositionKey=JSON.stringify(board.composition);
+ useEffect(()=>{setPickerRevision(null);},[settingsRevision,blocked,board.id,compositionKey]);
  useEffect(()=>{setDraft({seatCount:board.composition.seatCount,roles:{...board.composition.roleCounts},...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});setName(board.id==='custom'?board.name:board.name+' · 自定义');setError('');},[board.id,board.name,compositionKey]);
  useEffect(()=>{let active=true;api<BoardLibrary>('/api/boards').then(data=>{if(active)setLibrary(data);}).catch(e=>{if(active)setError(errorText(e));});return()=>{active=false;};},[]);
  const valid=serviceCompositionSchema.safeParse(draft).success;
@@ -27,13 +30,10 @@ export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction
    setLibrary(await api<BoardLibrary>('/api/boards'));onAction('board',{settingsRevision,selection:{kind:'custom',id:saved.id}});
   }catch(e){setError(errorText(e));}finally{setSaving(false);}
  }
- const selectedExists=library&&[...library.presets,...library.custom].some(t=>t.id===board.id);
  return <div className="board-configuration">
-  <label>板子<select aria-label="选择板子" value={board.id==='standard-12'?'seer-witch-hunter-idiot-12':board.id} disabled={blocked||saving||!library} onChange={e=>select(e.target.value)}>
-   {!selectedExists&&<option value={board.id}>{board.name}</option>}
-   {library?.presets.map(t=><option key={t.id} value={t.id==='standard-12'?'seer-witch-hunter-idiot-12':t.id}>{t.name}</option>)}
-   {!!library?.custom.length&&<optgroup label="我的自定义板子">{library.custom.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</optgroup>}
-  </select></label>
+  <span className="board-setting-label">板子</span>
+  <button type="button" className="board-current-trigger" aria-label="更换板子" aria-describedby={countId+'-current'} aria-haspopup="dialog" disabled={blocked||saving||!library} onClick={()=>setPickerRevision(settingsRevision)}><span id={countId+'-current'} className="board-current-copy"><strong>{board.name}</strong><small>{boardRosterText(board.composition.roleCounts)}</small></span><span className="board-current-action" aria-hidden="true"><b>›</b>更换</span></button>
+  {library&&pickerRevision===settingsRevision&&!blocked&&!saving&&<BoardPickerDialog library={library} board={board} onClose={()=>setPickerRevision(null)} onSelect={id=>{setPickerRevision(null);select(id);}}/>}
   {board.composition.idiotPolicy==='dual-category-14'&&<p className="helper">双边白痴 · 翻牌后神边出局、民边存活</p>}
   <details className="custom-board-editor"><summary>自定义调整</summary>
    <p className="helper">复制配置并另存，系统模板保持不变。</p>

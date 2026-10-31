@@ -1,3 +1,4 @@
+import {selectBoard} from './helpers/preparation-settings';
 import {test,expect,type Page} from '@playwright/test';
 import {loginTestAdmin} from './helpers/test-admin';
 
@@ -13,8 +14,8 @@ test('ordinary guests read public rules for the current board without reading id
  await expect(dialog).toContainText('预女猎白');await expect(dialog.getByText('女巫 × 1',{exact:true})).toBeVisible();await dialog.getByText('女巫 × 1',{exact:true}).click();await expect(dialog).toContainText('不能自救');await expect(dialog).toContainText('各全局一次');await expect(dialog).not.toContainText('规则速查合成房主');await expect(dialog).not.toContainText('1 号');
  for(const viewport of [{width:320,height:568},{width:390,height:844},{width:430,height:932}]){await page.setViewportSize(viewport);expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);const close=dialog.getByRole('button',{name:'关闭规则',exact:true});await expect(close).toBeInViewport();expect((await close.boundingBox())!.height).toBeGreaterThanOrEqual(44);}
  await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);await expect(entry).toBeFocused();expect((await (await page.request.get(path)).json()).room.revision).toBe(before);expect(reads.filter(url=>/identity|private|self|test-players/.test(url))).toEqual([]);expect(writes).toEqual([]);
- await page.getByLabel('选择板子').selectOption('mechanical-12');await entry.click();await dialog.getByText('机械狼 × 1',{exact:true}).click();await expect(dialog).toContainText('女巫之后');await expect(dialog).toContainText('弹毒');await expect(dialog).not.toContainText('无敌盾');await dialog.getByRole('button',{name:'关闭规则',exact:true}).click();
- await page.getByLabel('选择板子').selectOption('mechanical-armor-12');await entry.click();await dialog.getByText('机械狼 × 1',{exact:true}).click();await expect(dialog).toContainText('无敌盾');await expect(dialog).toContainText('不弹毒');await dialog.getByText('装甲狼 × 1',{exact:true}).click();await expect(dialog).toContainText('独立完整次数');await page.screenshot({path:'test-results/rule-reference-armor.png'});await dialog.getByRole('button',{name:'关闭规则',exact:true}).click();
+ await selectBoard(page,'mechanical-12');await entry.click();await dialog.getByText('机械狼 × 1',{exact:true}).click();await expect(dialog).toContainText('女巫之后');await expect(dialog).toContainText('弹毒');await expect(dialog).not.toContainText('无敌盾');await dialog.getByRole('button',{name:'关闭规则',exact:true}).click();
+ await selectBoard(page,'mechanical-armor-12');await entry.click();await dialog.getByText('机械狼 × 1',{exact:true}).click();await expect(dialog).toContainText('无敌盾');await expect(dialog).toContainText('不弹毒');await dialog.getByText('装甲狼 × 1',{exact:true}).click();await expect(dialog).toContainText('独立完整次数');await page.screenshot({path:'test-results/rule-reference-armor.png'});await dialog.getByRole('button',{name:'关闭规则',exact:true}).click();
 });
 
 test('rules stay read-only across night, day and manual mode and personal notes use the authorized self card',async({page})=>{

@@ -20,6 +20,6 @@ test('host can fill a labelled test room and inspect each simulated role',async(
  expect(counts).toEqual({'狼人':4,'村民':4,'预言家':1,'女巫':1,'猎人':1,'白痴':1});
  await page.reload();await expect(page.getByText('测试房间 · 模拟玩家')).toBeVisible();await expect(page.getByTestId('test-role')).toHaveCount(0);
  await page.getByRole('button',{name:'查看身份',exact:true}).click();await page.getByRole('button',{name:'确认身份',exact:true}).click();await page.getByRole('button',{name:'开始对局',exact:true}).click();
- await expect(page.getByText('身份已锁定',{exact:true})).toBeVisible();await expect(page.getByLabel('发牌方式')).toHaveCount(0);await expect(page.getByText('已准备',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('身份已锁定',{exact:true})).toBeVisible();await expect(page.getByRole('group',{name:'发牌方式',exact:true})).toHaveCount(0);await expect(page.getByText('已准备',{exact:true})).toHaveCount(0);
  await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/room-started-mobile.png',fullPage:true});
 });

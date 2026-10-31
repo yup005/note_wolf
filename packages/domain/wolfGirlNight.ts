@@ -112,7 +112,7 @@ export function privateWolfGirlNight(s:NightState,seat:number):NightPrivate{
  if(!p.alive)return out;
  if(p.role==='seer'&&s.phase==='eyes_closed'&&r.schedule[r.index-1]==='seer'&&s.seerCheck)return {...out,skillReceipt:{role:'seer',...s.seerCheck}};
  if(s.phase==='confession_notice'&&e.confession?.target===seat)return {...out,kind:'confession_notice',confession:{accepted:e.confession.accepted,...(e.confession.accepted?{girl:e.confession.girl}:{})},seen:r.seen[seat]===s.turnId};
- if(s.phase==='confession'&&p.role==='wolfGirl')return {...out,kind:'confession',legalTargets:e.players.filter(p=>p.alive&&!isWolfRole(p.role)).map(p=>p.seat)};
+ if(s.phase==='confession'&&p.role==='wolfGirl')return {...out,kind:'confession',wolves:e.players.filter(p=>p.alive&&isSharedWolfRole(p.role)).map(p=>p.seat),legalTargets:e.players.filter(p=>p.alive&&!isWolfRole(p.role)).map(p=>p.seat)};
  if(s.phase==='guard'&&p.role==='guard'){
   const skill=p.abilities.skills.find(x=>x.kind==='guard')!;
   return {...out,kind:'guard',skills:[{kind:'guard',remaining:null,available:true}],legalTargets:e.players.filter(p=>p.alive&&!skill.uses.some(u=>u.night===s.night-1&&u.target===p.seat)).map(p=>p.seat)};

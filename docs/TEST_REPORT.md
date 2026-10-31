@@ -1,6 +1,23 @@
 # 阶段验证记录
 
-## 当前：Render发布验证（2026-10-30）
+## 当前：手机候场控件与女孩私密时点（2026-10-30，已验证待发布）
+
+范围为[SETUP-001/006、WG-003/004](WEREWOLF_RULES_SPEC.md#mobile-preparation-2026-10-30)及Owner直接实现/后续合并部署授权。源码为两个完整本地检查点：女孩私密提示3fb8eb2与候场控件332fb5b；不改变服务端设置协议、配牌、合法表白池、原权限或数据库结构。
+
+已执行证据：
+
+- 女孩原6项领域测试新增私密名单断言先5 pass /1 fail，扩充后6/6；真实HTTP/Socket结合7/7。手机既有用例新增“狼人同伴”断言先失败后1/1，通过三名狼/自身禁选、切actor/后台隐藏，以及补充的入夜前身份/等待阶段无名单边界。
+- 新候场5项浏览器回归先5/5因缺少新控件失败；首轮实现3 pass /2 fail：新测试summary定位误匹配自定义子summary，修正定位；原生dialog的Tab可进入浏览器界面，增加明确首尾循环。修复后受影响9文件 **22 pass /0 fail /0 skip（2.4分钟）**，保留原业务断言。
+- 实际320px截图显示模式文字挤行，改手机整行卡片；截图另发现footer自动grid轨道导致确认按钮仅约185px宽，新增铺宽断言先失败后改显式1fr。该最终宽度回归已在完整开发套件中通过，整套最终通过情况见下条分组结果。键盘/触区/无横溢及长名称截图均使用合成房间。
+- `npm test` **685 pass /0 fail /0 skip（123.6秒）**；`npm run typecheck`、最终`npm run build`通过，557.86KB/gzip170.75KB，原500KB提示保留。最后代码差异仅footer CSS，最终构建/PWA重新执行，unit业务源码相同。
+- 最终生产PWA **7 pass /0 fail /0 skip（44.3秒）**；早先另一样式检查点7/7（48.2秒）为重复/历史证据，不相加。完整开发Chromium **155个唯一用例最终通过**：整套154 pass /1 fail（14.3分钟），女孩用例在读取房间时因429而失败；trace确认voice、私密命令及房间GET均有限流响应，非房间丢失。全新服务女孩1/1通过（10.9秒）。这155条最终通过记录覆盖全部155项，没有把此前22项重复专项混加或隐藏整套失败。
+- 原生表单radio语义、可达焦点、primitive effect依赖、修订同步render guard、现有lazy边界/无新依赖按React技能检查。独立只读整批审查未发现Critical/Important/Minor，Declined to judge为空；未将待运行测试代认证为通过。
+
+日志：`/tmp/mobile-girl-*.log`、`/tmp/mobile-settings-red.log`、`/tmp/mobile-settings-green.log`、`/tmp/mobile-settings-affected.log`、`/tmp/mobile-footer-red.log`、`/tmp/mobile-ui-unit.log`、`/tmp/mobile-ui-full-e2e.log`、`/tmp/mobile-ui-final-build.log`、`/tmp/mobile-ui-final-pwa.log`；临时文件不作为长期归档。测试均隔离合成数据、回环服务；不绕过实际权限/限流。合并/部署仅在完整检查通过后执行，真实设备与公网流程另记。
+
+实现提交：[332fb5bb563fe106979709d7cb8d10d22e425e00](https://github.com/yup005/note_wolf/commit/332fb5bb563fe106979709d7cb8d10d22e425e00)。本次跟进只同步规则、期望和实际证据；后续合并源码/部署SHA单独记录。
+
+## 历史：Render发布验证（2026-10-30）
 
 Owner授权合并PR #8并部署，运行源码 [75929dea291c2149baf0d865166b2c49c6ee195c](https://github.com/yup005/note_wolf/commit/75929dea291c2149baf0d865166b2c49c6ee195c)；与部署前已验证文件树一致。本轮新执行Render构建、部署/启动日志和就绪状态核验，部署`dep-dbijmktg1s2s73dekpd0`于17:51:32 PDT为live，事件succeeded，error日志查询为空。构建成功且主资源名与本地一致；不等于独立公网资源HTTP200。
 

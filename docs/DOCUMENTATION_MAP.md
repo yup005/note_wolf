@@ -1,5 +1,9 @@
 # 文档职责与阅读导航
 
+## 手机候场与女孩私密时点（2026-10-30）
+
+[当前交互](WEREWOLF_RULES_SPEC.md#mobile-preparation-2026-10-30) / [直接确认](PRODUCT_DECISIONS.md#mobile-preparation-2026-10-30) / [设计与范围](superpowers/specs/2026-10-30-mobile-preparation-controls-design.md) → [验收期望](WEREWOLF_TEST_CASES.md) / [执行结果](TEST_REPORT.md)。候场选择先预览后确认，女孩队友仅限已入夜的本人表白回合；上线与真实设备证据分开。
+
 ## 狼女孩板子（2026-10-30）
 
 [现行规则WG-001–010](WEREWOLF_RULES_SPEC.md#wolf-girl-2026-10-30) → [直接确认](PRODUCT_DECISIONS.md#wolf-girl-2026-10-30) / [批准设计](superpowers/specs/2026-10-30-wolf-girl-design.md) → [验收用例](WEREWOLF_TEST_CASES.md) / [执行报告](TEST_REPORT.md)。仅固定12人及同阵容副本；实现、自动验证、部署与实机验收分别记录。本次已随[2026-10-30试用发布](RENDER_TRIAL.md#当前发布2026-10-30)上线，公网流程受云端网络限制，不能由live状态代替整局或真机验收。
