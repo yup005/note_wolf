@@ -1,8 +1,27 @@
 # Render 免费试用部署
 
-更新：2026-10-25（America/Los_Angeles）。沿用用户确认的 Render My Workspace 免费单服务；Sites 适配暂不实施。历史记录中的未部署范围以本页最新发布为准，未决规则和真实设备验收不因上线而完成。
+更新：2026-10-30（America/Los_Angeles）。沿用用户确认的 Render My Workspace 免费单服务；Sites 适配暂不实施。历史记录中的未部署范围以本页最新发布为准，未决规则和真实设备验收不因上线而完成。
 
-## 当前发布（2026-10-25）
+## 当前发布（2026-10-30）
+
+Owner要求部署，并明确授权合并[PR #8](https://github.com/yup005/note_wolf/pull/8)后发布。正常合并提交为 [75929dea291c2149baf0d865166b2c49c6ee195c](https://github.com/yup005/note_wolf/commit/75929dea291c2149baf0d865166b2c49c6ee195c)；合并后的Git文件树与已验证的`afed96a6033a1a4663fc8da46ab8d417bdb85180`完全一致，没有引入未测试代码。
+
+- 服务仍为My Workspace的`note-wolf-trial` / `srv-db5gd37lot8c73esepqg`，Free、Oregon、单实例、`main`，自动部署保持关闭。没有新建资源、更改环境变量/管理员配置、收费方案或上传本地数据库。
+- 手动部署`dep-dbijmktg1s2s73dekpd0`已核对拉取上述提交；2026-10-30 **17:51:32 PDT**（UTC 2026-10-31 00:51:32）返回 **live**，服务事件记录`deploy_ended/succeeded`。从触发到live约65秒。
+- Render执行锁文件安装、TypeScript与Vite生产构建成功；主资源`/assets/index-Bvg0Zj6J.js`，555.59KB/gzip170.16KB，原500KB提示保留。启动日志确认`npm start`及10000端口监听，随后平台通过就绪检查并发布主URL。运行后error查询未返回错误。
+- 新版包括狼女孩WG-001–010及女孩警长PK修复，以及既有同房重开/规则速查/PWA/公共大屏/本人战绩/独立教学和首页恢复；旧板策略、未决规则阻断及秘密权限保持。
+
+### 本轮验证边界
+
+部署前同一文件树已有全量 **685 pass /0 fail /0 skip**、typecheck/build通过和手机Chromium专项 **10/10**。更早首次交付的150个唯一开发E2E及7项生产PWA证据保留在[报告](TEST_REPORT.md)，没有冒充本轮公网重跑；本轮无产品源码变化，未重复运行代码测试。
+
+Render侧已核对来源SHA、构建、启动、就绪成功/live与错误日志。初次短窗口指标查询为空，稍后取得CPU/内存数据：UTC 00:53:32约0.0031核/188.3MiB；实例数和HTTP计数仍无数据，不据此声称流量或负载验收通过。当前云端网络策略不允许直接访问该域名，外部健康请求在代理连接阶段403，网页读取工具也无法访问；**本轮未完成独立公网HTTP200、页面、管理员登录、模拟房或Socket流程验收**，不能把网络阻断说成应用故障，也不沿用10月25日结果当成本轮通过。未绕过网络策略或更改环境配置。
+
+仍是Free临时SQLite，休眠、重启和部署可能丢失业务数据，管理员空库启动恢复不等于持久化。真实iPhone Safari、声音、后台/锁屏、弱网、实体多人及新板公网整局仍需独立验收；BETA-009/010继续部分实现。部署后仅文档跟进，文档提交不替代运行源码SHA，也不因推送文档重复部署。
+
+<a id="当前发布2026-10-25"></a>
+
+## 历史发布（2026-10-25）
 
 用户明确要求部署当前版本。已先fetch核对干净的main与origin/main一致，再验证并发布源码 [37a13140a6cfe824d9a8c24a43caf31f6f069324](https://github.com/yup005/note_wolf/commit/37a13140a6cfe824d9a8c24a43caf31f6f069324)。
 
@@ -71,7 +90,7 @@ BETA-004 管理员授权与独立模拟房隔离已在本地实现，执行证�
 - 服务：`note-wolf-trial` / `srv-db5gd37lot8c73esepqg`，Node Web Service，Free，Oregon，单实例。
 - 仓库：`https://github.com/yup005/note_wolf`，分支 `main`。
 - 首次部署：`dep-db5gd3nlot8c73eseqo0`，Render 返回 `live`。部署源码：[fab5566d84ec2fb2b3572d105f3e1935a879911a](https://github.com/yup005/note_wolf/commit/fab5566d84ec2fb2b3572d105f3e1935a879911a)。该 SHA 是已上线源码，不是后续部署文档提交。
-- 当前运行源码：本页2026-10-25发布的 `37a13140a6cfe824d9a8c24a43caf31f6f069324`；先前部署保留作历史记录。
+- 当前运行源码：本页2026-10-30发布的 `75929dea291c2149baf0d865166b2c49c6ee195c`；先前部署保留作历史记录。
 - 前端、API 和 Socket.IO 由同一个服务提供，不需要跨域会话或迁移规则引擎。
 - 历史：首次部署后另一开发批次交付 M1 配置功能（`b5954fe`，文档跟进`5a187d1`）；首次部署记录正常合并该批次，保留其全部实现和证据，当时未重新部署。2026-10-11 已按上方记录手动更新。
 
