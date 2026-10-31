@@ -35,7 +35,7 @@ export const resolutionSchema=z.discriminatedUnion('status',[
  resolutionDecisionSchema.options[1].extend({deaths:z.array(z.object({seat,sourceEffectIds:z.array(id).min(1)}).strict())}).strict()
 ]);
 // Internal only: never include this schema in public room, voice or admin projections.
-export const engineStateSchema=z.object({formatVersion:z.literal(1),board:engineBoardSchema,night,stage:z.enum(['collecting','awaiting-resolution','resolved','awaiting-decision','ended']),players:z.array(enginePlayerSchema),actions:z.array(nightActionSchema),resolution:resolutionSchema.nullable(),victory:victorySchema}).strict();
+export const engineStateSchema=z.object({formatVersion:z.literal(1),board:engineBoardSchema,night,confession:z.object({girl:seat,target:seat,accepted:z.boolean(),turnId:z.string().uuid(),notified:z.boolean()}).strict().optional(),stage:z.enum(['collecting','awaiting-resolution','resolved','awaiting-decision','ended']),players:z.array(enginePlayerSchema),actions:z.array(nightActionSchema),resolution:resolutionSchema.nullable(),victory:victorySchema}).strict();
 export type EngineState=z.infer<typeof engineStateSchema>;
 export type EnginePlayer=z.infer<typeof enginePlayerSchema>;
 export type EngineSeed=z.infer<typeof engineSeedSchema>;

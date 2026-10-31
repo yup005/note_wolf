@@ -1,6 +1,12 @@
 # 文档职责与阅读导航
 
+## 狼女孩板子（2026-10-30）
+
+[现行规则WG-001–010](WEREWOLF_RULES_SPEC.md#wolf-girl-2026-10-30) → [直接确认](PRODUCT_DECISIONS.md#wolf-girl-2026-10-30) / [批准设计](superpowers/specs/2026-10-30-wolf-girl-design.md) → [验收用例](WEREWOLF_TEST_CASES.md) / [执行报告](TEST_REPORT.md)。仅固定12人及同阵容副本；实现、自动验证、部署与实机验收分别记录。
+
 更新：2026-10-22。本页只说明去哪里查阅和如何避免重复，不新增玩法或改变已确认细节。
+
+更新：2026-10-21。本页只说明去哪里查阅和如何避免重复，不新增玩法或改变已确认细节。
 
 ## 按任务查阅
 
@@ -8,11 +14,19 @@
 |---|---|---|
 | Codex 每次开始/结束任务 | [简短指令入口](../AGENTS.md)、[详细工作流程](CODEX_WORKFLOW.md)中的任务前检查、Git 工作流与进度要求 | 当前分支、远程增量、本地修改及任务范围 |
 | 当前板子玩法/例外/权限 | [规则规格](WEREWOLF_RULES_SPEC.md)的相关 ID 和完整细节 | [产品决策](PRODUCT_DECISIONS.md)、[最新规则确认及未决问题](../OPEN_QUESTIONS.md)、[详细需求 V1](WEREWOLF_REQUIREMENTS_V1.md) |
+| 新需求Issue #2–#7 / 规则速查 | [原需求及来源](NEW_FEATURE_REQUIREMENTS_2026-10-20.md)、[速查范围](WEREWOLF_RULES_SPEC.md#rule-reference-2026-10-20) | [验收](WEREWOLF_TEST_CASES.md#规则速查验收2026-10-20)、矩阵和报告；GUIDE-001实施；REMATCH见下一行，PWA见下行，大屏见下行，战绩/教学见下行，六项均有本地实现，PWA待真实验收，不能由确认代推完成 |
+| 再来一局 / REMATCH-001 技术设计 | [已审阅设计](superpowers/specs/2026-10-20-rematch-design.md)、[实施计划](superpowers/plans/2026-10-20-rematch.md) | 兼容旧归档、事务重开与跨局隔离方案；Owner已批准并实施，实际证据见报告；旧归档/生产与实机边界仍保留 |
+| iPhone安装 / PWA-001 技术设计 | [已确认设计](superpowers/specs/2026-10-20-pwa-design.md)、[已执行计划](superpowers/plans/2026-10-20-pwa.md) | [确认边界](WEREWOLF_RULES_SPEC.md#pwa-2026-10-20)、[预期验收](WEREWOLF_TEST_CASES.md#pwa-tests-2026-10-20)；本地实施/自动验证见[报告](TEST_REPORT.md)，PWA-001待真实iPhone验收，未部署 |
+| 公共大屏 / DISPLAY-001 | [完整规则](WEREWOLF_RULES_SPEC.md#display-2026-10-21)、[设计](superpowers/specs/2026-10-21-display-design.md)、[计划](superpowers/plans/2026-10-21-display.md) | [预期验收](WEREWOLF_TEST_CASES.md#display-tests-2026-10-21)与[实际报告](TEST_REPORT.md)；原房主可撤销只读链接，无玩家权限/私密阶段，不续期；本地实施未部署 |
+| 本人战绩 / STATS-001 | [完整规则](WEREWOLF_RULES_SPEC.md#statistics-2026-10-21)、[设计](superpowers/specs/2026-10-21-statistics-design.md)、[计划](superpowers/plans/2026-10-21-statistics.md) | [预期](WEREWOLF_TEST_CASES.md#statistics-tests-2026-10-21)与[实际](TEST_REPORT.md)；唯一参赛证明、当前官方事实、未知分母和只读恢复边界，本地实施未部署 |
+| 独立教学 / TUTORIAL-001 | [完整规则](WEREWOLF_RULES_SPEC.md#tutorial-2026-10-21)、[设计](superpowers/specs/2026-10-21-tutorial-design.md)、[计划](superpowers/plans/2026-10-21-tutorial.md) | [预期](WEREWOLF_TEST_CASES.md#tutorial-tests-2026-10-21)与[实际](TEST_REPORT.md)；普通游客本地七步，无真实房间/成员/写入，模块失败/后台隔离及键盘焦点；未部署 |
+| 首页可选区域加载失败 | [恢复边界](WEREWOLF_RULES_SPEC.md#home-panel-recovery-2026-10-21)、[预期](WEREWOLF_TEST_CASES.md#home-panel-recovery-tests-2026-10-21) | [实际报告](TEST_REPORT.md)；记录/收藏/战绩局部错误保留主入口与输入，不自动刷新/重发，不改权限或需求状态 |
 | 需求优先级、是否已实现 | [需求总表](NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md)、[当前项目进度](PROJECT_STATUS_FOR_CHATGPT.md) | 实际代码/测试与[差距审计](GAP_ANALYSIS.md)，不能把索引状态当作验收证据 |
 | 紧凑收藏 / 添加和修改记录入口 | [完整展示及权限边界](WEREWOLF_RULES_SPEC.md#record-entry-compact-favorites-2026-10-18)、[使用入口](../README.md) | [验收](WEREWOLF_TEST_CASES.md#收藏与记录入口验收2026-10-18)与当前报告；不增加归档写权限 |
 | 未来投票设置新旧差异 / 重开恢复 | [读取权限、版本和确认边界](WEREWOLF_RULES_SPEC.md#future-vote-diff-2026-10-22) | [验收](WEREWOLF_TEST_CASES.md#未来投票设置差异与重开恢复验收2026-10-22)与报告；只补现有两参数，更广未来设置仍部分实现 |
 | 常亮 / 夜间入口 / 房主分享VIP | [范围与历史覆盖](WEREWOLF_RULES_SPEC.md#wake-privacy-sharing-audit-2026-10-19) | [验收](WEREWOLF_TEST_CASES.md#常亮夜间入口与房主分享权限验收2026-10-19)与报告；取消旧按钮，常亮仍待真实设备，参局访问不等于外链权限 |
 | 历史：房主离线 / 首轮暂停预览 | [等待/授权及预览边界](WEREWOLF_RULES_SPEC.md#host-offline-future-settings-2026-10-19) | [验收](WEREWOLF_TEST_CASES.md#房主离线与未来投票设置验收2026-10-19)与报告；只显示待保存值，更广设置/完整差异对照未完成 |
+| 房主离线 / 暂停未来投票设置 | [等待/授权](WEREWOLF_RULES_SPEC.md#host-offline-future-settings-2026-10-19)、[现有两项差异对照](WEREWOLF_RULES_SPEC.md#future-vote-diff-2026-10-19) | [差异验收](WEREWOLF_TEST_CASES.md#未来投票设置差异对照验收2026-10-19)与报告；已保存值初始化/版本失效，更广参数仍待明确 |
 | 终局判胜/自爆指刀资格2项复核 | [标准12人范围](WEREWOLF_RULES_SPEC.md#terminal-core-acceptance-2026-10-19) | [验收](WEREWOLF_TEST_CASES.md#终局判胜与自爆指刀资格验收2026-10-19)与报告；合成先前死亡前提，其他板子优先级不推广 |
 | 白天竞选/发言/投票6项复核 | [范围与当前语音边界](WEREWOLF_RULES_SPEC.md#day-core-acceptance-2026-10-19) | [验收](WEREWOLF_TEST_CASES.md#白天竞选发言与投票复核验收2026-10-19)与报告；白天静音，不以实现代定剩余PK规则 |
 | 夜间6项核心规则复核 | [范围与既有规则](WEREWOLF_RULES_SPEC.md#night-core-acceptance-2026-10-18) | [验收](WEREWOLF_TEST_CASES.md#夜间核心规则复核验收2026-10-18)与报告；NIGHT-006仍待真实声音验收，无新玩法 |

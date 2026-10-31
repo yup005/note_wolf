@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {loginTestAdmin} from './helpers/test-admin';
+import {loginTestAdmin,requestWithBackoff,waitForBackpressure} from './helpers/test-admin';
 import type {LobbyView} from '../../packages/contracts/index';
 import type {DayCommand} from '../../packages/contracts/day';
 type Command<T>=T extends unknown?Omit<T,'turnId'>:never;
@@ -7,15 +7,25 @@ type Command<T>=T extends unknown?Omit<T,'turnId'>:never;
 test('repeatable kings use public carry and black gun controls after refresh',async({page})=>{
  test.setTimeout(90000);await loginTestAdmin(page);await page.getByLabel('你的昵称').fill('Kings simulation');await page.getByRole('button',{name:'创建房间',exact:true}).click();
  // Repeated kings remain a supported saved/API composition; the new editor has singleton tags.
- const configured=(await(await page.request.get('/api/session')).json()).rooms[0] as LobbyView;
- const boardResponse=await page.request.post(`/api/rooms/${configured.room.id}/board`,{data:{settingsRevision:configured.room.preparation.settingsRevision,selection:{kind:'composition',composition:{seatCount:12,roles:{wolf:0,blackWolf:2,whiteWolf:2,villager:4,seer:1,witch:1,hunter:1,idiot:1}}}}});expect(boardResponse.ok(),await boardResponse.text()).toBe(true);
+ const configured=(await(await requestWithBackoff(()=>page.request.get('/api/session'))).json()).rooms[0] as LobbyView;
+ const boardResponse=await requestWithBackoff(()=>page.request.post(`/api/rooms/${configured.room.id}/board`,{data:{settingsRevision:configured.room.preparation.settingsRevision,selection:{kind:'composition',composition:{seatCount:12,roles:{wolf:0,blackWolf:2,whiteWolf:2,villager:4,seer:1,witch:1,hunter:1,idiot:1}}}}}));expect(boardResponse.ok(),await boardResponse.text()).toBe(true);
  await page.getByRole('button',{name:'1 号座位，空位',exact:true}).click();await page.getByRole('button',{name:'补满测试玩家',exact:true}).click();await page.getByRole('button',{name:'准备',exact:true}).click();await page.getByRole('button',{name:'开始发牌',exact:true}).click();await page.getByRole('button',{name:'查看身份',exact:true}).click();await page.getByRole('button',{name:'确认身份',exact:true}).click();await page.getByRole('button',{name:'开始对局',exact:true}).click();
- const session=await(await page.request.get('/api/session')).json(),initial:LobbyView=session.rooms[0],path=`/api/rooms/${initial.room.id}`;
- const state=async():Promise<LobbyView>=>(await page.request.get(path)).json();const post=async(endpoint:string,data:unknown={})=>{const r=await page.request.post(path+endpoint,{data});expect(r.ok(),await r.text()).toBe(true);};const command=async(c:Command<DayCommand>)=>post('/day/command',{...c,turnId:(await state()).room.day!.turnId});
- const kings:{seat:number;role:string}[]=[];let villager=0;for(const seat of initial.room.seats){const r=await page.request.get(path+(seat.number===1?'/identity':`/test-players/${seat.memberId}/identity`)),identity=await r.json();if(['blackWolf','whiteWolf'].includes(identity.role))kings.push({seat:seat.number,role:identity.role});if(identity.role==='villager')villager=seat.number;}
+ const session=await(await requestWithBackoff(()=>page.request.get('/api/session'))).json(),initial:LobbyView=session.rooms[0],path=`/api/rooms/${initial.room.id}`;
+ const state=async():Promise<LobbyView>=>{const r=await requestWithBackoff(()=>page.request.get(path));expect(r.ok(),await r.text()).toBe(true);return r.json();};const post=async(endpoint:string,data:unknown={})=>{const r=await requestWithBackoff(()=>page.request.post(path+endpoint,{data}));expect(r.ok(),await r.text()).toBe(true);};const command=async(c:Command<DayCommand>)=>post('/day/command',{...c,turnId:(await state()).room.day!.turnId});
+ const kings:{seat:number;role:string}[]=[];let villager=0;for(const seat of initial.room.seats){const r=await requestWithBackoff(()=>page.request.get(path+(seat.number===1?'/identity':`/test-players/${seat.memberId}/identity`)));expect(r.ok(),await r.text()).toBe(true);const identity=await r.json();if(['blackWolf','whiteWolf'].includes(identity.role))kings.push({seat:seat.number,role:identity.role});if(identity.role==='villager')villager=seat.number;}
  const white=kings.find(p=>p.role==='whiteWolf')!.seat,black=kings.find(p=>p.role==='blackWolf')!.seat;
- await post('/night/enter');for(let i=0;i<30&&(await state()).room.night!.phase!=='first_night_complete';i++)await post('/night/test-advance');await post('/day/enter');await command({action:'close_signup'});await command({action:'continue'});await command({action:'continue'});await command({action:'speech_mode',mode:'free'});await page.reload();await page.getByRole('checkbox',{name:'自动跟随',exact:true}).uncheck();await page.getByLabel('操作的测试玩家').selectOption(initial.room.seats[white-1].memberId!);
+ await post('/night/enter');
+ for(let i=0;i<30&&(await state()).room.night!.phase!=='first_night_complete';i++){
+  // Backpressure can outlast the remaining real night. Re-read before another
+  // advance instead of replaying a phase-specific action after the wait.
+  const response=await page.request.post(path+'/night/test-advance',{data:{}});
+  if(response.status()===429){await waitForBackpressure(response);continue;}
+  if(response.status()===409){expect((await response.json()).error).toBe('PHASE_LOCKED');expect((await state()).room.night!.phase).toBe('first_night_complete');break;}
+  expect(response.ok(),await response.text()).toBe(true);
+ }
+ expect((await state()).room.night!.phase).toBe('first_night_complete');
+ await post('/day/enter');await command({action:'close_signup'});await command({action:'continue'});await command({action:'continue'});await command({action:'speech_mode',mode:'free'});await page.reload();await page.getByRole('checkbox',{name:'自动跟随',exact:true}).uncheck();await page.getByLabel('操作的测试玩家').selectOption(initial.room.seats[white-1].memberId!);
  await page.getByRole('button',{name:'自爆',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'确认',exact:true}).click();await expect(page.getByRole('heading',{name:'白狼王指定目标',exact:true})).toBeVisible();await page.reload();await expect(page.getByRole('heading',{name:'白狼王指定目标',exact:true})).toBeVisible();
- for(const width of [320,390,430]){await page.setViewportSize({width,height:844});await expect(page.locator('body')).toHaveJSProperty('scrollWidth',width);}await page.screenshot({path:'/private/tmp/note-wolf-kings-carry-mobile.png',fullPage:false,animations:'disabled'});
+ for(const width of [320,390,430]){await page.setViewportSize({width,height:844});await expect(page.locator('body')).toHaveJSProperty('scrollWidth',width);}await page.screenshot({path:'test-results/note-wolf-kings-carry-mobile.png',fullPage:false,animations:'disabled'});
  await page.getByRole('button',{name:new RegExp(`^目标 ${black} 号`)}).click();await page.getByRole('button',{name:`录入白狼王目标 ${black} 号`,exact:true}).click();await expect(page.getByRole('heading',{name:'死亡技能询问',exact:true})).toBeVisible();await page.getByRole('checkbox',{name:'自动跟随',exact:true}).uncheck();await page.getByLabel('操作的测试玩家').selectOption(initial.room.seats[black-1].memberId!);await page.getByRole('button',{name:'发动技能',exact:true}).click();await expect(page.getByRole('heading',{name:'黑狼王指定目标',exact:true})).toBeVisible();await page.getByRole('button',{name:new RegExp(`^目标 ${villager} 号`)}).click();await page.getByRole('button',{name:`录入黑狼王目标 ${villager} 号`,exact:true}).click();expect((await state()).room.day!.dead).toContain(villager);
 });

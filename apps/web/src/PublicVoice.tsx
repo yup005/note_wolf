@@ -25,14 +25,14 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
  const allowed=connected&&canManageGame(view)&&automatic&&active;
  const publicScope=publicFrame.scope;
  function cancel(){audio.current++;if(watchdog.current)clearTimeout(watchdog.current);if(nativeSupported){try{speechSynthesis.cancel();}catch{}}recordings.current?.cancel();audioScope.current='';}
- function release(id=clientId.current){void fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',credentials:'same-origin',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'release',clientId:id})}).catch(()=>{});}
+ function release(id=clientId.current){void fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',credentials:'same-origin',keepalive:true,headers:{'Content-Type':'application/json','X-Wolf-Game-Id':view.room.gameId},body:JSON.stringify({action:'release',clientId:id})}).catch(()=>{});}
  function stop(note='已关闭'){
   autoAttempted.current=true;generation.current++;on.current=false;busy.current=false;controller.current?.abort();cancel();release();if(alive.current){setEnabled(false);setPending(false);setStatus(note);}
  }
  async function request(action:VoiceCommand['action'],id=clientId.current){
   const started=Date.now(),abort=new AbortController();controller.current=abort;const timeout=setTimeout(()=>abort.abort(),5000);
   try{
-   const res=await fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',signal:abort.signal,credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,clientId:id})});
+   const res=await fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',signal:abort.signal,credentials:'same-origin',headers:{'Content-Type':'application/json','X-Wolf-Game-Id':view.room.gameId},body:JSON.stringify({action,clientId:id})});
    const data=await res.json();if(!res.ok)throw Error(data.message??'播报连接失败');return {data:data as VoiceResponse,started};
   }catch(e){if(abort.signal.aborted)throw Error('播报连接超时，请重新开启。');throw e;}finally{clearTimeout(timeout);if(controller.current===abort)controller.current=null;}
  }
@@ -41,8 +41,11 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
   cancel();if(!eligible())return;const seq=audio.current;audioScope.current=scope;setLastText(text);
   if(mode.current){
    const current=()=>seq===audio.current&&eligible()&&audioScope.current===scope;
-   void import('./recordedPublicVoice').then(async module=>{if(!current()||!context.current)return;recordings.current??=new module.RecordedPublicVoice(context.current);await recordings.current.play(text,current,()=>{if(current())setStatus('正在播报');},()=>{if(current())setStatus(on.current?'已开启':'未开启');});}).catch(()=>{if(current()){stop('播放失败');setError('内置语音未能播放，请重新开启。');}});return;
+   void import('./recordedPublicVoice').then(async module=>{if(!current()||!context.current)return;recordings.current??=new module.RecordedPublicVoice(context.current);await recordings.current.play(text,current,()=>{if(current())setStatus('正在播报');},()=>{if(current())setStatus(on.current?'已开启':'未开启');});}).catch(error=>{if(current()){if(nativeSupported&&error instanceof Error&&error.message==='UNSUPPORTED_PUBLIC_PROMPT'){playNative(text,seq);return;}stop('播放失败');setError('内置语音未能播放，请重新开启。');}});return;
   }
+  playNative(text,seq);
+ }
+ function playNative(text:string,seq:number){
   const utterance=new SpeechSynthesisUtterance(text);utterance.lang='zh-CN';utterance.rate=1;
   const voice=speechSynthesis.getVoices().find(v=>/^zh[-_]CN$/i.test(v.lang))??speechSynthesis.getVoices().find(v=>/^zh/i.test(v.lang));if(voice)utterance.voice=voice;
   const fail=()=>{if(seq!==audio.current||!alive.current)return;stop('播放失败');setError('浏览器未能播放语音，请使用内置语音。');};

@@ -31,6 +31,7 @@ export function createNativeAbilityProfile(role:BoardRole,seat:number,ruleset:Ru
  if(!boardRoleSchema.safeParse(role).success||!rulesetSchema.safeParse(ruleset).success||ruleset!=='mechanical-armor'&&role==='armoredWolf'||ruleset==='standard'&&['mechanicalWolf','armoredWolf','guard','spiritSeer','mixer'].includes(role))throw new LobbyError('INVALID_SKILL_STATE');
  let skills:SkillSnapshot['skills']=[];
  if(role==='witch')skills=[skill(seat,'antidote',1,{healing:'ordinary-wolf-knife'}),skill(seat,'poison',1,{damage:'witch-poison'})];
+ if(role==='poisoner')skills=[skill(seat,'poison',1,{damage:'witch-poison'})];
  if(role==='guard')skills=[skill(seat,'guard',null,{protection:'ordinary'})];
  if(role==='spiritSeer'||role==='seer')skills=[skill(seat,'inspect',null,{inspection:role==='spiritSeer'?'exact-role':'camp'})];
  if(role==='hunter'||role==='blackWolf')skills=[skill(seat,'shot',1,{damage:role==='blackWolf'?'black-wolf-shot':'hunter-shot'})];

@@ -24,6 +24,7 @@ export class JudgeStore {
    CREATE TABLE IF NOT EXISTS judge_knowledge(room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,member_id TEXT NOT NULL,seat INTEGER NOT NULL,PRIMARY KEY(room_id,member_id));
    CREATE TABLE IF NOT EXISTS judge_stale_turns(room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,turn_id TEXT NOT NULL,PRIMARY KEY(room_id,turn_id));`);
  }
+ private gameId(id:string){return (this.db.prepare('SELECT game_id FROM room_game_heads WHERE room_id=?').get(id) as {game_id:string}).game_id;}
  private assignment(id:string):Assignment{return this.db.prepare('SELECT member_id,version FROM room_judges WHERE room_id=?').get(id) as Assignment|undefined??{member_id:null,version:0};}
  private manual(id:string){return this.db.prepare('SELECT * FROM manual_games WHERE room_id=?').get(id) as Manual|undefined;}
  private read<T>(kind:'night'|'day',id:string):T|null{const row=this.db.prepare(`SELECT state FROM ${kind}_games WHERE room_id=?`).get(id) as {state:string}|undefined;return row?JSON.parse(row.state):null;}
@@ -93,7 +94,7 @@ export class JudgeStore {
  private frozenRuntime(id:string){const d=this.draft(id);if(d)return JSON.parse(d.state) as JudgeRuntime;const a=this.active(id);return a.night?{clock:this.now(),night:a.night,day:a.day,kind:a.kind,history:[]} satisfies JudgeRuntime:null;}
  private project(id:string,runtime:JudgeRuntime|null){const current=runtime?.kind==='day'?runtime.day:runtime?.night;const roster=current?.players??this.db.prepare('SELECT m.seat,i.role FROM members m JOIN identities i ON i.member_id=m.id AND i.room_id=m.room_id WHERE m.room_id=? AND m.seat IS NOT NULL ORDER BY m.seat').all(id) as {seat:number;role:Role;alive?:boolean}[];
   const official=this.manual(id);const doc=official?{...JSON.parse(official.official),notes:''}:runtime?runtimeFacts(runtime):emptyRecord();
-  return {roles:roster.map(p=>{const e=current?.engine?.players.find(e=>e.seat===p.seat);return {seat:p.seat,role:p.role,...(p.role==='witch'?{inventory:{antidote:runtime?.night.antidote??true,poison:runtime?.night.poison??true}}:p.role==='hunter'?{inventory:{hunterSpent:(runtime?.kind==='day'?runtime.day?.hunterSpent:runtime?.night.hunterSpent)??false}}:{}),alive:p.alive??!doc.deaths.some((d:{seat:number})=>d.seat===p.seat),...(e?{abilities:e.abilities,learning:e.learning,model:e.model}:{})};}),official:doc as RecordDocument};
+  return {...(current?.engine?.confession?{confession:current.engine.confession}:{}),roles:roster.map(p=>{const e=current?.engine?.players.find(e=>e.seat===p.seat);return {seat:p.seat,role:p.role,...(p.role==='witch'?{inventory:{antidote:runtime?.night.antidote??true,poison:runtime?.night.poison??true}}:p.role==='hunter'?{inventory:{hunterSpent:(runtime?.kind==='day'?runtime.day?.hunterSpent:runtime?.night.hunterSpent)??false}}:{}),alive:p.alive??!doc.deaths.some((d:{seat:number})=>d.seat===p.seat),...(e?{abilities:e.abilities,learning:e.learning,model:e.model}:{})};}),official:doc as RecordDocument};
  }
  private(token:string,id:string):JudgePrivate{
   this.assertJudge(token,id);const d=this.draft(id),runtime=this.frozenRuntime(id),projection=this.project(id,runtime),n=runtime?.night??null,day=runtime?.day??null;const current=runtime?.kind==='day'?day:n;
@@ -118,13 +119,13 @@ export class JudgeStore {
   for(const h of runtime.history)this.db.prepare('INSERT INTO game_history(room_id,kind,round,state) VALUES (?,?,?,?) ON CONFLICT(room_id,kind,round) DO UPDATE SET state=excluded.state').run(id,h.kind,h.round,JSON.stringify(h.state));
   this.db.prepare('INSERT INTO night_games VALUES (?,?) ON CONFLICT(room_id) DO UPDATE SET state=excluded.state').run(id,JSON.stringify(runtime.night));if(runtime.day)this.db.prepare('INSERT INTO day_games VALUES (?,?) ON CONFLICT(room_id) DO UPDATE SET state=excluded.state').run(id,JSON.stringify(runtime.day));
   // All independent record drafts, versions and manual revisions remain archived.
-  this.db.prepare('INSERT OR IGNORE INTO manual_revisions(room_id,version,at,document,outcome) VALUES (?,?,?,?,NULL)').run(id,manual.version,this.now(),JSON.stringify({...JSON.parse(manual.official),notes:''}));
-  this.db.prepare("INSERT OR IGNORE INTO manual_revision_sources VALUES (?,?,'computed')").run(id,manual.version);
-  this.db.prepare('INSERT INTO manual_revisions(room_id,version,at,document,outcome) VALUES (?,?,?,?,?)').run(id,manual.version+1,this.now(),JSON.stringify(canonical),terminal?runtime.day!.winner:null);
+  this.db.prepare('INSERT OR IGNORE INTO manual_revisions(room_id,version,at,document,outcome) VALUES (?,?,?,?,NULL)').run(this.gameId(id),manual.version,this.now(),JSON.stringify({...JSON.parse(manual.official),notes:''}));
+  this.db.prepare("INSERT OR IGNORE INTO manual_revision_sources VALUES (?,?,'computed')").run(this.gameId(id),manual.version);
+  this.db.prepare('INSERT INTO manual_revisions(room_id,version,at,document,outcome) VALUES (?,?,?,?,?)').run(this.gameId(id),manual.version+1,this.now(),JSON.stringify(canonical),terminal?runtime.day!.winner:null);
   const priorOfficial=JSON.parse(manual.official) as RecordDocument;
-  for(const death of canonical.deaths)if(!priorOfficial.deaths.some(prior=>prior.seat===death.seat&&prior.cause!=='unrecorded'))this.db.prepare('INSERT INTO judge_revision_private_causes VALUES (?,?,?)').run(id,manual.version+1,death.seat);
-  if(terminal)this.db.prepare('UPDATE record_rooms SET ended=1 WHERE room_id=?').run(id);
-  this.db.prepare("INSERT INTO manual_revision_sources VALUES (?,?,'computed')").run(id,manual.version+1);
+  for(const death of canonical.deaths)if(!priorOfficial.deaths.some(prior=>prior.seat===death.seat&&prior.cause!=='unrecorded'))this.db.prepare('INSERT INTO judge_revision_private_causes VALUES (?,?,?)').run(this.gameId(id),manual.version+1,death.seat);
+  if(terminal)this.db.prepare('UPDATE record_rooms SET ended=1 WHERE room_id=?').run(this.gameId(id));
+  this.db.prepare("INSERT INTO manual_revision_sources VALUES (?,?,'computed')").run(this.gameId(id),manual.version+1);
   this.audit(id,m,'official-supplement',{manualVersion:manual.version+1,facts:{...canonical,notes:''}});
   this.db.prepare('DELETE FROM manual_games WHERE room_id=?').run(id);this.db.prepare("UPDATE preparations SET game_mode='automatic' WHERE room_id=?").run(id);
   this.db.prepare("INSERT INTO room_controls(room_id,status,remaining_ms,kind,turn_id) VALUES (?,'paused',?,?,?) ON CONFLICT(room_id) DO UPDATE SET status='paused',remaining_ms=excluded.remaining_ms,resume_at=NULL,kind=excluded.kind,turn_id=excluded.turn_id,temp_member=NULL,version=room_controls.version+1").run(id,duration,runtime.kind,newTurn);

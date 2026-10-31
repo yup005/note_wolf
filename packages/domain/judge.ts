@@ -1,3 +1,4 @@
+import {effectiveGameEvents} from './replay.js';
 import {LobbyError} from '../contracts/index.js';
 import type {JudgeSupplement} from '../contracts/judge.js';
 import {emptyRecord,type RecordDocument} from '../contracts/records.js';
@@ -26,6 +27,7 @@ export function supplementRuntime(runtime:JudgeRuntime,operation:JudgeSupplement
  const current=runtime.kind==='night'?runtime.night:runtime.day!;
  if(['ended','rules_pending'].includes(current.phase))throw new LobbyError('JUDGE_RETURN_BLOCKED',409);
  if(operation.kind==='advance'){
+  if(runtime.kind==='night'&&current.phase==='confession'&&!runtime.night.engine?.confession)throw new LobbyError('JUDGE_CONFESSION_REQUIRED',409);
   if(runtime.kind==='night'&&current.phase==='awaiting_host'){beginNight(runtime.night,runtime.clock);return;}
   if(current.deadline===null)throw new LobbyError('PHASE_LOCKED',409);
   runtime.clock=current.deadline;
@@ -53,7 +55,7 @@ export function supplementRuntime(runtime:JudgeRuntime,operation:JudgeSupplement
 export function runtimeFacts(runtime:JudgeRuntime):RecordDocument{
  const result=emptyRecord();const days=runtime.history.filter(h=>h.kind==='day').map(h=>h.state as DayState);if(runtime.day)days.push(runtime.day);
  for(const d of days.sort((a,b)=>a.day-b.day)){
-  for(const e of d.events){
+  for(const e of effectiveGameEvents(d.events)){
    if(e.type.startsWith('death_')&&e.seat!==undefined&&!result.deaths.some(x=>x.seat===e.seat))result.deaths.push({seat:e.seat,round:d.day,period:['death_knife','death_poison'].includes(e.type)?'night':'day',cause:e.type.slice(6) as RecordDocument['deaths'][number]['cause']});
    if(e.type==='sheriff_elected')result.badges.push({round:d.day,seat:e.seat!});
    if(e.type==='command'&&e.command?.action==='transfer_badge')result.badges.push({round:d.day,seat:e.command.target as number|null});

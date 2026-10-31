@@ -20,6 +20,7 @@ export function validateEngineState(input:unknown):EngineState{
   new Set(state.players.map(p=>p.seat)).size!==state.players.length||state.players.some(p=>p.seat>b.seatCount||p.camp!==playerCamp(p.role)||p.abilities.ownerSeat!==p.seat||p.abilities.originalRole!==p.role)||
   Object.entries(derived.roles).some(([role,count])=>state.players.filter(p=>p.role===role).length!==count)||
   state.players.some(p=>!derived.roles[p.role]))throw new LobbyError('INVALID_ENGINE_STATE');
+ if(state.confession){const c=state.confession;const girl=state.players.find(p=>p.seat===c.girl),target=state.players.find(p=>p.seat===c.target);if(b.ruleset!=='wolf-girl'||girl?.role!=='wolfGirl'||!target||playerCamp(target.role)!=='good'||c.accepted!==(target.role==='villager'))throw new LobbyError('INVALID_ENGINE_STATE');}
  const seats=new Set(state.players.map(p=>p.seat));
  if(new Set(state.actions.map(a=>a.id)).size!==state.actions.length||
   new Set(state.actions.map(a=>`${a.casterId}:${a.requestId}`)).size!==state.actions.length||
@@ -144,6 +145,7 @@ function victoryFor(state:EngineState){
  return evaluateVictory(state.players.map(p=>({seat:p.seat,role:p.role,alive:p.alive,
   ...(state.board.composition.idiotPolicy==='dual-category-14'&&p.role==='idiot'?{idiotFlipped:p.publicState.revealedRole==='idiot'}:{}),
   ...(p.abilities.mimickedRole?{learnedRole:p.abilities.mimickedRole}:{}),
+  ...(state.confession?.accepted&&state.confession.target===p.seat?{personalCamp:'wolves' as const}:{}),
   ...(p.model?{modelSeat:p.model.seat,modelCamp:p.model.camp}:{})})),state.board.composition.ruleset,state.board.composition.idiotPolicy);
 }
 function stageFor(victory:EngineState['victory']):EngineState['stage']{

@@ -9,7 +9,7 @@ import {evaluateVictory} from './victory.js';
 import type {EngineState} from '../contracts/engine.js';
 import {isWolfRole,isSharedWolfRole} from '../contracts/board.js';
 import {useSkill} from './skills.js';
-type DeathReason='knife'|'poison'|'shot'|'exile'|'explosion'|'white-wolf';
+type DeathReason='knife'|'poison'|'shot'|'exile'|'explosion'|'white-wolf'|'girl-retaliation';
 type Task={seat:number;step:'skill'|'words'|'badge'};
 export interface DayState {
  engine?:EngineState;extraNightSeat?:number|null;flippedIdiots?:number[];
@@ -43,7 +43,7 @@ export function createDay(n:NightState,rules:FirstDayRules,now:number,previous?:
  return {...(n.engine?{engine:structuredClone(n.engine)}:{}),extraNightSeat:n.extraNightSeat??null,flippedIdiots:[...(previous?.flippedIdiots??n.engine?.players.filter(p=>p.publicState.revealedRole==='idiot'&&!p.publicState.canVote).map(p=>p.seat)??[])],interjection:null,interjectionUsed:{},day:n.night,nightDeaths:pendingDeaths.map(d=>d.seat),hunterSpent:previous?.hunterSpent??false,speechStart:null,phase:'awaiting_host',turnId:randomUUID(),deadline:null,players:n.players.map(p=>({...p,alive:previous?.players.find(old=>old.seat===p.seat)?.alive??p.alive??true})),rules:{...rules},pendingDeaths,deaths:previous?.deaths.map(d=>({...d}))??[],tasks:[],currentDeath:null,sheriff:previous?.sheriff??null,badge:previous?.badge??'available',signup:previous?.badge==='deferred'?{...previous.signup}:{},originalCandidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.originalCandidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],candidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.candidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],speakers:[],speaker:null,vote:null,result:null,announcement:null,revealed:previous?.revealed.map(p=>({...p}))??[],winner:null,reason:null,electionPurpose:previous?.badge==='deferred'?(previous.electionPurpose??(previous.vote?.purpose==='sheriff_pk'||previous.result?.purpose==='sheriff'&&previous.result.leaders.length>1?'sheriff_pk':'sheriff')):'sheriff',voteStarted:false,speechMode:null,direction:null,afterDeaths:'day',explosions:previous?.explosions??0,priorityWolf:null,events:[{type:'day_created',at:now}]};
 }
 function checkWin(s:DayState,now:number){
- const roster=s.players.map(p=>{const engine=s.engine?.players.find(e=>e.seat===p.seat);return {...p,...(dualFlipped(s,p.seat)?{idiotFlipped:true}:{}),...(engine?.abilities.mimickedRole?{learnedRole:engine.abilities.mimickedRole}:{}),...(engine?.model?{modelSeat:engine.model.seat,modelCamp:engine.model.camp}:{})};});
+ const roster=s.players.map(p=>{const engine=s.engine?.players.find(e=>e.seat===p.seat);return {...p,...(dualFlipped(s,p.seat)?{idiotFlipped:true}:{}),...(engine?.abilities.mimickedRole?{learnedRole:engine.abilities.mimickedRole}:{}),...(s.engine?.confession?.accepted&&s.engine.confession.target===p.seat?{personalCamp:'wolves' as const}:{}),...(engine?.model?{modelSeat:engine.model.seat,modelCamp:engine.model.camp}:{})};});
  const result=evaluateVictory(roster,s.engine?.board.composition.ruleset??'standard',s.engine?.board.composition.idiotPolicy);
  if(s.engine){s.engine.victory=result;for(const p of s.players){const engine=s.engine.players.find(e=>e.seat===p.seat);if(engine){engine.alive=p.alive;engine.publicState.canVote=p.alive&&!dualFlipped(s,p.seat);}}}
  if(result.status==='unresolved'){rulePending(s,'规则待确认',now);return true;}
@@ -118,11 +118,14 @@ function startDaySpeech(s:DayState,now:number,choose:(n:number)=>number){
 function canShoot(s:DayState,seat:number){
  if(s.phase!=='death_skill'||seat!==s.currentDeath||s.winner!==null)return false;
  const p=s.players.find(p=>p.seat===seat),death=s.deaths.find(d=>d.seat===seat);
- if(!p||p.alive||!death||death.reason==='poison')return false;
+ if(!p||p.alive||!death||death.reason==='poison'||death.reason==='girl-retaliation')return false;
+ if(s.engine?.board.composition.ruleset==='wolf-girl'&&!['knife','exile'].includes(death.reason))return false;
  if(s.engine){const skill=s.engine.players.find(p=>p.seat===seat)?.abilities.skills.find(a=>a.kind==='shot');return !!skill&&skill.remaining!==0&&skill.availableFromNight<=s.day&&(skill.parameters.damage==='black-wolf-shot'?['knife','exile','shot','white-wolf'].includes(death.reason):p.role==='hunter'||['knife','exile'].includes(death.reason));}
  return p.role==='hunter'&&!s.hunterSpent;
 }
 function canExplode(s:DayState,seat:number){
+ const girl=s.engine?.board.composition.ruleset==='wolf-girl'&&s.players.some(p=>p.seat===seat&&p.alive&&p.role==='wolfGirl');
+ if(girl&&s.winner===null&&s.phase==='vote_result'&&s.result?.purpose.startsWith('exile'))return true;
  const p=s.players.find(p=>p.seat===seat),ability=s.engine?.players.find(p=>p.seat===seat)?.abilities.skills.find(a=>a.kind==='explode-take');
  return s.winner===null&&s.rules.explosionOrder!==null&&(s.rules.explosionLock==='during_vote'||!s.voteStarted)&&['sheriff_signup','sheriff_speech','sheriff_withdraw','day_speech','free_speech'].includes(s.phase)&&!(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.vote.candidates.includes(seat))&&!!p?.alive&&(isSharedWolfRole(p.role)||!!ability&&ability.remaining!==0&&ability.availableFromNight<=s.day);
 }
@@ -192,6 +195,7 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
  if(c.action==='speech_mode'){host();need('day_direction');s.speechMode=c.mode==='ordered'?'phone':c.mode;if(s.sheriff===null)s.direction='ascending';startDaySpeech(s,now,choose);return;}
  if(c.action==='direction'){need('day_direction');if(seat!==s.sheriff)error('NOT_YOUR_TURN',403);if(c.start!==undefined&&!participants(s).includes(c.start))error('INVALID_INPUT');s.speechStart=c.start??null;s.direction=c.direction;startDaySpeech(s,now,choose);return;}
  if(c.action==='explode'){
+  if(p?.role==='wolfGirl'&&s.engine?.board.composition.ruleset==='wolf-girl'){if(!canExplode(s,seat))error('NOT_YOUR_TURN',403);explodeGirl(s,seat,now,choose);return;}
   if(s.rules.explosionOrder===null||(s.voteStarted&&s.rules.explosionLock===null))error('DAY_RULE_UNRESOLVED');if(s.voteStarted&&s.rules.explosionLock==='after_any_vote')error('PHASE_LOCKED');if(!canExplode(s,seat))error('NOT_YOUR_TURN',403);
   if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.vote.candidates.includes(seat))error('NOT_YOUR_TURN',403);
   const sheriffPk=['sheriff_speech','sheriff_withdraw'].includes(s.phase)&&(s.vote?.purpose==='sheriff_pk'||s.electionPurpose==='sheriff_pk');if(sheriffPk&&s.candidates.includes(seat)){s.candidates=s.candidates.filter(p=>p!==seat);if(s.candidates.length===1){electSheriff(s,s.candidates[0],now);}}
@@ -204,6 +208,32 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
  }
  error();
 }
+function explodeGirl(s:DayState,seat:number,now:number,choose:(n:number)=>number){
+ const relation=s.engine!.confession;
+ const cancelled=s.phase==='vote_result'&&s.result?.purpose.startsWith('exile');
+ if(cancelled){s.events.push({type:'vote_cancelled',at:now,...(s.result?{result:structuredClone(s.result)}:{})});s.result=null;}
+ const onSheriff=['sheriff_signup','sheriff_speech','sheriff_withdraw'].includes(s.phase);
+ const swallowing=onSheriff&&s.pendingDeaths.some(d=>d.seat===seat&&d.reason==='poison');
+ const sheriffPk=onSheriff&&(s.vote?.purpose==='sheriff_pk'||s.electionPurpose==='sheriff_pk');
+ const pkCandidate=sheriffPk&&s.candidates.includes(seat);
+ kill(s,seat,'explosion',now);reveal(s,seat,'wolfGirl');s.engine!.players.find(p=>p.seat===seat)!.publicState.revealedRole='wolfGirl';
+ const retaliation=relation&&kill(s,relation.target,'girl-retaliation',now)?relation.target:null;
+ const other=s.pendingDeaths.filter(d=>d.seat!==seat&&d.seat!==retaliation);
+ for(const d of other)kill(s,d.seat,d.reason,now);
+ s.pendingDeaths=[];s.announcement=[...new Set([seat,...(retaliation===null?[]:[retaliation]),...other.map(d=>d.seat)])].sort((a,b)=>a-b);
+ if(onSheriff)s.candidates=s.candidates.filter(candidate=>participants(s).includes(candidate));
+ s.afterDeaths='night';s.vote=null;s.speaker=null;s.speakers=[];
+ s.priorityWolf=!swallowing&&s.players.some(p=>p.alive&&isSharedWolfRole(p.role))?seat:null;
+ if(checkWin(s,now))return;
+ // WG-008: finish all deaths and victory before any new election or badge work.
+ if(onSheriff&&s.sheriff===null){
+  if(pkCandidate&&s.candidates.length===1)electSheriff(s,s.candidates[0],now);
+  else{s.electionPurpose=sheriffPk?'sheriff_pk':s.electionPurpose??'sheriff';s.explosions++;s.badge=s.explosions>=2?'lost':'deferred';}
+ }
+ const silent=[seat,...(retaliation===null?[]:[retaliation])];
+ s.tasks=[...silent.flatMap(dead=>s.sheriff===dead?[{seat:dead,step:'badge' as const}]:[]),...shuffle(other.map(d=>d.seat),choose).flatMap(dead=>deathTasks(s,dead,s.day===1))];
+ phase(s,'night_announcement',now);
+}
 function publicDeathSkills(s:DayState):NonNullable<DayPublic['skillResults']>{
  const results:NonNullable<DayPublic['skillResults']>=[];
  for(let i=0;i<s.events.length;i++){
@@ -214,7 +244,7 @@ function publicDeathSkills(s:DayState):NonNullable<DayPublic['skillResults']>{
  }
  return results;
 }
-export function publicDay(s:DayState,now:number):DayPublic{return {skillResults:publicDeathSkills(s),interjection:s.interjection?{seat:s.interjection.seat,originalSpeaker:(s.phase==='last_words'?s.currentDeath:s.speaker)!}:null,day:s.day,speechMode:s.speechMode==='ordered'?'phone':s.speechMode,direction:s.direction,speechStart:s.speechStart,nightDeaths:s.announcement===null?[]:s.nightDeaths,phase:s.phase,turnId:s.turnId,deadline:s.deadline,serverNow:now,alive:living(s),dead:s.deaths.map(d=>d.seat).sort((a,b)=>a-b),signupCount:living(s).filter(seat=>Object.hasOwn(s.signup,seat)).length,sheriff:s.sheriff,badge:s.badge,candidates:[...s.candidates],originalCandidates:[...s.originalCandidates],speaker:s.speaker,currentDeath:s.currentDeath,vote:s.vote?{purpose:s.vote.purpose,method:s.vote.method,visibility:s.vote.visibility,eligible:s.vote.eligible,candidates:s.vote.candidates,submittedCount:Object.keys(s.vote.ballots).length}:null,result:s.phase==='vote_result'?s.result:null,announcement:s.announcement,revealed:s.revealed,winner:s.winner,reason:s.reason};}
+export function publicDay(s:DayState,now:number):DayPublic{return {...(s.winner&&s.engine?.victory.status==='ended'?{personalResults:s.engine.victory.personalResults}:{}),skillResults:publicDeathSkills(s),interjection:s.interjection?{seat:s.interjection.seat,originalSpeaker:(s.phase==='last_words'?s.currentDeath:s.speaker)!}:null,day:s.day,speechMode:s.speechMode==='ordered'?'phone':s.speechMode,direction:s.direction,speechStart:s.speechStart,nightDeaths:s.announcement===null?[]:s.nightDeaths,phase:s.phase,turnId:s.turnId,deadline:s.deadline,serverNow:now,alive:living(s),dead:s.deaths.map(d=>d.seat).sort((a,b)=>a-b),signupCount:living(s).filter(seat=>Object.hasOwn(s.signup,seat)).length,sheriff:s.sheriff,badge:s.badge,candidates:[...s.candidates],originalCandidates:[...s.originalCandidates],speaker:s.speaker,currentDeath:s.currentDeath,vote:s.vote?{purpose:s.vote.purpose,method:s.vote.method,visibility:s.vote.visibility,eligible:s.vote.eligible,candidates:s.vote.candidates,submittedCount:Object.keys(s.vote.ballots).length}:null,result:s.phase==='vote_result'?s.result:null,announcement:s.announcement,revealed:s.revealed,winner:s.winner,reason:s.reason};}
 export function privateDay(s:DayState,seat:number):DayPrivate{
  const p=s.players.find(p=>p.seat===seat),vote=s.vote,engine=s.engine?.players.find(e=>e.seat===seat);
  return {turnId:s.turnId,seat,
@@ -238,6 +268,7 @@ export function selfDay(s:DayState,n:NightState,seat:number):DaySelf{
  const player=s.players.find(p=>p.seat===seat);if(!player)return error('NOT_SEATED',403);
  const engine=s.engine?.players.find(p=>p.seat===seat),profile=engine?.abilities??createNativeAbilityProfile(player.role,seat,'standard');
  return {turnId:s.turnId,seat,role:player.role,learnedRole:profile.mimickedRole,
+  ...(s.engine?.confession?.target===seat&&s.engine.confession.notified?{confession:{accepted:s.engine.confession.accepted,...(s.engine.confession.accepted?{girl:s.engine.confession.girl}:{})}}:{}),
   modelSeat:player.role==='mixer'?engine?.model?.seat??null:null,
   idiotRevealed:player.role==='idiot'||profile.mimickedRole==='idiot'?s.revealed.some(p=>p.seat===seat&&p.role==='idiot'):null,
   skills:profile.skills.map(skill=>({kind:skill.kind,remaining:engine?skill.remaining:skill.kind==='antidote'?Number(n.antidote):skill.kind==='poison'?Number(n.poison):skill.kind==='shot'?Number(!s.hunterSpent):skill.remaining,availableFromNight:skill.availableFromNight}))};

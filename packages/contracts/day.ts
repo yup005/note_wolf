@@ -4,6 +4,7 @@ export type DayPhase='awaiting_host'|'sheriff_signup'|'sheriff_speech'|'sheriff_
 export type VotePurpose='sheriff'|'sheriff_pk'|'exile'|'exile_pk';
 export interface DayVoteResult {purpose:VotePurpose;counts:{seat:number;votes:number}[];ballots?:{seat:number;target:number|null}[];leaders:number[]}
 export interface DayPublic {
+ personalResults?:{seat:number;won:boolean}[];
  skillResults?:{key:string;seat:number;activated:boolean;at:number}[];
  day:number;phase:DayPhase;turnId:string;deadline:number|null;serverNow:number;alive:number[];dead:number[];
  interjection?:{seat:number;originalSpeaker:number}|null;
@@ -13,7 +14,7 @@ export interface DayPublic {
  result:DayVoteResult|null;announcement:number[]|null;revealed:{seat:number;role:Role}[];winner:'wolves'|'good'|null;reason:string|null;
 }
 export interface DayPrivate {turnId:string;seat:number;canSignup:boolean;signup:boolean|null;canWithdraw:boolean;canVote:boolean;voted:boolean;myVote:number|null;canShoot:boolean;canExplode:boolean;canEndSpeech:boolean;canTransfer:boolean;canInterject?:boolean;canEndInterjection?:boolean;interjectionRemainingMs?:number;mixerModel?:{seat:number}}
-export interface DaySelf {turnId:string;seat:number;role:Role;learnedRole:Role|null;modelSeat:number|null;idiotRevealed:boolean|null;skills:{kind:'poison'|'antidote'|'guard'|'inspect'|'shot'|'extra-knife'|'explode-take';remaining:number|null;availableFromNight:number}[]}
+export interface DaySelf {confession?:{accepted:boolean;girl?:number};turnId:string;seat:number;role:Role;learnedRole:Role|null;modelSeat:number|null;idiotRevealed:boolean|null;skills:{kind:'poison'|'antidote'|'guard'|'inspect'|'shot'|'extra-knife'|'explode-take';remaining:number|null;availableFromNight:number}[]}
 const turn=z.string().uuid();const seat=z.number().int().min(1).max(256);
 export const dayCommandSchema=z.discriminatedUnion('action',[
  z.object({action:z.literal('start'),turnId:turn}).strict(),
