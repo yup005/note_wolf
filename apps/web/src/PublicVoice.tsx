@@ -25,14 +25,14 @@ export function PublicVoiceProvider({view,connected,children}:{view:LobbyView;co
  const allowed=connected&&canManageGame(view)&&automatic&&active;
  const publicScope=publicFrame.scope;
  function cancel(){audio.current++;if(watchdog.current)clearTimeout(watchdog.current);if(nativeSupported){try{speechSynthesis.cancel();}catch{}}recordings.current?.cancel();audioScope.current='';}
- function release(id=clientId.current){void fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',credentials:'same-origin',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'release',clientId:id})}).catch(()=>{});}
+ function release(id=clientId.current){void fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',credentials:'same-origin',keepalive:true,headers:{'Content-Type':'application/json','X-Wolf-Game-Id':view.room.gameId},body:JSON.stringify({action:'release',clientId:id})}).catch(()=>{});}
  function stop(note='已关闭'){
   autoAttempted.current=true;generation.current++;on.current=false;busy.current=false;controller.current?.abort();cancel();release();if(alive.current){setEnabled(false);setPending(false);setStatus(note);}
  }
  async function request(action:VoiceCommand['action'],id=clientId.current){
   const started=Date.now(),abort=new AbortController();controller.current=abort;const timeout=setTimeout(()=>abort.abort(),5000);
   try{
-   const res=await fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',signal:abort.signal,credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,clientId:id})});
+   const res=await fetch(`/api/rooms/${view.room.id}/voice`,{method:'POST',signal:abort.signal,credentials:'same-origin',headers:{'Content-Type':'application/json','X-Wolf-Game-Id':view.room.gameId},body:JSON.stringify({action,clientId:id})});
    const data=await res.json();if(!res.ok)throw Error(data.message??'播报连接失败');return {data:data as VoiceResponse,started};
   }catch(e){if(abort.signal.aborted)throw Error('播报连接超时，请重新开启。');throw e;}finally{clearTimeout(timeout);if(controller.current===abort)controller.current=null;}
  }

@@ -1,8 +1,10 @@
+import {gameApi} from './gameApi';
 import {lazy,Suspense,useEffect,useState} from 'react';
 import type {LobbyView} from '../../../packages/contracts/index';
-import {api,errorText} from './api';
+import {errorText} from './api';
 const JudgePanel=lazy(()=>import('./JudgePanel'));
 export function JudgeControls({view,connected,onRefresh}:{view:LobbyView;connected:boolean;onRefresh:()=>Promise<void>}){
+ const api=gameApi(view.room.id,view.room.gameId);
  const {room,me}=view,judge=room.judge;const [settings,setSettings]=useState(false),[panel,setPanel]=useState(false),[seat,setSeat]=useState(''),[completed,setCompleted]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const assigned=judge?.seat===me.seat&&me.seat!==null;
  useEffect(()=>{setSettings(false);setError('');setCompleted(false);setSeat('');},[judge?.version,room.id]);

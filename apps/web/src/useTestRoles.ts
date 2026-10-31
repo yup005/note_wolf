@@ -1,10 +1,11 @@
+import {gameApi} from './gameApi';
 import {useEffect,useState} from 'react';
 import type {LobbyView,Role,PrivateIdentity} from '../../../packages/contracts/index';
-import {api} from './api';
 
 export function useTestRoles(view:LobbyView):Record<number,Role>{
+ const api=gameApi(view.room.id,view.room.gameId);
  const {room,me}=view;const enabled=view.testPlayersEnabled&&me.isHost&&room.testRoom;
- const key=enabled&&room.preparation.phase!=='lobby'?JSON.stringify([room.id,me.id,room.preparation.phase,room.preparation.settingsRevision,room.preparation.submittedCount]):'';
+ const key=enabled&&room.preparation.phase!=='lobby'?JSON.stringify([room.id,room.gameId,me.id,room.preparation.phase,room.preparation.settingsRevision,room.preparation.submittedCount]):'';
  const [result,setResult]=useState<{key:string;roles:{memberId:string;seat:number;role:Role}[]}>();
  useEffect(()=>{
   if(!key)return;let cancelled=false;

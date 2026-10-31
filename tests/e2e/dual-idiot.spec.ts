@@ -20,7 +20,7 @@ test('dual flip remains a night target after refresh and has no next-day player 
  await command({action:'offline_results',counts:(await state()).room.day!.vote!.candidates.map(seat=>({seat,votes:seat===idiot?1:0}))});await command({action:'continue'});expect((await state()).room.day!.alive).toContain(idiot);
  await page.reload();await expect(page.getByRole('heading',{name:'第 1 天结束',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:new RegExp(`^目标 ${idiot} 号`)})).toContainText('民边存活',{timeout:5000});
  for(const width of [320,390,430]){await page.setViewportSize({width,height:844});await expect(page.locator('body')).toHaveJSProperty('scrollWidth',width);}
- await page.screenshot({path:test.info().outputPath('note-wolf-dual-flip-mobile.png'),fullPage:false,animations:'disabled'});
+ await page.screenshot({path:'test-results/note-wolf-dual-flip-mobile.png',fullPage:false,animations:'disabled'});
  await post('/night/enter');const night=(await state()).room.night!;const wolfPath=path+(wolf===1?'/night':`/test-players/${initial.room.seats[wolf-1].memberId}/night`);
  const privateNight=await(await page.request.get(wolfPath+'/private')).json();expect(privateNight.legalTargets).toContain(idiot);expect(night.alive).toContain(idiot);
  await finishNight();await post('/day/enter');await command({action:'continue'});await command({action:'continue'});await command({action:'speech_mode',mode:'ordered'});await page.reload();await page.getByRole('checkbox',{name:'自动跟随',exact:true}).uncheck();await page.getByLabel('操作的测试玩家').selectOption(initial.room.seats[idiot-1].memberId!);

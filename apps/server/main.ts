@@ -7,9 +7,8 @@ const app=await createServer({dbPath,secureCookie:process.env.SECURE_COOKIE==='1
 let closeFrontend:()=>Promise<void>=async()=>{};
 if(process.env.WOLF_ADMIN_USERNAME&&process.env.WOLF_ADMIN_PASSWORD&&!app.store.auth.adminExists()){const {registerSchema}=await import('../../packages/contracts/auth.js');const credentials=registerSchema.parse({username:process.env.WOLF_ADMIN_USERNAME,password:process.env.WOLF_ADMIN_PASSWORD,nickname:'管理员'});await app.store.auth.createAccount(credentials.username,credentials.password,credentials.nickname,'admin');}
 if(process.env.NODE_ENV==='production'){
- const express=(await import('express')).default;
- app.web.use(express.static(resolve('dist/web')));
- app.web.get('/{*path}',(_req,res)=>res.sendFile(resolve('dist/web/index.html')));
+ const {mountProductionFrontend}=await import('./frontend.js');
+ mountProductionFrontend(app.web,resolve('dist/web'));
 }else{
  const {createServer}=await import('vite');
  const vite=await createServer({server:{middlewareMode:true,hmr:{server:app.http}},appType:'spa'});

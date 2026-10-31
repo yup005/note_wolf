@@ -30,13 +30,14 @@ export class RetentionStore {
    // Some old standalone databases predate archives/sharing. Discover their
    // tables inside the same locked transaction as the eligibility checks.
    const tables=new Set((this.db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {name:string}[]).map(table=>table.name));
+   const related=(column:string)=>tables.has('room_games')?`(${column}=r.id OR EXISTS (SELECT 1 FROM room_games g WHERE g.id=${column} AND g.room_id=r.id))`:`${column}=r.id`;
    const protections:string[]=[];
-   if(tables.has('saved_replays'))protections.push('EXISTS (SELECT 1 FROM saved_replays s WHERE s.room_id=r.id)');
-   if(tables.has('record_drafts')&&tables.has('record_favorites'))protections.push('EXISTS (SELECT 1 FROM record_favorites f JOIN record_drafts d ON d.id=f.record_id WHERE d.room_id=r.id)');
-   if(tables.has('record_drafts')&&tables.has('shared_record_favorites'))protections.push('EXISTS (SELECT 1 FROM shared_record_favorites f JOIN record_drafts d ON d.id=f.record_id WHERE d.room_id=r.id)');
+   if(tables.has('saved_replays'))protections.push(`EXISTS (SELECT 1 FROM saved_replays s WHERE ${related('s.room_id')})`);
+   if(tables.has('record_drafts')&&tables.has('record_favorites'))protections.push(`EXISTS (SELECT 1 FROM record_favorites f JOIN record_drafts d ON d.id=f.record_id WHERE ${related('d.room_id')})`);
+   if(tables.has('record_drafts')&&tables.has('shared_record_favorites'))protections.push(`EXISTS (SELECT 1 FROM shared_record_favorites f JOIN record_drafts d ON d.id=f.record_id WHERE ${related('d.room_id')})`);
    // A paused/withdrawn/expired/disabled-owner link may become readable again.
    // Only explicit revocation releases its retention protection.
-   if(tables.has('record_drafts')&&tables.has('record_share_links'))protections.push('EXISTS (SELECT 1 FROM record_share_links l JOIN record_drafts d ON d.id=l.record_id WHERE d.room_id=r.id AND l.revoked=0)');
+   if(tables.has('record_drafts')&&tables.has('record_share_links'))protections.push(`EXISTS (SELECT 1 FROM record_share_links l JOIN record_drafts d ON d.id=l.record_id WHERE ${related('d.room_id')} AND l.revoked=0)`);
    const eligible=`r.last_activity_at<=?${protections.length?` AND NOT (${protections.join(' OR ')})`:''}`;
    const cutoff=this.now()-inactivityWindow;
    const candidates=this.db.prepare(`SELECT r.id FROM rooms r WHERE ${eligible} ORDER BY r.id`).all(cutoff) as {id:string}[];

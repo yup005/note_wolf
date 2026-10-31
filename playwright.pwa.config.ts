@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'tests/pwa',outputDir:'.superpowers/sdd/2026-10-20-pwa/browser-artifacts',workers:1,fullyParallel:false,timeout:45000,reporter:'list',use:{baseURL:'http://127.0.0.1:3101',viewport:{width:390,height:844},serviceWorkers:'allow',trace:'retain-on-failure'},projects:[{name:'production-chromium',use:{browserName:'chromium',launchOptions:{executablePath:process.env.PLAYWRIGHT_CHROMIUM_PATH??'/usr/bin/chromium',args:['--no-sandbox']}}}]});

@@ -1,3 +1,5 @@
+import {gameApi} from './gameApi';
+import {RuleReferenceButton} from './RuleReference';
 import {JudgeControls} from './JudgeControls';
 import {PublicVoiceShortcut} from './PublicVoice';
 import {useEffect,useRef,useState} from 'react';
@@ -8,7 +10,7 @@ import {RecordsButton} from './RecordsPanel';
 import {GameControls,canManageGame,gameFrozen} from './GameControls';
 import {useWakeLock} from './useWakeLock';
 import {useTestRoles} from './useTestRoles';
-import {api,errorText} from './api';
+import {errorText} from './api';
 type WithoutTurn<T> = T extends unknown?Omit<T,'turnId'>:never;
 interface Props {view:LobbyView;connected:boolean;busy:boolean;onHome:()=>void;onAction:(action:string,body?:unknown)=>void;onPublicRefresh:()=>Promise<void>}
 export const nightPhaseLabels={confession:'狼女孩表白',confession_notice:'被表白者查看信息',poisoner:'毒师行动',awaiting_host:'等待房主入夜',mechanical_authority:'狼刀权限确认',guard:'守卫行动',wolves:'狼人行动',eyes_closed:'闭眼间隔',witch:'女巫行动',mechanical:'机械狼行动',armor:'装甲狼行动',spiritSeer:'通灵师行动',mixer:'混血儿选择榜样',seer:'预言家行动',hunter:'猎人查看状态',rules_pending:'等待规则裁定',first_night_complete:'首夜操作完成'};
@@ -19,6 +21,7 @@ function defaultAbility(card:NightPrivate):AbilityChoice {
  if(card.canLearn)return 'learn';return card.skills?.find(skill=>skill.available)?.kind??'skip';
 }
 export function NightPanel({view,connected,busy,onHome,onAction,onPublicRefresh}:Props){
+ const api=gameApi(view.room.id,view.room.gameId);
  const frozen=gameFrozen(view);const manager=canManageGame(view);const {room,me}=view;const night=room.night!;const testing=view.testPlayersEnabled&&me.isHost&&room.testRoom;const testRoles=useTestRoles(view);
  const [noticeRequested,setNoticeRequested]=useState(false);
  const [actor,setActor]=useState(me.id);const [shown,setVisible]=useState(false);const [privateState,setCard]=useState<NightPrivate>();const [loadedActor,setLoadedActor]=useState('');const [target,setTarget]=useState<number|null>(null);
@@ -79,7 +82,7 @@ export function NightPanel({view,connected,busy,onHome,onAction,onPublicRefresh}
  const inspection=card?.inspectionRole?`查验 ${card.target} 号：${roleLabels[card.inspectionRole]}`:abilityStage&&card?.committed&&abilityChoice==='inspect'?(card.target==null?'本夜空验':card.result?`查验 ${card.target} 号：${card.result==='wolf'?'狼人':'好人'}`:null):null;
  if(card?.kind==='wolves')for(const seat of card.wolves??[]){const vote=card.votes?.find(v=>v.seat===seat);const key=vote?vote.target??'empty':'pending';voteGroups.set(key,[...(voteGroups.get(key)??[]),seat]);}
  return <div className={`night-screen${frozen?' is-frozen':''}`}>
-  <nav className="night-nav" aria-label="游戏导航"><button className="back" onClick={onHome}>← 首页</button><span>房间 {room.code} · 你在 {me.seat} 号</span><span className="live" role="status"><i className={connected?'dot':'dot amber'}/>{connected?room.control?.reconnecting?'连接异常':'已连接':'重连中'}</span><GameControls view={view} connected={connected} onRefresh={onPublicRefresh}/>{manager&&<PublicVoiceShortcut/>}<RecordsButton view={view} onRefresh={onPublicRefresh}/><JudgeControls view={view} connected={connected} onRefresh={onPublicRefresh}/></nav>
+  <nav className="night-nav" aria-label="游戏导航"><button className="back" onClick={onHome}>← 首页</button><span>房间 {room.code} · 你在 {me.seat} 号</span><RuleReferenceButton roomId={room.id} board={room.board}/><span className="live" role="status"><i className={connected?'dot':'dot amber'}/>{connected?room.control?.reconnecting?'连接异常':'已连接':'重连中'}</span><GameControls view={view} connected={connected} onRefresh={onPublicRefresh}/>{manager&&<PublicVoiceShortcut/>}<RecordsButton view={view} onRefresh={onPublicRefresh}/><JudgeControls view={view} connected={connected} onRefresh={onPublicRefresh}/></nav>
   {testing&&<div className="night-test-tools"><label>测试<select aria-label="操作的测试玩家" value={actor} disabled={pending} onChange={e=>{conceal();setAutoFollow(false);setTarget(null);draftKey.current='';setActor(e.target.value);}}>{room.seats.filter(s=>s.memberId&&(s.isTestPlayer||s.memberId===me.id)).map(s=><option key={s.memberId!} value={s.memberId!}>{s.number} 号 · {s.memberId===me.id?'你':s.nickname}{testRoles[s.number]?` · ${roleLabels[testRoles[s.number]]}`:''}</option>)}</select></label><label className="test-follow"><input type="checkbox" checked={autoFollow} onChange={e=>{conceal();setAutoFollow(e.target.checked);}}/>自动跟随</label>{night.deadline!==null&&<button className="text-button" disabled={blocked} onClick={()=>onAction('night/test-advance')}>推进测试阶段</button>}</div>}
   <section className={`card night-stage${card?.kind==='wolves'?' wolf-operation':''}`} aria-label="夜间操作">
    <header className="night-heading"><div><span className="eyebrow">第 {night.night} 夜</span><h1>{phase==='first_night_complete'?completedLabel:nightPhaseLabels[phase]}</h1></div><div className="night-clock-group"><button className="text-button wake-toggle" aria-pressed={keepAwake} onClick={()=>setKeepAwake(v=>!v)}>{wake==='unavailable'?'常亮不可用':wake==='active'?'常亮已开':'常亮已关'}</button><strong className="night-clock" aria-label="剩余时间">{night.deadline!==null?`${seconds} 秒`:'—'}</strong></div></header>

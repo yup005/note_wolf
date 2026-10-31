@@ -18,7 +18,8 @@
     "dev:test": "WOLF_TEST_PLAYERS=1 npm run dev",
     "db:backup": "node --import tsx apps/server/database.ts backup",
     "db:verify": "node --import tsx apps/server/database.ts inspect",
-    "db:restore": "node --import tsx apps/server/database.ts restore"
+    "db:restore": "node --import tsx apps/server/database.ts restore",
+    "test:pwa": "playwright test --config=playwright.pwa.config.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",

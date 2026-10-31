@@ -1,3 +1,6 @@
+import {displayCommandSchema} from '../../packages/contracts/display.js';
+import {gameHeader,fixedArchivePath} from './gameScope.js';
+import {rematchSchema} from '../../packages/contracts/rematch.js';
 import {judgeAppointSchema,judgeDraftSchema,judgeSupplementSchema,judgeReturnSchema} from '../../packages/contracts/judge.js';
 import {voiceCommandSchema} from '../../packages/contracts/voice.js';
 import {boardSaveSchema,boardConfigureSchema} from '../../packages/contracts/board.js';
@@ -42,20 +45,23 @@ export async function createServer(options:ServerOptions){
  const io=new Server(http,{maxHttpBufferSize:8192,allowRequest:(req,done)=>done(null,validOrigin(req))});
  function roomContext(id:unknown):DiagnosticContext{
   if(typeof id!=='string'||!/^[a-f0-9-]{36}$/.test(id))return {};
-  try{const room=store.snapshot(id);return {gameId:room.id,phase:room.day?.phase==='ended'||room.manual?.status==='ended'?'ended':room.manual?'manual':room.day&&(!room.night||room.day.day>=room.night.night)?'day':room.night?'night':'preparation'};}catch{return {gameId:id};}
+  try{const room=store.snapshot(id);return {gameId:room.gameId,phase:room.day?.phase==='ended'||room.manual?.status==='ended'?'ended':room.manual?'manual':room.day&&(!room.night||room.day.day>=room.night.night)?'day':room.night?'night':'preparation'};}catch{return {gameId:id};}
  }
  web.param('id',(req,res,next,id)=>{if(typeof req.route?.path==='string'&&req.route.path.startsWith('/api/rooms/:id'))res.locals.diagnosticRoomId=id;next();});
  const hits=new Map<string,{count:number;until:number}>();
  const limiter=setInterval(()=>{for(const [key,v] of hits)if(v.until<Date.now())hits.delete(key);},60000);limiter.unref();
  function authenticated(req:IncomingMessage){const token=cookieToken(req);if(!token||!store.hasSession(token))throw new LobbyError('UNAUTHORIZED',401);return token;}
  web.use((req,res,next)=>{
+  const statisticsRead=(req.method==='GET'||req.method==='HEAD')&&/^\/api\/my-stats\/?$/i.test(req.path);
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');
-  if(req.path.startsWith('/api/')){res.locals.requestId=randomUUID();res.setHeader('X-Request-ID',res.locals.requestId);res.setHeader('Cache-Control','no-store');}
+  if(req.path.startsWith('/api/')||statisticsRead){res.locals.requestId=randomUUID();res.setHeader('X-Request-ID',res.locals.requestId);res.setHeader('Cache-Control','no-store');}
   if(!validOrigin(req))return next(new LobbyError('FORBIDDEN',403));
   // Readiness must remain reachable when ticking or session storage is broken.
   if(req.path==='/api/health')return next();
-  if(req.path.startsWith('/api/')){
-   for(const id of store.tickNights())publish(id);
+  if(req.path.startsWith('/api/')||statisticsRead){
+   // This account-only read must not acquire a gameplay writer lock.
+   // The existing 250ms background timer still advances active games.
+   if(!statisticsRead)for(const id of store.tickNights())publish(id);
    res.setHeader('Cache-Control','no-store');
    const session=cookieToken(req);
    const key=session&&store.hasSession(session)?`session:${session}`:`ip:${req.socket.remoteAddress??'unknown'}`;const now=Date.now();let entry=hits.get(key);
@@ -82,6 +88,36 @@ export async function createServer(options:ServerOptions){
   }catch(error){next(error);}
  });
  web.use(express.json({limit:'64kb'}));
+ web.use('/api/rooms/:id',(req,_res,next)=>{
+  const id=String(req.params.id);_res.locals.diagnosticRoomId=id;
+  if(!/^[a-f0-9-]{36}$/.test(id)||req.method==='GET'&&req.path==='/'||fixedArchivePath(req.path))return next();
+  const header=gameHeader(req);
+  if(req.method==='POST'&&req.path==='/rematch')return next();
+  store.withGameScope(authenticated(req),id,header,()=>next());
+ });
+ web.get('/api/rooms/:id/display',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.displayStatus(authenticated(req),String(req.params.id)));});
+ web.post('/api/rooms/:id/display',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const result=store.displayCommand(authenticated(req),String(req.params.id),parse(displayCommandSchema,req.body));roomWrite(res,String(req.params.id),result);});
+ web.get('/api/displays/:token',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.readDisplay(String(req.params.token)));});
+ web.post('/api/rooms/:id/rematch',(req,res)=>{
+  if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');
+  const command=parse(rematchSchema,req.body);if(gameHeader(req)!==command.expectedGameId)throw new LobbyError('INVALID_INPUT');
+  const result=store.rematch(authenticated(req),req.params.id,command);publish(req.params.id);roomWrite(res,req.params.id,result);
+ });
+ web.get('/api/games/:gameId/replay',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.gameReplay(authenticated(req),req.params.gameId));});
+ web.post('/api/games/:gameId/favorite',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body);const result=store.saveFavorite(authenticated(req),req.params.gameId);store.touchGameRoom(req.params.gameId);res.json(result);});
+ web.get('/api/games/:gameId/record-context',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.recordContext(authenticated(req),String(req.params.gameId)));});
+ web.get('/api/games/:gameId/records',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.recordsList(authenticated(req),String(req.params.gameId)));});
+ web.post('/api/games/:gameId/record',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const b=parse(recordSaveSchema,req.body);const result=store.saveRecord(authenticated(req),String(req.params.gameId),b.revision,b.document);store.touchGameRoom(String(req.params.gameId));res.json(result);});
+ web.post('/api/games/:gameId/record/create',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const result=store.createRecord(authenticated(req),String(req.params.gameId),parse(recordCreateSchema,req.body));store.touchGameRoom(String(req.params.gameId));res.json(result);});
+ for(const action of ['publish','withdraw','import-auto','commit','history'] as const){
+  const path=`/api/games/:gameId/${action==='commit'||action==='history'?'manual/'+action:'record/'+action}`;
+  if(action==='history'){web.get(path,(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json({items:store.manualHistory(authenticated(req),String(req.params.gameId))});});continue;}
+  web.post(path,(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const {revision}=parse(recordRevisionSchema,req.body),token=authenticated(req),id=String(req.params.gameId);
+   const result=action==='publish'?store.publishRecord(token,id,revision):action==='withdraw'?store.withdrawRecord(token,id,revision):action==='commit'?store.commitManual(token,id,revision):store.importAutomaticRecord(token,id,revision);
+   const roomId=store.touchGameRoom(id);if(action==='commit')publish(roomId);res.json(result);
+  });
+ }
+
  web.post('/api/auth/profile',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const result=store.updateProfile(authenticated(req),parse(profileSchema,req.body).nickname);for(const room of result.rooms)publish(room.room.id);res.json(result);});
  web.delete('/api/auth/avatar',(req,res)=>{if(Object.keys(req.query).length||req.body===undefined&&(Number(req.headers['content-length']??0)>0||req.headers['transfer-encoding']!==undefined))throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body??{});const result=store.deleteAvatar(authenticated(req));for(const room of result.rooms)publish(room.room.id);res.json(result);});
  web.get('/api/avatars/:accountId',(req,res)=>{if(Object.keys(req.query).some(key=>key!=='v')||req.query.v!==undefined&&typeof req.query.v!=='string')throw new LobbyError('INVALID_INPUT');res.type('image/jpeg').send(store.avatar(req.params.accountId,req.query.v as string|undefined));});
@@ -187,6 +223,7 @@ export async function createServer(options:ServerOptions){
  web.post('/api/favorites/:id/remove',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body);res.json(store.removeFavorite(authenticated(req),req.params.id));});
  // Private drafts never enter room snapshots. Published records use archived participant authorization.
  web.get('/api/my-records',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json({items:store.myRecords(authenticated(req))});});
+ web.get('/api/my-stats',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');parse(emptySchema,req.body??{});res.json(store.statistics(authenticated(req)));});
  web.post('/api/records/:id/delete',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');const token=authenticated(req),own=store.myRecords(token).find(r=>r.id===req.params.id);const result=store.deleteRecord(token,req.params.id,parse(recordDeleteSchema,req.body));if(own)publish(own.roomId);recordWrite(res,req.params.id,result);});
  web.post('/api/rooms/:id/record/create',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');roomWrite(res,req.params.id,store.createRecord(authenticated(req),req.params.id,parse(recordCreateSchema,req.body)));});
  web.get('/api/rooms/:id/records',(req,res)=>{if(Object.keys(req.query).length)throw new LobbyError('INVALID_INPUT');res.json(store.recordsList(authenticated(req),req.params.id));});

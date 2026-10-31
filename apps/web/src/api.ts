@@ -1,8 +1,13 @@
 import type {ApiFailure} from '../../../packages/contracts/index';
 export class ApiError extends Error {constructor(public code:string,message:string,public status:number){super(message);this.name='ApiError';}}
-export async function api<T>(path:string,body?:unknown):Promise<T>{
- const res=await fetch(path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,credentials:'same-origin'});
- const data=await res.json();if(!res.ok){if(path.startsWith('/api/admin/')&&[401,403].includes(res.status))window.dispatchEvent(new Event('wolf:admin-authority-lost'));throw new ApiError((data as ApiFailure).error,(data as ApiFailure).message??'连接失败，请稍后再试',res.status);}return data as T;
+export async function api<T>(path:string,body?:unknown,options?:{gameId?:string;signal?:AbortSignal}):Promise<T>{
+ const headers:Record<string,string>={...(body?{'Content-Type':'application/json'}:{}),...(options?.gameId?{'X-Wolf-Game-Id':options.gameId}:{})};
+ let changed=!!body&&/^\/api\/auth\/(login|register|logout)$/.test(path);
+ try{
+  const res=await fetch(path,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store',signal:options?.signal});
+  if(res.status>=400&&res.status<500)changed=false;
+  const data=await res.json();if(!res.ok){if(path.startsWith('/api/admin/')&&[401,403].includes(res.status))window.dispatchEvent(new Event('wolf:admin-authority-lost'));throw new ApiError((data as ApiFailure).error,(data as ApiFailure).message??'连接失败，请稍后再试',res.status);}return data as T;
+ }finally{if(changed&&typeof window!=='undefined')window.dispatchEvent(new Event('wolf:session-changed'));}
 }
 export function requestId(){
  if(crypto.randomUUID)return crypto.randomUUID();
