@@ -1,6 +1,20 @@
 # 阶段验证记录
 
-## 当前：狼女孩板子云端交付（2026-10-30）
+## 当前：四板首日复查与女孩警长PK结算修复（2026-10-30）
+
+范围为既有D-001/D-004、X-001–003、R-001–005及WG-006–009。确认女孩自爆提前发出`sheriff_elected`，可能选中同事件报复死者；另有公开候选残留死者。修复遵循已批准设计：完整死亡→过滤死亡候选→统一判胜→未终局再处理当选/警徽，不更改旧板策略或零候选顺延。
+
+本轮新鲜证据：
+
+- 新增3项女孩PK回归修复前4 pass /3 fail，失败分别为死亡目标被选中、候选残留、终局前错误当选；修复后7/7通过。全部从实际首夜、竞选和平票命令构造，终局例通过首日顺延和第二夜优先刀进入次日PK，没有直接改写终局前提。
+- 四板各2项首日流程永久回归 **8/8通过**：公告前资格、夜亡者当选、死讯去重、遗言/移徽/发言放逐，及警上吞毒/指刀拒绝/女孩无遗言仍报复。测试时钟修正后8/8再过，不累加为16项。
+- `npm test` **685 pass /0 fail /0 skip（94.5秒）**；`npm run typecheck`、`npm run build`通过。主包555.59KB（gzip170.16KB），已有500KB提示仍在。
+- 手机Chromium专项 **10 pass /0 fail /0 skip（2.6分钟）**，覆盖完整首夜/首日、多轮整局、延期警徽/死者禁选、投票、隐私、狼女孩及黑白狼王。上轮150个唯一开发E2E、7项生产PWA为修复前证据，保留在历史，不冒充本轮重跑。
+- 独立只读审查另运行相关64项全部通过并复验原3种情形；未发现新的阻断问题。仅测试时间倒退建议已处理。初次类型检查遇到新测试的断言收窄，修正后通过，产品源码无额外改动。
+
+命令与证据：`node --import tsx --test --test-isolation=none tests/wolf-girl-day.test.ts`；`npm test`；`npm run typecheck`；`npm run build`；`npm run test:e2e -- tests/e2e/day.spec.ts tests/e2e/rules.spec.ts tests/e2e/full-game.spec.ts tests/e2e/night.spec.ts tests/e2e/wolf-kings.spec.ts tests/e2e/wolf-girl.spec.ts tests/e2e/day-self.spec.ts`。本次云端运行日志在`/tmp/firstday-unit.log`、`/tmp/firstday-build.log`、`/tmp/firstday-browser.log`、`/tmp/firstday-board-matrix.log`；临时日志不作为持久归档。仅合成内存/临时数据，监听使用已批准测试权限。没有生产数据、部署或实机验收；本批6份文档591个本地引用/锚点和差异检查通过，182需求ID无新增或丢失；实现SHA同批跟进，推送后核对远端一致。
+
+## 历史：狼女孩板子首次云端交付（2026-10-30）
 
 范围：[Issue #9](https://github.com/yup005/note_wolf/issues/9)、[WG-001–010](WEREWOLF_RULES_SPEC.md#wolf-girl-2026-10-30)及本轮批准设计。云端合成玩家/隔离SQLite/Chromium验证，无真实玩家数据。包含固定12人及同阵容副本、首夜禁刀/表白/随机非狼超时、狼混个人归属、毒师自毒、报复/废票/禁枪、完整事件判胜及次夜指刀、持久化/法官/复盘。
 

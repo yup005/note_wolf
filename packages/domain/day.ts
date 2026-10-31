@@ -215,16 +215,21 @@ function explodeGirl(s:DayState,seat:number,now:number,choose:(n:number)=>number
  const onSheriff=['sheriff_signup','sheriff_speech','sheriff_withdraw'].includes(s.phase);
  const swallowing=onSheriff&&s.pendingDeaths.some(d=>d.seat===seat&&d.reason==='poison');
  const sheriffPk=onSheriff&&(s.vote?.purpose==='sheriff_pk'||s.electionPurpose==='sheriff_pk');
- if(sheriffPk&&s.candidates.includes(seat)){s.candidates=s.candidates.filter(p=>p!==seat);if(s.candidates.length===1)electSheriff(s,s.candidates[0],now);}
- if(onSheriff&&s.sheriff===null){s.electionPurpose=s.vote?.purpose==='sheriff_pk'?'sheriff_pk':s.electionPurpose??'sheriff';s.explosions++;s.badge=s.explosions>=2?'lost':'deferred';}
+ const pkCandidate=sheriffPk&&s.candidates.includes(seat);
  kill(s,seat,'explosion',now);reveal(s,seat,'wolfGirl');s.engine!.players.find(p=>p.seat===seat)!.publicState.revealedRole='wolfGirl';
  const retaliation=relation&&kill(s,relation.target,'girl-retaliation',now)?relation.target:null;
  const other=s.pendingDeaths.filter(d=>d.seat!==seat&&d.seat!==retaliation);
  for(const d of other)kill(s,d.seat,d.reason,now);
  s.pendingDeaths=[];s.announcement=[...new Set([seat,...(retaliation===null?[]:[retaliation]),...other.map(d=>d.seat)])].sort((a,b)=>a-b);
+ if(onSheriff)s.candidates=s.candidates.filter(candidate=>participants(s).includes(candidate));
  s.afterDeaths='night';s.vote=null;s.speaker=null;s.speakers=[];
  s.priorityWolf=!swallowing&&s.players.some(p=>p.alive&&isSharedWolfRole(p.role))?seat:null;
  if(checkWin(s,now))return;
+ // WG-008: finish all deaths and victory before any new election or badge work.
+ if(onSheriff&&s.sheriff===null){
+  if(pkCandidate&&s.candidates.length===1)electSheriff(s,s.candidates[0],now);
+  else{s.electionPurpose=sheriffPk?'sheriff_pk':s.electionPurpose??'sheriff';s.explosions++;s.badge=s.explosions>=2?'lost':'deferred';}
+ }
  const silent=[seat,...(retaliation===null?[]:[retaliation])];
  s.tasks=[...silent.flatMap(dead=>s.sheriff===dead?[{seat:dead,step:'badge' as const}]:[]),...shuffle(other.map(d=>d.seat),choose).flatMap(dead=>deathTasks(s,dead,s.day===1))];
  phase(s,'night_announcement',now);
