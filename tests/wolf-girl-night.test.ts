@@ -5,7 +5,7 @@ import {validateConfirmedEngineState} from '../packages/domain/mechanicalEngine.
 import {girlFixture,move} from './wolf-girl-fixture.js';
 
 test('first night recognizes wolves without knife and confession is private and durable',()=>{
- const s=girlFixture();beginNight(s,0,()=>0);assert.equal(s.phase,'guard');move(s,'confession');
+ const s=girlFixture();assert.equal(privateNight(s,4).kind,'waiting');assert.equal(privateNight(s,4).wolves,undefined);beginNight(s,0,()=>0);assert.equal(s.phase,'guard');assert.equal(privateNight(s,4).wolves,undefined);move(s,'confession');
  assert.equal(privateNight(s,4).kind,'confession');assert.deepEqual(privateNight(s,4).wolves,[1,2,3,4]);for(const seat of [1,2,3,5,6,7,8,9,10,11,12]){assert.equal(privateNight(s,seat).kind,'waiting');assert.equal(privateNight(s,seat).wolves,undefined);assert.equal(privateNight(s,seat).legalTargets,undefined);}assert.deepEqual(privateNight(s,4).legalTargets,[5,6,7,8,9,10,11,12]);
  assert.throws(()=>nightCommand(s,4,{action:'confess',turnId:s.turnId,target:1},s.deadline!-1),/INVALID_TARGET/);
  const c={action:'confess',turnId:s.turnId,target:5} as const;nightCommand(s,4,c,s.deadline!-1);nightCommand(s,4,c,s.deadline!-1);

@@ -16,7 +16,7 @@
 - No mutation for open/preview/cancel/no-op; existing server permissions and readiness-reset rules unchanged.
 - Stale revisions/disconnection/context replacement discard previews; test-room physical dealing stays disabled.
 - No individual identities in public board picker; confession wolves only in girl's own current private response.
-- Preserve 182 stable requirement IDs and 49 historical confirmations; no deployment implied.
+- Preserve 182 stable requirement IDs and 49 historical confirmations; deployment follows Owner’s explicit later merge/deploy instruction after verification.
 
 ## Review Focus
 
@@ -53,4 +53,4 @@
 - [ ] Run new and affected E2E; inspect 320/390/430 screenshots. Expected real room/readiness assertions pass and controls fit.
 - [ ] Run npm test, npm run typecheck, npm run build, full npm run test:e2e and npm run test:pwa. Expected zero final failures/skips; retain failure history.
 - [ ] Read React best-practices, request fresh whole-branch review, address important findings with red→green evidence.
-- [ ] Update rules/expectations/matrix/decisions/status/report/readme with actual results, commit, record implementationSHA, push this branch and create a draft PR; verify remoteSHA. No merge/deploy.
+- [ ] Update rules/expectations/matrix/decisions/status/report/readme with actual results, commit, record implementationSHA, push this branch and create a PR; verify remoteSHA. Owner explicitly authorized merge/deploy after checks: merge only the verified head, confirm the resulting tree, deploy the existing Render service and record platform evidence/public-network limits.

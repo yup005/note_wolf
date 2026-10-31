@@ -1,6 +1,8 @@
 import {lazy,Suspense} from 'react';
 import type {LobbyView,RoomSettings} from '../../../packages/contracts/index';
 import {createBoardConfiguration,boardStartError} from '../../../packages/domain/boardConfig';
+import {RoomSettingsChoices} from './RoomSettingsChoices';
+import './preparationSettings.css';
 const BoardConfigurationPanel=lazy(()=>import('./BoardConfigurationPanel').then(module=>({default:module.BoardConfigurationPanel})));
 interface Props {view:LobbyView;busy:boolean;connected:boolean;onAction:(action:string,body?:unknown)=>void}
 export function PreparationPanel({view,busy,connected,onAction}:Props){
@@ -19,10 +21,9 @@ export function PreparationPanel({view,busy,connected,onAction}:Props){
    <p className="helper">已准备 {ready} / {capacity}</p>
    {mine?<div className="prepare-actions"><button className={mine.ready?'secondary':'primary'} disabled={blocked} onClick={()=>onAction('ready',{ready:!mine.ready,settingsRevision:p.settingsRevision})}>{mine.ready?'取消准备':'准备'}</button><button className="text-button" disabled={blocked} onClick={()=>onAction('unseat')}>取消入座</button></div>:<p className="helper">请先入座{me.isHost?'，房主也须参赛':''}。</p>}
    {me.isHost&&<><button className="primary full" disabled={blocked||!dealAllowed} onClick={()=>onAction('deal')}>开始发牌</button><p className="helper">{!playable?boardMessage:!hostSeated?'房主须入座参赛':seats.length<capacity?`等待 ${capacity} 人入座`:ready<capacity?'等待所有玩家准备':'发牌后座位和设置将锁定'}</p></>}
-   {me.isHost?<details className="host-settings" open><summary>选择板子与设置<span>{p.settings.dealMethod==='online'?'线上发牌':'实体牌'} · {p.settings.gameMode==='automatic'?'自动法官':'手动记录'}</span></summary><div className="settings-grid"><Suspense fallback={<p className="helper">正在读取板子…</p>}><BoardConfigurationPanel board={room.board} settingsRevision={p.settingsRevision} blocked={blocked} onAction={onAction}/></Suspense>
-    <label>发牌方式<select aria-label="发牌方式" value={p.settings.dealMethod} disabled={blocked||room.testRoom} onChange={e=>configure({...p.settings,dealMethod:e.target.value as RoomSettings['dealMethod']})}><option value="online">线上随机发牌</option><option value="physical">实体牌录入</option></select></label>
-    <label>游戏模式<select aria-label="游戏模式" value={p.settings.gameMode} disabled={blocked} onChange={e=>configure({...p.settings,gameMode:e.target.value as RoomSettings['gameMode']})}><option value="automatic">自动法官</option><option value="manual">纯手动记录</option></select></label>
-   </div><p className="helper">更改设置后需要重新准备。</p></details>:null}
+   {me.isHost?<details className="host-settings" open><summary>选择板子与设置<span>{p.settings.dealMethod==='online'?'线上发牌':'实体牌'} · {p.settings.gameMode==='automatic'?'自动法官':'手动记录'}</span></summary><div className="settings-grid"><Suspense fallback={<p className="helper">正在读取板子…</p>}><BoardConfigurationPanel key={room.id+':'+room.gameId} board={room.board} settingsRevision={p.settingsRevision} blocked={blocked} onAction={onAction}/></Suspense>
+    <RoomSettingsChoices key={room.id+':'+room.gameId} settings={p.settings} settingsRevision={p.settingsRevision} blocked={blocked} testRoom={!!room.testRoom} onChange={configure}/>
+   </div><p className="helper">确认修改后，全员需要重新准备。</p></details>:null}
    {view.testPlayersEnabled&&me.isHost&&!room.testRoom&&playable&&<><button className="secondary full fill-test-players" disabled={blocked||!mine||p.settings.dealMethod!=='online'} onClick={()=>onAction('test-players')}>补满测试玩家</button><p className="helper">仅限管理员独占的新房间，转换后其他玩家无法加入。</p></>}
   </>:<>
    {p.phase==='identity_collection'&&<>
