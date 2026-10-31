@@ -45,12 +45,12 @@
 
 **Interfaces:** BoardPickerDialog consumes library:BoardLibrary, board:RoomBoardSnapshot, onSelect:(id:string)=>void, onClose:()=>void. RoomSettingsChoices consumes settings:RoomSettings, settingsRevision:number, blocked:boolean, testRoom:boolean, onChange:(settings:RoomSettings)=>void; key by room/game context. Existing onAction(board/settings) payloads remain.
 
-- [ ] Add real-browser regressions for board preview/cancel preserving readiness, one confirm changing board, mode preview/cancel/no-op/confirm, stale update/disconnection, and keyboard/phone layout/test restrictions.
-- [ ] Run preparation-settings.spec.ts; expected missing new controls or immediate mutation failures.
-- [ ] Implement native dialog board preview, public roster summary, stable footer and focus return; close on invalidating revisions/busy/disconnect.
-- [ ] Implement radio-card drafts, descriptions, shared confirm/cancel, revision/blocked reset and scoped CSS.
-- [ ] Migrate old selectOption interactions to real new controls using helper; fix physical fixture's hard-coded revision to actual confirmed revision (two fields now one commit).
-- [ ] Run new and affected E2E; inspect 320/390/430 screenshots. Expected real room/readiness assertions pass and controls fit.
-- [ ] Run npm test, npm run typecheck, npm run build, full npm run test:e2e and npm run test:pwa. Expected zero final failures/skips; retain failure history.
-- [ ] Read React best-practices, request fresh whole-branch review, address important findings with red→green evidence.
+- [x] Add real-browser regressions for board preview/cancel preserving readiness, one confirm changing board, mode preview/cancel/no-op/confirm, stale update/disconnection, and keyboard/phone layout/test restrictions.
+- [x] Run preparation-settings.spec.ts; expected missing new controls or immediate mutation failures.
+- [x] Implement native dialog board preview, public roster summary, stable footer and focus return; close on invalidating revisions/busy/disconnect.
+- [x] Implement radio-card drafts, descriptions, shared confirm/cancel, revision/blocked reset and scoped CSS.
+- [x] Migrate old selectOption interactions to real new controls using helper; fix physical fixture's hard-coded revision to actual confirmed revision (two fields now one commit).
+- [x] Run new and affected E2E; inspect 320/390/430 screenshots. Expected real room/readiness assertions pass and controls fit.
+- [x] Run npm test, npm run typecheck, npm run build, full npm run test:e2e and npm run test:pwa. Expected zero final failures/skips; retain failure history.
+- [x] Read React best-practices, request fresh whole-branch review, address important findings with red→green evidence.
 - [ ] Update rules/expectations/matrix/decisions/status/report/readme with actual results, commit, record implementationSHA, push this branch and create a PR; verify remoteSHA. Owner explicitly authorized merge/deploy after checks: merge only the verified head, confirm the resulting tree, deploy the existing Render service and record platform evidence/public-network limits.
