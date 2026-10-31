@@ -14,6 +14,8 @@
 
 命令与证据：`node --import tsx --test --test-isolation=none tests/wolf-girl-day.test.ts`；`npm test`；`npm run typecheck`；`npm run build`；`npm run test:e2e -- tests/e2e/day.spec.ts tests/e2e/rules.spec.ts tests/e2e/full-game.spec.ts tests/e2e/night.spec.ts tests/e2e/wolf-kings.spec.ts tests/e2e/wolf-girl.spec.ts tests/e2e/day-self.spec.ts`。本次云端运行日志在`/tmp/firstday-unit.log`、`/tmp/firstday-build.log`、`/tmp/firstday-browser.log`、`/tmp/firstday-board-matrix.log`；临时日志不作为持久归档。仅合成内存/临时数据，监听使用已批准测试权限。没有生产数据、部署或实机验收；本批6份文档591个本地引用/锚点和差异检查通过，182需求ID无新增或丢失；实现SHA同批跟进，推送后核对远端一致。
 
+首日修复实现提交：[ddf258f3372e5ac8a7a8c0a6c037f6b60330b4e6](https://github.com/yup005/note_wolf/commit/ddf258f3372e5ac8a7a8c0a6c037f6b60330b4e6)。本次SHA跟进仅文档，链接/差异检查通过，产品源码未变，代码检查未重跑；同批正常推送后核对最终远端SHA。
+
 ## 历史：狼女孩板子首次云端交付（2026-10-30）
 
 范围：[Issue #9](https://github.com/yup005/note_wolf/issues/9)、[WG-001–010](WEREWOLF_RULES_SPEC.md#wolf-girl-2026-10-30)及本轮批准设计。云端合成玩家/隔离SQLite/Chromium验证，无真实玩家数据。包含固定12人及同阵容副本、首夜禁刀/表白/随机非狼超时、狼混个人归属、毒师自毒、报复/废票/禁枪、完整事件判胜及次夜指刀、持久化/法官/复盘。
