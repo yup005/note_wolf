@@ -1,6 +1,6 @@
 import {useEffect,useId,useState} from 'react';
 import {api,errorText} from './api';
-import {boardRoleSchema,boardRoleLabels,serviceCompositionSchema,type BoardRole,type BoardLibrary,type BoardTemplate,type BoardComposition,type RoomBoardSnapshot} from '../../../packages/contracts/board';
+import {supportsDualIdiot,boardRoleSchema,boardRoleLabels,serviceCompositionSchema,type BoardRole,type BoardLibrary,type BoardTemplate,type BoardComposition,type RoomBoardSnapshot} from '../../../packages/contracts/board';
 import {createBoardConfiguration} from '../../../packages/domain/boardConfig';
 import {BoardPickerDialog,boardRosterText} from './BoardPickerDialog';
 interface Props {board:RoomBoardSnapshot;settingsRevision:number;blocked:boolean;onAction:(action:string,body?:unknown)=>void}
@@ -19,7 +19,7 @@ export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction
  function setRole(role:BoardRole,count:number){
   setDraft(previous=>{
    const roles={...previous.roles,[role]:Math.max(0,count)},seatCount=Object.values(roles).reduce((sum,n)=>sum+(n??0),0);
-   const keepPolicy=seatCount===14&&roles.idiot===1&&previous.idiotPolicy==='dual-category-14';
+   const keepPolicy=supportsDualIdiot(seatCount,roles.idiot)&&previous.idiotPolicy==='dual-category-14';
    return {seatCount,roles,...(keepPolicy?{idiotPolicy:'dual-category-14' as const}:{})};
   });
  }
@@ -44,8 +44,8 @@ export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction
     const tag=<button type="button" className={'board-role-tag'+(count?' selected':'')} aria-label={label} aria-describedby={countId+'-'+role} aria-pressed={count>0} data-role-count={count} disabled={blocked||saving||!count&&total>=256} onClick={()=>setRole(role,count?0:1)}>{label}{count>0&&<span className="role-count">{count}</span>}<span id={countId+'-'+role} hidden>{label} {count} 名</span></button>;
     return repeat?<div className="board-role-stepper" key={role}>{tag}<button type="button" className="role-step" aria-label={'减少'+label} disabled={blocked||saving||count===0} onClick={()=>setRole(role,count-1)}>−</button><button type="button" className="role-step" aria-label={'增加'+label} disabled={blocked||saving||total>=256} onClick={()=>setRole(role,count+1)}>+</button></div>:<div key={role}>{tag}</div>;
    })}</div>
-   {!!draft.roles.idiot&&<label>白痴规则<select aria-label="白痴规则" value={draft.idiotPolicy??'standard'} disabled={blocked||saving} onChange={e=>{const {idiotPolicy:_,...base}=draft;setDraft(e.target.value==='dual-category-14'?{...base,idiotPolicy:'dual-category-14'}:base);}}><option value="standard">默认规则</option><option value="dual-category-14" disabled={draft.seatCount!==14||draft.roles.idiot!==1}>14 人双边白痴</option></select></label>}
-   {draft.idiotPolicy==='dual-category-14'&&<p className="helper">须为 14 人且有一名白痴。翻牌后无发言、插嘴或投票权，仍可被刀或毒杀。</p>}
+   {!!draft.roles.idiot&&<label>白痴规则<select aria-label="白痴规则" value={draft.idiotPolicy??'standard'} disabled={blocked||saving} onChange={e=>{const {idiotPolicy:_,...base}=draft;setDraft(e.target.value==='dual-category-14'?{...base,idiotPolicy:'dual-category-14'}:base);}}><option value="standard">默认规则</option><option value="dual-category-14" disabled={!supportsDualIdiot(draft.seatCount,draft.roles.idiot)}>双边白痴（11 / 14 人）</option></select></label>}
+   {draft.idiotPolicy==='dual-category-14'&&<p className="helper">须为 11 或 14 人且有一名真实白痴。翻牌后无发言、插嘴或投票权，仍可被刀或毒杀。</p>}
    <p className="helper">{config?config.ruleset==='wolf-girl'?'狼女孩（首版支持固定12人阵容及其副本）':config.ruleset==='mechanical-armor'?'机械装甲':config.ruleset==='standard'?'预女猎白':'机械狼通灵师':'请选择 1–256 个角色'}</p>
    <button className="secondary full" disabled={blocked||saving||!valid||!name.trim()} onClick={()=>void save()}>{saving?'保存中…':'另存板子'}</button>
    <button className="text-button" disabled={blocked||saving||!valid} onClick={()=>onAction('board',{settingsRevision,selection:{kind:'composition',composition:draft}})}>应用本局配置</button>
