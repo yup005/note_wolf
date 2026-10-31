@@ -2,7 +2,17 @@
 
 更新：2026-10-31（America/Los_Angeles）。沿用用户确认的 Render My Workspace 免费单服务；Sites 适配暂不实施。历史记录中的未部署范围以本页最新发布为准，未决规则和真实设备验收不因上线而完成。
 
-## 当前发布（2026-10-31）
+<a id="当前发布2026-10-31"></a>
+
+## 当前发布：11人白痴双边（2026-10-31）
+
+已按Owner既有授权合并[PR #11](https://github.com/yup005/note_wolf/pull/11)并部署。实现提交[7c987d23b1ff4563e436615bbe790adef4d431c9](https://github.com/yup005/note_wolf/commit/7c987d23b1ff4563e436615bbe790adef4d431c9)，实际运行源码[34f03c3153eec58fbac55ac6e1d91044c6d24ee0](https://github.com/yup005/note_wolf/commit/34f03c3153eec58fbac55ac6e1d91044c6d24ee0)；部署`dep-dbj5dk942hec73c2uasg`于2026-10-31 14:01:05 PDT（UTC21:01:05）为live。
+
+11或14人且恰有1名真实白痴可显式启用双边，默认不开启；保留既有14人存档政策标识和双边结算规则。全量687项单测、typecheck/build及11/14人手机专项3项通过，独立复查无阻断；未重复无关整套浏览器/PWA。
+
+Render构建成功，`/assets/index-DWD_Sdyy.js`与最终本地构建一致（557.90KB/gzip170.78KB），启动监听10000端口、平台就绪成功，发布后error日志为空。继续使用既有Free/Oregon单服务，auto-deploy关闭，未改环境变量、收费或数据库。云端网络限制仍阻止独立公网HTTP/浏览器验收，平台live不等同真机通过。下述旧发布记录保留；本次文档收尾不重复部署或产品测试。
+
+## 手机候场发布（2026-10-31，历史）
 
 Owner已明确授权本批检查通过后直接合并部署。[PR #10](https://github.com/yup005/note_wolf/pull/10)正常合并，运行源码 [ff46591c9d1c88341072899568a8c318620f0d4a](https://github.com/yup005/note_wolf/commit/ff46591c9d1c88341072899568a8c318620f0d4a)；合并文件树与已验证分支`d135659d06bc56878f75fb5b57d33ee6c22ad2e3`完全一致。
 
@@ -103,7 +113,7 @@ BETA-004 管理员授权与独立模拟房隔离已在本地实现，执行证�
 - 服务：`note-wolf-trial` / `srv-db5gd37lot8c73esepqg`，Node Web Service，Free，Oregon，单实例。
 - 仓库：`https://github.com/yup005/note_wolf`，分支 `main`。
 - 首次部署：`dep-db5gd3nlot8c73eseqo0`，Render 返回 `live`。部署源码：[fab5566d84ec2fb2b3572d105f3e1935a879911a](https://github.com/yup005/note_wolf/commit/fab5566d84ec2fb2b3572d105f3e1935a879911a)。该 SHA 是已上线源码，不是后续部署文档提交。
-- 当前运行源码：本页2026-10-31发布的 `ff46591c9d1c88341072899568a8c318620f0d4a`；先前部署保留作历史记录。
+- 当前运行源码：本页2026-10-31发布的 `34f03c3153eec58fbac55ac6e1d91044c6d24ee0`；先前部署保留作历史记录。
 - 前端、API 和 Socket.IO 由同一个服务提供，不需要跨域会话或迁移规则引擎。
 - 历史：首次部署后另一开发批次交付 M1 配置功能（`b5954fe`，文档跟进`5a187d1`）；首次部署记录正常合并该批次，保留其全部实现和证据，当时未重新部署。2026-10-11 已按上方记录手动更新。
 

@@ -1,6 +1,10 @@
 # Project progress
 
-## 当前：手机候场交互与女孩私密时点（2026-10-31，已部署）
+## 当前：11人白痴双边（2026-10-31，已部署）
+
+已按Owner既有授权合并[PR #11](https://github.com/yup005/note_wolf/pull/11)并部署。实现提交[7c987d23b1ff4563e436615bbe790adef4d431c9](https://github.com/yup005/note_wolf/commit/7c987d23b1ff4563e436615bbe790adef4d431c9)，实际运行源码[34f03c3153eec58fbac55ac6e1d91044c6d24ee0](https://github.com/yup005/note_wolf/commit/34f03c3153eec58fbac55ac6e1d91044c6d24ee0)；部署`dep-dbj5dk942hec73c2uasg`于2026-10-31 14:01:05 PDT（UTC21:01:05）为live。687项单测、类型/构建和3项手机专项通过；默认关闭，11/14人资格与真实白痴双边语义一致。详情及公网验证边界见[发布记录](RENDER_TRIAL.md#当前发布2026-10-31)。本次仅补部署文档，不重复产品测试或部署。
+
+## 历史：手机候场交互与女孩私密时点（2026-10-31，已部署）
 
 本批已按Owner明确授权正常合并PR #10并部署。运行源码 [ff46591c9d1c88341072899568a8c318620f0d4a](https://github.com/yup005/note_wolf/commit/ff46591c9d1c88341072899568a8c318620f0d4a)，部署`dep-dbiq3jajnfac73bai1cg`于2026-10-31 01:08:39 PDT为live；构建/启动/平台就绪及error日志核对通过。完整事实与公网网络限制见[发布记录](RENDER_TRIAL.md#当前发布2026-10-31)。本次收尾仅文档，不重跑产品测试或重复部署。
 

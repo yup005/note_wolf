@@ -2,6 +2,8 @@
 
 ## 当前：11人白痴双边（2026-10-31）
 
+已按Owner既有授权合并[PR #11](https://github.com/yup005/note_wolf/pull/11)并部署。实现提交[7c987d23b1ff4563e436615bbe790adef4d431c9](https://github.com/yup005/note_wolf/commit/7c987d23b1ff4563e436615bbe790adef4d431c9)，实际运行源码[34f03c3153eec58fbac55ac6e1d91044c6d24ee0](https://github.com/yup005/note_wolf/commit/34f03c3153eec58fbac55ac6e1d91044c6d24ee0)；部署`dep-dbj5dk942hec73c2uasg`于2026-10-31 14:01:05 PDT（UTC21:01:05）为live。完整平台证据及公网限制见[发布记录](RENDER_TRIAL.md#当前发布2026-10-31)。本次收尾仅文档，不再次部署或重复产品测试。
+
 Owner明确11人也有白痴双边；只扩展配置/判胜及前端资格为11或14人且有1名真实白痴，保留历史存储标识兼容14人，默认不按人数启用。新11人翻牌/双边判胜、可继续被刀及SQLite重启回归由失败变为通过；聚焦24/24，全量687 pass /0 fail /0 skip（77.4秒），typecheck/build通过，11/14手机专项3/3（20.1秒），独立只读复查无阻断。
 
 先前浏览器新增断言使用Playwright的option启用判断不适用，改核对原生option.disabled布尔属性后通过；未放宽产品规则。发现判胜层另有14人硬限制后同步修正，并中止旧测试进程、重跑最终687项。仅小范围资格/文案变更，未重跑无关整套浏览器或PWA；此前155项/7项为历史，不混加。182项ID/状态及49项旧确认保持，真实设备另验。本批按已有直接合并部署指令发布，实际运行SHA另记录。
