@@ -53,4 +53,4 @@
 - [x] Run new and affected E2E; inspect 320/390/430 screenshots. Expected real room/readiness assertions pass and controls fit.
 - [x] Run npm test, npm run typecheck, npm run build, full npm run test:e2e and npm run test:pwa. Expected zero final failures/skips; retain failure history.
 - [x] Read React best-practices, request fresh whole-branch review, address important findings with red→green evidence.
-- [ ] Update rules/expectations/matrix/decisions/status/report/readme with actual results, commit, record implementationSHA, push this branch and create a PR; verify remoteSHA. Owner explicitly authorized merge/deploy after checks: merge only the verified head, confirm the resulting tree, deploy the existing Render service and record platform evidence/public-network limits.
+- [x] Update rules/expectations/matrix/decisions/status/report/readme with actual results, commit, record implementationSHA, push this branch and create a PR; verify remoteSHA. Owner explicitly authorized merge/deploy after checks: merge only the verified head, confirm the resulting tree, deploy the existing Render service and record platform evidence/public-network limits.

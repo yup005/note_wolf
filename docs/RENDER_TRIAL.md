@@ -1,8 +1,21 @@
 # Render 免费试用部署
 
-更新：2026-10-30（America/Los_Angeles）。沿用用户确认的 Render My Workspace 免费单服务；Sites 适配暂不实施。历史记录中的未部署范围以本页最新发布为准，未决规则和真实设备验收不因上线而完成。
+更新：2026-10-31（America/Los_Angeles）。沿用用户确认的 Render My Workspace 免费单服务；Sites 适配暂不实施。历史记录中的未部署范围以本页最新发布为准，未决规则和真实设备验收不因上线而完成。
 
-## 当前发布（2026-10-30）
+## 当前发布（2026-10-31）
+
+Owner已明确授权本批检查通过后直接合并部署。[PR #10](https://github.com/yup005/note_wolf/pull/10)正常合并，运行源码 [ff46591c9d1c88341072899568a8c318620f0d4a](https://github.com/yup005/note_wolf/commit/ff46591c9d1c88341072899568a8c318620f0d4a)；合并文件树与已验证分支`d135659d06bc56878f75fb5b57d33ee6c22ad2e3`完全一致。
+
+- 既有服务`note-wolf-trial` / `srv-db5gd37lot8c73esepqg`，Free/Oregon/单实例/main；auto-deploy保持关闭。没有更改环境变量、收费、管理员配置或上传本地数据库。
+- 部署`dep-dbiq3jajnfac73bai1cg`于 **2026-10-31 01:08:39 PDT**（UTC08:08:39）返回 **live**，拉取SHA匹配。构建成功，`/assets/index-BJz4pESS.js`与本地最终构建一致（557.86KB/gzip170.75KB）；启动日志10000端口监听、平台就绪成功，error日志为空。
+- 新候场板子面板、整行模式卡片、先预览再确认/取消及失效保护已包含；女孩仅首夜本人表白回合私密显示禁选狼同伴，入夜前不提供名单。旧板策略/权限及先前WG功能保留。
+- 部署前685项unit、typecheck/build、最终生产PWA7/7通过；完整开发155个唯一用例最终通过（整套154/1女孩429失败，trace证明限流，全新服务女孩1/1通过，无限流/断言改动）。独立整批审查无Critical/Important/Minor；详情见[报告](TEST_REPORT.md)。
+
+本轮仅完成Render来源/构建/启动/就绪/live及日志验证；云端网络对试用域名的限制仍在，未独立重跑公网HTTP/页面/模拟房/Socket流程，不能把本地自动化当公网或真机通过。Free临时SQLite、正式持久化及真实iPhone/声音/后台锁屏/弱网/现场多人边界保持。后续仅文档提交，不再次部署或重复代码测试。
+
+<a id="当前发布2026-10-30"></a>
+
+## 历史发布（2026-10-30）
 
 Owner要求部署，并明确授权合并[PR #8](https://github.com/yup005/note_wolf/pull/8)后发布。正常合并提交为 [75929dea291c2149baf0d865166b2c49c6ee195c](https://github.com/yup005/note_wolf/commit/75929dea291c2149baf0d865166b2c49c6ee195c)；合并后的Git文件树与已验证的`afed96a6033a1a4663fc8da46ab8d417bdb85180`完全一致，没有引入未测试代码。
 
@@ -90,7 +103,7 @@ BETA-004 管理员授权与独立模拟房隔离已在本地实现，执行证�
 - 服务：`note-wolf-trial` / `srv-db5gd37lot8c73esepqg`，Node Web Service，Free，Oregon，单实例。
 - 仓库：`https://github.com/yup005/note_wolf`，分支 `main`。
 - 首次部署：`dep-db5gd3nlot8c73eseqo0`，Render 返回 `live`。部署源码：[fab5566d84ec2fb2b3572d105f3e1935a879911a](https://github.com/yup005/note_wolf/commit/fab5566d84ec2fb2b3572d105f3e1935a879911a)。该 SHA 是已上线源码，不是后续部署文档提交。
-- 当前运行源码：本页2026-10-30发布的 `75929dea291c2149baf0d865166b2c49c6ee195c`；先前部署保留作历史记录。
+- 当前运行源码：本页2026-10-31发布的 `ff46591c9d1c88341072899568a8c318620f0d4a`；先前部署保留作历史记录。
 - 前端、API 和 Socket.IO 由同一个服务提供，不需要跨域会话或迁移规则引擎。
 - 历史：首次部署后另一开发批次交付 M1 配置功能（`b5954fe`，文档跟进`5a187d1`）；首次部署记录正常合并该批次，保留其全部实现和证据，当时未重新部署。2026-10-11 已按上方记录手动更新。
 
