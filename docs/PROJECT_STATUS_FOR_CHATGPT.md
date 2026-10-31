@@ -2,6 +2,8 @@
 
 ## 当前：白痴双边不限人数（2026-10-31）
 
+已合并PR #12并部署运行[3af4cf03879caa97f4745652f14bc31b33d32f7b](https://github.com/yup005/note_wolf/commit/3af4cf03879caa97f4745652f14bc31b33d32f7b)，Render于14:08:09 PDT为live；启动/就绪成功，error日志为空。[发布事实及公网限制](RENDER_TRIAL.md#当前发布2026-10-31)。此收尾仅文档，不重跑产品测试/部署。
+
 实现提交：[2f62e1aefefcbba60fb6c921e453e4966c31bb41](https://github.com/yup005/note_wolf/commit/2f62e1aefefcbba60fb6c921e453e4966c31bb41)。
 
 按Owner最新明确要求，B-002 v5 / CFG-001 / WIN-001 / FUTURE-007取消11/14人数限制；配置仍须1名真实白痴，默认关闭。改人数保留已选政策，移除白痴清除，再加入默认关闭；旧存储ID兼容，双边翻牌/判胜和复制白痴语义不变。[确认来源](PRODUCT_DECISIONS.md#any-count-dual-2026-10-31)。

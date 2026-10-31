@@ -4,7 +4,13 @@
 
 <a id="当前发布2026-10-31"></a>
 
-## 当前发布：11人白痴双边（2026-10-31）
+## 当前发布：白痴双边不限人数（2026-10-31）
+
+[PR #12](https://github.com/yup005/note_wolf/pull/12)已按既有授权正常合并；实现[2f62e1aefefcbba60fb6c921e453e4966c31bb41](https://github.com/yup005/note_wolf/commit/2f62e1aefefcbba60fb6c921e453e4966c31bb41)，运行来源[3af4cf03879caa97f4745652f14bc31b33d32f7b](https://github.com/yup005/note_wolf/commit/3af4cf03879caa97f4745652f14bc31b33d32f7b)，合并树与验证分支一致。部署`dep-dbj5h04s728c738spmjg`：于2026-10-31 14:08:09 PDT（UTC21:08:09）返回live；源码SHA匹配，构建成功、监听10000端口、平台就绪成功，发布后error日志为空。
+
+任意人数且有1名真实白痴可显式开启，默认关闭；改人数保留选择，移除白痴清除。688项单测、typecheck/build、3项手机专项通过；补强判胜后聚焦11/11。10份文档725本地引用/锚点和差异检查通过。沿用Free/Oregon单服务、auto-deploy关闭；公网网络限制及真机验收边界保持。本次仅文档收尾，不重复部署/产品测试。
+
+## 11人补充发布（2026-10-31，历史）
 
 已按Owner既有授权合并[PR #11](https://github.com/yup005/note_wolf/pull/11)并部署。实现提交[7c987d23b1ff4563e436615bbe790adef4d431c9](https://github.com/yup005/note_wolf/commit/7c987d23b1ff4563e436615bbe790adef4d431c9)，实际运行源码[34f03c3153eec58fbac55ac6e1d91044c6d24ee0](https://github.com/yup005/note_wolf/commit/34f03c3153eec58fbac55ac6e1d91044c6d24ee0)；部署`dep-dbj5dk942hec73c2uasg`于2026-10-31 14:01:05 PDT（UTC21:01:05）为live。
 
@@ -113,7 +119,7 @@ BETA-004 管理员授权与独立模拟房隔离已在本地实现，执行证�
 - 服务：`note-wolf-trial` / `srv-db5gd37lot8c73esepqg`，Node Web Service，Free，Oregon，单实例。
 - 仓库：`https://github.com/yup005/note_wolf`，分支 `main`。
 - 首次部署：`dep-db5gd3nlot8c73eseqo0`，Render 返回 `live`。部署源码：[fab5566d84ec2fb2b3572d105f3e1935a879911a](https://github.com/yup005/note_wolf/commit/fab5566d84ec2fb2b3572d105f3e1935a879911a)。该 SHA 是已上线源码，不是后续部署文档提交。
-- 当前运行源码：本页2026-10-31发布的 `34f03c3153eec58fbac55ac6e1d91044c6d24ee0`；先前部署保留作历史记录。
+- 当前运行源码：本页2026-10-31发布的 `3af4cf03879caa97f4745652f14bc31b33d32f7b`；先前部署保留作历史记录。
 - 前端、API 和 Socket.IO 由同一个服务提供，不需要跨域会话或迁移规则引擎。
 - 历史：首次部署后另一开发批次交付 M1 配置功能（`b5954fe`，文档跟进`5a187d1`）；首次部署记录正常合并该批次，保留其全部实现和证据，当时未重新部署。2026-10-11 已按上方记录手动更新。
 
