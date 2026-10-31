@@ -12,6 +12,8 @@ Owner批准[设计](superpowers/specs/2026-10-30-wolf-girl-design.md)及[Issue #
 
 实现与安全整合提交：[edb42f4f08498d504939c766f7ffe4b3990701a0](https://github.com/yup005/note_wolf/commit/edb42f4f08498d504939c766f7ffe4b3990701a0)。本次SHA跟进仅文档，22份整合文档849个本地引用目标、182项唯一需求与差异已核对；代码检查未重跑（产品源码未变）。同批正常推送后核对最终远端SHA，不追加自引用哈希。
 
+公开发布状态：本批已在云端work提交，但两次 `git push -u origin work` 均被自动审批拒绝。目标已核实为当前连接账号拥有的公开仓库yup005/note_wolf，推送权限存在；审批仍要求Owner在本次可信对话中明确授权这批66个源码/测试/文档文件的公开推送，未接受仓库既有自动推送约定。尚未推送、未更新PR #8、未部署；等待这项明确授权，不使用其他通道绕过。产品检查均已通过，追加本段仅文档、未重跑代码测试。
+
 ## 历史：Render当前版本发布（2026-10-25）
 
 按用户明确部署请求，BETA-009将现有Free服务更新到 [37a13140a6cfe824d9a8c24a43caf31f6f069324](https://github.com/yup005/note_wolf/commit/37a13140a6cfe824d9a8c24a43caf31f6f069324)，部署 `dep-dbes72fb9u1s73apf570` 返回live，01:54:26完成（America/Los_Angeles）。BETA-004管理员独立模拟测试房例外同时启用，普通用户/游客、混合真人房、外部HTTP/Socket和旧会话拒绝；管理员原有凭据登录/后台及注销后重登通过，未上传本机数据或改变收费/自动部署设置。
