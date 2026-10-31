@@ -20,10 +20,10 @@ function command(s:DayState,c:Command<DayCommand>,seat=1,now=1000){dayCommand(s,
 function exile(s:DayState,seat=14){s.phase='vote_result';s.result={purpose:'exile',counts:[{seat,votes:1}],leaders:[seat]};command(s,{action:'continue'});}
 function speeches(s:DayState){s.phase='day_direction';s.sheriff=null;s.vote=null;s.speechMode=null;s.direction=null;command(s,{action:'speech_mode',mode:'ordered'});}
 
-test('dual policy is explicit, limited to fourteen with an idiot, and survives validation',()=>{
+test('dual policy is explicit, requires an idiot at any player count, and survives validation',()=>{
  const c=createBoardConfiguration(composition);assert.equal(assertPlayableBoard(c).idiotPolicy,'dual-category-14');
  assert.equal(createBoardConfiguration({seatCount:14,roles:composition.roles}).idiotPolicy,undefined);
- for(const input of [{...composition,seatCount:12,roles:{...composition.roles,villager:4}},{...composition,roles:{wolf:4,villager:7,seer:1,witch:1,hunter:1}},{...composition,idiotPolicy:'guessed'}])assert.throws(()=>createBoardConfiguration(input),/INVALID_BOARD_CONFIGURATION/);
+ for(const input of [{...composition,roles:{wolf:4,villager:7,seer:1,witch:1,hunter:1}},{...composition,idiotPolicy:'guessed'}])assert.throws(()=>createBoardConfiguration(input),/INVALID_BOARD_CONFIGURATION/);
 });
 
 test('dual exile leaves a physical night target but removes speech, votes and interjection rights',()=>{
@@ -95,4 +95,16 @@ test('eleven-player dual idiot explicitly flips without dying and keeps only the
  assert.equal(manualDecision(people,[8,9,10],[],options).outcome,'wolves');
  assert.equal(manualDecision(people,[4,5,6,7,11],[],options).outcome,'wolves');
  const next=createNight(d.players,2000,{night:2,antidote:true,poison:true,hunterSpent:false,priorityWolf:null,engine:d.engine},snapshot);beginNight(next,2000,()=>0);assert.equal(privateNight(next,1).legalTargets!.includes(11),true);
+});
+
+test('dual policy accepts every supported player count explicitly and still requires one real idiot',()=>{
+ for(let seatCount=6;seatCount<=20;seatCount++){
+  const roles={wolf:1,villager:seatCount-2,idiot:1};
+  assert.equal(createBoardConfiguration({seatCount,roles,idiotPolicy:'dual-category-14'}).idiotPolicy,'dual-category-14');
+  assert.equal(createBoardConfiguration({seatCount,roles}).idiotPolicy,undefined);
+  const people=[{seat:1,role:'wolf' as const},...Array.from({length:seatCount-2},(_,i)=>({seat:i+2,role:'villager' as const})),{seat:seatCount,role:'idiot' as const}];
+  assert.equal(manualDecision(people,[],[],{idiotPolicy:'dual-category-14',flippedIdiots:[]}).outcome,null);
+  assert.equal(manualDecision(people,[],[],{idiotPolicy:'dual-category-14',flippedIdiots:[seatCount]}).outcome,'wolves');
+ }
+ assert.throws(()=>createBoardConfiguration({seatCount:12,roles:{wolf:3,villager:9},idiotPolicy:'dual-category-14'}),/INVALID_BOARD_CONFIGURATION/);
 });

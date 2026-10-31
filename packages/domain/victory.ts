@@ -13,7 +13,7 @@ export function playerCamp(role:BoardRole):'wolves'|'good'|null{
 export function evaluateVictory(players:readonly VictoryPlayer[],ruleset:Ruleset,idiotPolicy:IdiotPolicy='standard'):VictoryResult{
  const dual=idiotPolicy==='dual-category-14';
  if(!players.length||!rulesetSchema.safeParse(ruleset).success||
-  !idiotPolicySchema.safeParse(idiotPolicy).success||dual&&!supportsDualIdiot(players.length,players.filter(p=>p.role==='idiot').length)||
+  !idiotPolicySchema.safeParse(idiotPolicy).success||dual&&!supportsDualIdiot(players.filter(p=>p.role==='idiot').length)||
   new Set(players.map(p=>p.seat)).size!==players.length||players.some(p=>!Number.isSafeInteger(p.seat)||p.seat<1||
    !boardRoleSchema.safeParse(p.role).success||typeof p.alive!=='boolean'||p.idiotFlipped!==undefined&&(typeof p.idiotFlipped!=='boolean'||p.idiotFlipped&&(!dual||p.role!=='idiot'))||
    p.learnedRole!==undefined&&!boardRoleSchema.safeParse(p.learnedRole).success)||
