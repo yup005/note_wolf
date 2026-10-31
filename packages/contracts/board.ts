@@ -9,6 +9,8 @@ export const isRepeatableRole=(role:BoardRole)=>['wolf','blackWolf','whiteWolf',
 export const rulesetSchema=z.enum(['standard','mechanical-seer','mechanical-armor','wolf-girl']);
 export type Ruleset=z.infer<typeof rulesetSchema>;
 export const idiotPolicySchema=z.enum(['standard','dual-category-14']);
+// Keep the persisted policy ID compatible with existing fourteen-player games.
+export const supportsDualIdiot=(seatCount:number,idiotCount:number|undefined)=>(seatCount===11||seatCount===14)&&idiotCount===1;
 export type IdiotPolicy=z.infer<typeof idiotPolicySchema>;
 export const standardRoleCounts={wolf:4,villager:4,seer:1,witch:1,hunter:1,idiot:1} as const;
 export const boardCompositionSchema=z.object({
@@ -17,7 +19,7 @@ export const boardCompositionSchema=z.object({
  idiotPolicy:idiotPolicySchema.optional()
 }).strict().refine(config=>Object.values(config.roles).reduce((sum,count)=>sum+count,0)===config.seatCount)
  .refine(config=>Object.entries(config.roles).every(([role,count])=>isRepeatableRole(role as BoardRole)||count!<=1))
- .refine(config=>config.idiotPolicy!=='dual-category-14'||config.seatCount===14&&config.roles.idiot===1);
+ .refine(config=>config.idiotPolicy!=='dual-category-14'||supportsDualIdiot(config.seatCount,config.roles.idiot));
 export type BoardComposition=z.infer<typeof boardCompositionSchema>;
 export interface BoardConfiguration extends BoardComposition {ruleset:Ruleset;playable:boolean}
 

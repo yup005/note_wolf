@@ -1,5 +1,5 @@
 import {LobbyError} from '../contracts/index.js';
-import {boardRoleSchema,rulesetSchema,standardRoleCounts,idiotPolicySchema,isWolfRole,type IdiotPolicy,type BoardRole,type Ruleset} from '../contracts/board.js';
+import {boardRoleSchema,rulesetSchema,standardRoleCounts,idiotPolicySchema,supportsDualIdiot,isWolfRole,type IdiotPolicy,type BoardRole,type Ruleset} from '../contracts/board.js';
 
 export interface VictoryPlayer {seat:number;role:BoardRole;alive:boolean;personalCamp?:'wolves'|'good';idiotFlipped?:boolean;learnedRole?:BoardRole;modelSeat?:number;modelCamp?:'wolves'|'good'}
 export type VictoryResult={status:'playing'}|{status:'ended';winner:'wolves'|'good';reason:'all-villagers-dead'|'all-gods-dead'|'all-wolves-dead'|'mixer-dead-one-villager'|'mixer-last-civilian';personalResults?:{seat:number;won:boolean}[]}|{status:'unresolved';questionId:string};
@@ -13,7 +13,7 @@ export function playerCamp(role:BoardRole):'wolves'|'good'|null{
 export function evaluateVictory(players:readonly VictoryPlayer[],ruleset:Ruleset,idiotPolicy:IdiotPolicy='standard'):VictoryResult{
  const dual=idiotPolicy==='dual-category-14';
  if(!players.length||!rulesetSchema.safeParse(ruleset).success||
-  !idiotPolicySchema.safeParse(idiotPolicy).success||dual&&(players.length!==14||players.filter(p=>p.role==='idiot').length!==1)||
+  !idiotPolicySchema.safeParse(idiotPolicy).success||dual&&!supportsDualIdiot(players.length,players.filter(p=>p.role==='idiot').length)||
   new Set(players.map(p=>p.seat)).size!==players.length||players.some(p=>!Number.isSafeInteger(p.seat)||p.seat<1||
    !boardRoleSchema.safeParse(p.role).success||typeof p.alive!=='boolean'||p.idiotFlipped!==undefined&&(typeof p.idiotFlipped!=='boolean'||p.idiotFlipped&&(!dual||p.role!=='idiot'))||
    p.learnedRole!==undefined&&!boardRoleSchema.safeParse(p.learnedRole).success)||

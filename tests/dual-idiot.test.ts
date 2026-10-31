@@ -81,3 +81,18 @@ test('manual dual victory uses separate public flip and physical death facts',()
  assert.deepEqual(manualDecision(roster,[11,12,13],[],options),{outcome:'wolves',requiresAdjudication:false});
  assert.deepEqual(manualDecision([{seat:1,role:'villager'},{seat:2,role:'witch'}],[1,2]),{outcome:null,requiresAdjudication:false});
 });
+
+test('eleven-player dual idiot explicitly flips without dying and keeps only the civilian edge',()=>{
+ const roster:BoardRole[]=['wolf','wolf','wolf','villager','villager','villager','villager','seer','witch','hunter','idiot'];
+ const input={seatCount:11,roles:{wolf:3,villager:4,seer:1,witch:1,hunter:1,idiot:1},idiotPolicy:'dual-category-14'};
+ const config=createBoardConfiguration(input);assert.equal(assertPlayableBoard(config).idiotPolicy,'dual-category-14');
+ assert.equal(createBoardConfiguration({seatCount:11,roles:input.roles}).idiotPolicy,undefined);
+ const snapshot:RoomBoardSnapshot={id:'custom',name:'Dual 11',ruleVersion:'2026-10-10-v1',composition:{seatCount:11,roleCounts:config.roles,ruleset:config.ruleset,playable:config.playable,idiotPolicy:'dual-category-14'}};
+ const n=createNight(roster.map((role,i)=>({seat:i+1,role})),0,undefined,snapshot);n.phase='first_night_complete';n.engine!.stage='resolved';n.engine!.resolution={status:'settled',effects:[],deaths:[]};
+ const d=createDay(n,firstDayRules,1000);exile(d,11);assert.equal(d.players[10].alive,true);assert.equal(d.deaths.some(p=>p.seat===11),false);assert.equal(privateDay(d,11).canInterject,false);
+ const people=roster.map((role,i)=>({seat:i+1,role})),options={idiotPolicy:'dual-category-14' as const,flippedIdiots:[11]};
+ assert.equal(manualDecision(people,[4,5,6,7],[],options).outcome,null);
+ assert.equal(manualDecision(people,[8,9,10],[],options).outcome,'wolves');
+ assert.equal(manualDecision(people,[4,5,6,7,11],[],options).outcome,'wolves');
+ const next=createNight(d.players,2000,{night:2,antidote:true,poison:true,hunterSpent:false,priorityWolf:null,engine:d.engine},snapshot);beginNight(next,2000,()=>0);assert.equal(privateNight(next,1).legalTargets!.includes(11),true);
+});

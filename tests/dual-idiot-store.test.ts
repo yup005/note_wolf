@@ -81,3 +81,12 @@ test('switching to manual imports a public dual flip as exile, never physical de
   s.saveRecord(t[0],id,imported.revision,{...imported.document,deaths:[11,12,13].map(seat=>({seat,round:2,period:'night',cause:'unrecorded'}))});s.commitManual(t[0],id,imported.revision+1);assert.equal(s.snapshot(id).manual!.winner,'wolves');
  }finally{s.close();rmSync(dir,{recursive:true});}
 });
+
+test('eleven-player dual templates retain the explicit legacy-compatible policy after restart',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'wolf-dual-eleven-')),file=join(dir,'db');let s=new LobbyStore(file);
+ try{s.issueSession('h');const composition:BoardComposition={seatCount:11,roles:{wolf:3,villager:4,seer:1,witch:1,hunter:1,idiot:1},idiotPolicy:'dual-category-14'};
+  const saved=s.saveBoard('h',{id:null,revision:0,name:'Dual11',composition}),room=s.create('h','H').room;
+  s.configureBoard('h',room.id,{settingsRevision:0,selection:{kind:'custom',id:saved.id}});s.close();s=new LobbyStore(file);
+  assert.equal(s.snapshot(room.id).board.composition.seatCount,11);assert.equal(s.snapshot(room.id).board.composition.idiotPolicy,'dual-category-14');assert.equal(s.boardLibrary('h').custom[0].composition.idiotPolicy,'dual-category-14');
+ }finally{s.close();rmSync(dir,{recursive:true});}
+});
