@@ -25,10 +25,11 @@ export function RoomLobby({view,connected,busy,onSeat,onHome,onAction,onPublicRe
   <nav className="room-toolbar" aria-label="房间导航">
    <button className="back" onClick={onHome}>← 首页</button>
    <button className="room-copy subtle" aria-label="复制房间号" onClick={copy}><span>房间</span><strong data-testid="room-code">{room.code}</strong><span>{copied?'已复制':'复制'}</span></button>
-   <span className="helper">第 {room.gameNumber} 局</span><RuleReferenceButton roomId={room.id} board={room.board}/>
+   <div className="room-utilities"><RuleReferenceButton roomId={room.id} board={room.board}/>
    <span className="live" role="status"><i className={connected?'dot':'dot amber'}/>{connected?'已连接':'重连中'}</span>
+   </div>
   </nav>
-  <div className="room-overview"><span>{room.board.name}</span><strong>{own?`你在 ${own} 号`:'等待入座'}{me.isHost?' · 房主':''}</strong></div>
+  <div className="room-overview"><span>{room.board.name}</span>{room.gameNumber>1&&<span>第 {room.gameNumber} 局</span>}<strong>{own?`你在 ${own} 号`:'等待入座'}{me.isHost?' · 房主':''}</strong></div>
   {room.testRoom&&<p className="test-room-label">测试房间 · 模拟玩家</p>}
   <div className="room-workspace">
    <section className="card seats-card" aria-label="本局座位">
@@ -52,6 +53,7 @@ export function RoomLobby({view,connected,busy,onSeat,onHome,onAction,onPublicRe
   </div>
   <details className="card room-details"><summary>房间详情<span>{phase==='lobby'?'板子与说明':'板子与本局设置'}</span></summary>
    <BoardCard board={room.board}/>
+   <p className="helper">这是同一房间的第 {room.gameNumber} 场游戏，重新开局后累加，与第几天、第几夜无关。</p>
    <p className="helper">{room.preparation.settings.dealMethod==='online'?'线上随机发牌':'实体牌录入'} · {room.preparation.settings.gameMode==='automatic'?'自动法官':'纯手动记录'}</p>
    <p className="helper">{me.nickname}{me.isHost?' · 房主':''} · {phase==='lobby'?'发牌前可改选空位，房主须参赛。':phase==='started'?'座位与身份已锁定。':'座位已锁定，请各自确认身份。'}</p>
   </details>

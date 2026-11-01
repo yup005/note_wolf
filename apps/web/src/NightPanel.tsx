@@ -1,5 +1,6 @@
 import {gameApi} from './gameApi';
 import {RuleReferenceButton} from './RuleReference';
+import {WolfInstructions} from './WolfInstructions';
 import {JudgeControls} from './JudgeControls';
 import {PublicVoiceShortcut} from './PublicVoice';
 import {useEffect,useRef,useState} from 'react';
@@ -86,6 +87,7 @@ export function NightPanel({view,connected,busy,onHome,onAction,onPublicRefresh}
   {testing&&<div className="night-test-tools"><label>测试<select aria-label="操作的测试玩家" value={actor} disabled={pending} onChange={e=>{conceal();setAutoFollow(false);setTarget(null);draftKey.current='';setActor(e.target.value);}}>{room.seats.filter(s=>s.memberId&&(s.isTestPlayer||s.memberId===me.id)).map(s=><option key={s.memberId!} value={s.memberId!}>{s.number} 号 · {s.memberId===me.id?'你':s.nickname}{testRoles[s.number]?` · ${roleLabels[testRoles[s.number]]}`:''}</option>)}</select></label><label className="test-follow"><input type="checkbox" checked={autoFollow} onChange={e=>{conceal();setAutoFollow(e.target.checked);}}/>自动跟随</label>{night.deadline!==null&&<button className="text-button" disabled={blocked} onClick={()=>onAction('night/test-advance')}>推进测试阶段</button>}</div>}
   <section className={`card night-stage${card?.kind==='wolves'?' wolf-operation':''}`} aria-label="夜间操作">
    <header className="night-heading"><div><span className="eyebrow">第 {night.night} 夜</span><h1>{phase==='first_night_complete'?completedLabel:nightPhaseLabels[phase]}</h1></div><div className="night-clock-group"><button className="text-button wake-toggle" aria-pressed={keepAwake} onClick={()=>setKeepAwake(v=>!v)}>{wake==='unavailable'?'常亮不可用':wake==='active'?'常亮已开':'常亮已关'}</button><strong className="night-clock" aria-label="剩余时间">{night.deadline!==null?`${seconds} 秒`:'—'}</strong></div></header>
+   <div className="night-operation-body">
    <div className="night-note" aria-live="polite">
     {error?<span className="night-error" role="alert">{error}</span>:resultText?<div className="skill-result" role="status" aria-label="技能结果">{resultReceipt&&<span>本夜操作已确认</span>}<strong>{resultText}</strong>{phase==='eyes_closed'&&<span>请闭眼，等待下一阶段</span>}</div>:phase==='awaiting_host'?'由房主统一开始夜晚，无需再次准备。':phase==='eyes_closed'?'请所有玩家闭眼，等待下一阶段。':phase==='first_night_complete'?`${completedLabel}，等待房主开始${dayLabel}。`:phase==='rules_pending'?'当前组合需要规则裁定，请等待房主管理操作。':!visible?'请闭眼，等待自己的行动阶段。':card?.kind==='mechanical_authority'?<strong>{card.inheritedKnife?'本夜已继承狼刀，在狼人行动阶段出刀':'本夜没有狼刀权限'}</strong>:abilityStage?<div className="skill-result" role="status" aria-label="私人技能反馈">
      {card?.learningReceipt?<><strong>学习成功：{roleLabels[card.learningReceipt.role]}</strong>{egg&&eggIndex>=0&&<span>{egg.text.slice(0,eggIndex)}<strong style={{color:'#b42318'}}>{egg.emphasis}</strong>{egg.text.slice(eggIndex+egg.emphasis.length)}</span>}</>:copiedStage&&card?.learnedRole?<strong>已学习：{roleLabels[card.learnedRole]}</strong>:null}
@@ -96,8 +98,10 @@ export function NightPanel({view,connected,busy,onHome,onAction,onPublicRefresh}
      <div className="wolf-votes" role="list" aria-label="狼队票型">{[...voteGroups].sort(([a],[b])=>typeof a==='number'&&typeof b==='number'?a-b:typeof a==='number'?-1:typeof b==='number'?1:a==='empty'?-1:1).map(([key,seats])=><div className="wolf-vote-group" role="listitem" key={key}><strong>{key==='pending'?'未投票':key==='empty'?'空刀':`${key} 号`}</strong><span>{seats.join('、')} 号{key==='pending'?'未提交':'选择'}</span></div>)}</div>
     </>:card?.kind==='witch'?card.committed?'本夜操作已确认':`${card.knife===undefined?'刀口不可见':`刀口 ${card.knife===null?'空刀':card.knife+' 号'}`} · 解药${!card.antidote?'已用':card.knife===selectedSeat?'不可自救':card.knife==null?'暂无可救目标':'可用'} · 毒药${card.poison?'可用':'已用'}`:card?.kind==='seer'&&card.result?`查验 ${card.target} 号：${card.result==='wolf'?'狼人':'好人'}`:card?.kind==='hunter'?`技能${card.canShoot?'可发动':'不可发动'}`:'当前请闭眼，等待自己的行动阶段。'}
    </div>
+   {card?.kind==='wolves'&&<WolfInstructions recognitionOnly={!!card.recognitionOnly} hasPriority={hasPriority} isPriority={isPriority} isConfirmer={card.confirmer===selectedSeat}/>}
    <div className="night-targets" aria-label="座位目标">
     {room.seats.map(s=>{const alive=night.alive.includes(s.number);const votes=card?.kind==='wolves'?card.votes?.filter(v=>v.target===s.number).length??0:0;const teammate=card?.kind==='confession'&&s.number!==selectedSeat&&!!card.wolves?.includes(s.number);return <button key={s.number} className={`night-target${target===s.number&&interactive?' selected':''}${s.number===selectedSeat?' self':''}${alive?'':' dead'}`} disabled={!interactive||blocked||!legalTarget(s.number)} aria-label={`目标 ${s.number} 号，${s.nickname}${alive?'':'，已死亡'}${teammate?'，狼人同伴，不可表白':''}`} aria-pressed={interactive?target===s.number:undefined} onClick={()=>{draftKey.current=`${night.turnId}:${actor}`;setTarget(s.number);}}><strong>{s.number}</strong><span>{s.nickname}</span><small>{[teammate?'狼人同伴':testRoles[s.number]?roleLabels[testRoles[s.number]]:null,!alive?'已死亡':null,votes?`${votes} 票`:s.number===selectedSeat?'你':null].filter(Boolean).join(' · ')||'　'}</small></button>;})}
+   </div>
    </div>
    <div className="night-actions">
     {phase==='awaiting_host'?<>

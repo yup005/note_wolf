@@ -18,6 +18,7 @@ export function PreparationPanel({view,busy,connected,onAction}:Props){
  return <section className="preparation-panel" aria-label="准备与发牌">
   <h2>{p.phase==='lobby'?'入座与准备':p.phase==='started'?'身份已锁定':'确认进度'}</h2>
   {p.phase==='lobby'?<>
+   <p className="helper waiting-hint">可单人或少于 {capacity} 人候场；发牌需按本局板子满 {capacity} 人并全部准备。</p>
    <p className="helper">已准备 {ready} / {capacity}</p>
    {mine?<div className="prepare-actions"><button className={mine.ready?'secondary':'primary'} disabled={blocked} onClick={()=>onAction('ready',{ready:!mine.ready,settingsRevision:p.settingsRevision})}>{mine.ready?'取消准备':'准备'}</button><button className="text-button" disabled={blocked} onClick={()=>onAction('unseat')}>取消入座</button></div>:<p className="helper">请先入座{me.isHost?'，房主也须参赛':''}。</p>}
    {me.isHost&&<><button className="primary full" disabled={blocked||!dealAllowed} onClick={()=>onAction('deal')}>开始发牌</button><p className="helper">{!playable?boardMessage:!hostSeated?'房主须入座参赛':seats.length<capacity?`等待 ${capacity} 人入座`:ready<capacity?'等待所有玩家准备':'发牌后座位和设置将锁定'}</p></>}
