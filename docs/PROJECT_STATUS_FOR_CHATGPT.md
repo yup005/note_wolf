@@ -2,6 +2,8 @@
 
 ## 当前开发：盗宝大师（2026-11-01，TM-001–010，未部署）
 
+实现提交：[f50a505cd85cd2de06b2413c43996f8a9f5834d0](https://github.com/yup005/note_wolf/commit/f50a505cd85cd2de06b2413c43996f8a9f5834d0)，分支`work`；推送状态以远程SHA核验及最终交付消息为准。
+
 已接入12人盗宝大师，两种留底模式、私密发牌/选牌、摄梦与蒙面、独立库存、狼刀继承、屠边和一次免放逐，以及手动记录、最终复盘/收藏、跨局清空。完整[规则及限制](TREASURE_MASTER.md)，[Owner确认](PRODUCT_DECISIONS.md#treasure-master-2026-11-01)，[实施计划](superpowers/plans/2026-11-01-treasure-master.md)。标准、机械及狼女孩保持原流程。
 
 - 最终 `npm test`：711 pass /0 fail /0 skip，178.74秒；`npm run typecheck`、`npm run build`均通过，既有500KB包体提示保留。新增21项领域/实际存储测试覆盖抽牌组合、权限、跨夜库存、末神刀毒梦终局、蒙面发言/退水、一次免放逐、完整8轮复盘/重开和文件库重启。
