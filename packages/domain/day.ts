@@ -1,3 +1,5 @@
+import {treasureVictory,treasureWolf} from './treasure.js';
+import type {TreasureRuntime} from './treasureNight.js';
 import {createNativeAbilityProfile} from './mechanicalAbilities.js';
 import type {DaySelf} from '../contracts/day.js';
 import {randomInt,randomUUID} from 'node:crypto';
@@ -9,9 +11,10 @@ import {evaluateVictory} from './victory.js';
 import type {EngineState} from '../contracts/engine.js';
 import {isWolfRole,isSharedWolfRole} from '../contracts/board.js';
 import {useSkill} from './skills.js';
-type DeathReason='knife'|'poison'|'shot'|'exile'|'explosion'|'white-wolf'|'girl-retaliation';
+type DeathReason='knife'|'poison'|'shot'|'exile'|'explosion'|'white-wolf'|'girl-retaliation'|'dream';
 type Task={seat:number;step:'skill'|'words'|'badge'};
 export interface DayState {
+ treasure?:TreasureRuntime;delayedDeaths?:{seat:number;reason:DeathReason}[];maskResume?:{phase:'sheriff_speech'|'day_speech';speakers:number[]};
  engine?:EngineState;extraNightSeat?:number|null;flippedIdiots?:number[];
  interjection?:{seat:number;startedAt:number;remainingSpeechMs:number;pausedElapsedMs?:number}|null;interjectionUsed?:Record<number,number>;
  voteDefaults?:{seconds:number;visibility:'individual'|'totals'};
@@ -30,7 +33,8 @@ function phase(s:DayState,p:DayPhase,now:number,seconds?:number){s.interjection=
 export function createDay(n:NightState,rules:FirstDayRules,now:number,previous?:DayState):DayState{
  if(n.phase!=='first_night_complete')error();
  const pendingDeaths:DayState['pendingDeaths']=[];
- if(n.engine){
+ if(n.treasure){for(const d of n.treasure.deaths)if(!d.delayed)pendingDeaths.push({seat:d.seat,reason:d.reason});}
+ else if(n.engine){
   const resolution=n.engine.resolution;if(!resolution||resolution.status!=='settled')return error('NIGHT_NOT_SETTLED');
   for(const death of resolution.deaths){
    const effects=resolution.effects.filter(e=>death.sourceEffectIds.includes(e.id));
@@ -40,11 +44,11 @@ export function createDay(n:NightState,rules:FirstDayRules,now:number,previous?:
   if(n.knife!==null&&n.witchChoice?.choice!=='save')pendingDeaths.push({seat:n.knife,reason:'knife'});
   if(n.witchChoice?.choice==='poison'){const seat=n.witchChoice.target!;const old=pendingDeaths.find(d=>d.seat===seat);if(old)old.reason='poison';else pendingDeaths.push({seat,reason:'poison'});}
  }
- return {...(n.engine?{engine:structuredClone(n.engine)}:{}),extraNightSeat:n.extraNightSeat??null,flippedIdiots:[...(previous?.flippedIdiots??n.engine?.players.filter(p=>p.publicState.revealedRole==='idiot'&&!p.publicState.canVote).map(p=>p.seat)??[])],interjection:null,interjectionUsed:{},day:n.night,nightDeaths:pendingDeaths.map(d=>d.seat),hunterSpent:previous?.hunterSpent??false,speechStart:null,phase:'awaiting_host',turnId:randomUUID(),deadline:null,players:n.players.map(p=>({...p,alive:previous?.players.find(old=>old.seat===p.seat)?.alive??p.alive??true})),rules:{...rules},pendingDeaths,deaths:previous?.deaths.map(d=>({...d}))??[],tasks:[],currentDeath:null,sheriff:previous?.sheriff??null,badge:previous?.badge??'available',signup:previous?.badge==='deferred'?{...previous.signup}:{},originalCandidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.originalCandidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],candidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.candidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],speakers:[],speaker:null,vote:null,result:null,announcement:null,revealed:previous?.revealed.map(p=>({...p}))??[],winner:null,reason:null,electionPurpose:previous?.badge==='deferred'?(previous.electionPurpose??(previous.vote?.purpose==='sheriff_pk'||previous.result?.purpose==='sheriff'&&previous.result.leaders.length>1?'sheriff_pk':'sheriff')):'sheriff',voteStarted:false,speechMode:null,direction:null,afterDeaths:'day',explosions:previous?.explosions??0,priorityWolf:null,events:[{type:'day_created',at:now}]};
+ return {...(n.treasure?{treasure:structuredClone(n.treasure),delayedDeaths:n.treasure.deaths.filter(d=>d.delayed).map(({seat,reason})=>({seat,reason}))}:{}),...(n.engine?{engine:structuredClone(n.engine)}:{}),extraNightSeat:n.extraNightSeat??null,flippedIdiots:[...(previous?.flippedIdiots??n.engine?.players.filter(p=>p.publicState.revealedRole==='idiot'&&!p.publicState.canVote).map(p=>p.seat)??[])],interjection:null,interjectionUsed:{},day:n.night,nightDeaths:pendingDeaths.map(d=>d.seat),hunterSpent:previous?.hunterSpent??false,speechStart:null,phase:'awaiting_host',turnId:randomUUID(),deadline:null,players:n.players.map(p=>({...p,alive:previous?.players.find(old=>old.seat===p.seat)?.alive??p.alive??true})),rules:{...rules},pendingDeaths,deaths:previous?.deaths.map(d=>({...d}))??[],tasks:[],currentDeath:null,sheriff:previous?.sheriff??null,badge:previous?.badge??'available',signup:previous?.badge==='deferred'?{...previous.signup}:{},originalCandidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.originalCandidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],candidates:previous?.badge==='deferred'?[...(previous.originalCandidates.length?previous.candidates:previous.players.filter(p=>previous.signup[p.seat]).map(p=>p.seat))]:[],speakers:[],speaker:null,vote:null,result:null,announcement:null,revealed:previous?.revealed.map(p=>({...p}))??[],winner:null,reason:null,electionPurpose:previous?.badge==='deferred'?(previous.electionPurpose??(previous.vote?.purpose==='sheriff_pk'||previous.result?.purpose==='sheriff'&&previous.result.leaders.length>1?'sheriff_pk':'sheriff')):'sheriff',voteStarted:false,speechMode:null,direction:null,afterDeaths:'day',explosions:previous?.explosions??0,priorityWolf:null,events:[{type:'day_created',at:now}]};
 }
 function checkWin(s:DayState,now:number){
  const roster=s.players.map(p=>{const engine=s.engine?.players.find(e=>e.seat===p.seat);return {...p,...(dualFlipped(s,p.seat)?{idiotFlipped:true}:{}),...(engine?.abilities.mimickedRole?{learnedRole:engine.abilities.mimickedRole}:{}),...(s.engine?.confession?.accepted&&s.engine.confession.target===p.seat?{personalCamp:'wolves' as const}:{}),...(engine?.model?{modelSeat:engine.model.seat,modelCamp:engine.model.camp}:{})};});
- const result=evaluateVictory(roster,s.engine?.board.composition.ruleset??'standard',s.engine?.board.composition.idiotPolicy);
+ const result=s.treasure?treasureVictory(roster,s.treasure.deal.camp):evaluateVictory(roster,s.engine?.board.composition.ruleset??'standard',s.engine?.board.composition.idiotPolicy);
  if(s.engine){s.engine.victory=result;for(const p of s.players){const engine=s.engine.players.find(e=>e.seat===p.seat);if(engine){engine.alive=p.alive;engine.publicState.canVote=p.alive&&!dualFlipped(s,p.seat);}}}
  if(result.status==='unresolved'){rulePending(s,'规则待确认',now);return true;}
  const winner=result.status==='ended'?result.winner:null;
@@ -57,6 +61,9 @@ function checkWin(s:DayState,now:number){
 function reveal(s:DayState,seat:number,role:Role){if(!s.revealed.some(p=>p.seat===seat))s.revealed.push({seat,role});}
 function kill(s:DayState,seat:number,reason:DeathReason,now:number){
  const p=s.players.find(p=>p.seat===seat);if(!p||!p.alive)return false;
+ if(reason==='exile'&&s.treasure&&p.role==='treasureMaster'&&s.treasure.deal.camp==='wolves'&&s.treasure.selected==='masked'&&s.players.filter(p=>p.alive&&treasureWolf(p.role,s.treasure!.deal.camp)).length===1&&!s.treasure.exemptionUsed){
+  s.treasure.exemptionUsed=true;reveal(s,seat,'masked');s.events.push({type:'treasure_mask_exemption',seat,at:now});return false;
+ }
  if(reason==='exile'&&p.role==='idiot'&&s.engine?.board.composition.idiotPolicy==='dual-category-14'){
   if(dualFlipped(s,seat))return error('INVALID_INPUT');
   reveal(s,seat,'idiot');s.flippedIdiots??=[];s.flippedIdiots.push(seat);
@@ -75,15 +82,24 @@ function kill(s:DayState,seat:number,reason:DeathReason,now:number){
  return true;
 }
 function deathTasks(s:DayState,seat:number,words=true):Task[]{return [...(s.players.find(p=>p.seat===seat)?.alive?[]:[{seat,step:'skill' as const}]),...(words&&!dualFlipped(s,seat)?[{seat,step:'words' as const}]:[]),...(s.sheriff===seat?[{seat,step:'badge' as const}]:[])];}
-function nextTask(s:DayState,now:number){const task=s.tasks.shift();s.currentDeath=task?.seat??null;if(!task){if(s.afterDeaths==='night')phase(s,'day_complete',now);else phase(s,'day_direction',now);return;}phase(s,task.step==='skill'?'death_skill':task.step==='words'?'last_words':'badge_transfer',now,task.step==='skill'?10:task.step==='words'?90:undefined);}
+function nextTask(s:DayState,now:number){const task=s.tasks.shift();s.currentDeath=task?.seat??null;if(!task){if(s.maskResume){const resume=s.maskResume;delete s.maskResume;s.speakers=resume.speakers;s.phase=resume.phase;nextSpeaker(s,now);return;}if(s.afterDeaths==='night')phase(s,'day_complete',now);else phase(s,'day_direction',now);return;}phase(s,task.step==='skill'?'death_skill':task.step==='words'?'last_words':'badge_transfer',now,task.step==='skill'?10:task.step==='words'?90:undefined);}
 function shuffle<T>(items:T[],choose:(n:number)=>number){const out=[...items];for(let i=out.length-1;i>0;i--){const j=choose(i+1);[out[i],out[j]]=[out[j],out[i]];}return out;}
 function announce(s:DayState,now:number,choose:(n:number)=>number){
  s.announcement=s.pendingDeaths.map(p=>p.seat).sort((a,b)=>a-b);for(const d of s.pendingDeaths)kill(s,d.seat,d.reason,now);s.pendingDeaths=[];
  if(s.extraNightSeat!==null&&s.extraNightSeat!==undefined)s.extraNightSeat=null;
  if(checkWin(s,now))return;s.tasks=shuffle(s.announcement,choose).flatMap(seat=>deathTasks(s,seat,s.day===1));phase(s,'night_announcement',now);
 }
+function finishMaskedSpeech(s:DayState,now:number):boolean{
+ const d=s.delayedDeaths?.find(d=>d.seat===s.speaker);if(!d)return false;
+ s.delayedDeaths=s.delayedDeaths!.filter(x=>x!==d);kill(s,d.seat,d.reason,now);
+ s.events.push({type:'masked_death_announced',seat:d.seat,at:now});
+ s.candidates=s.candidates.filter(p=>p!==d.seat);s.originalCandidates=s.originalCandidates.filter(p=>p!==d.seat);
+ if(checkWin(s,now))return true;
+ if(s.sheriff===d.seat){s.maskResume={phase:s.phase as 'sheriff_speech'|'day_speech',speakers:[...s.speakers]};s.tasks=[{seat:d.seat,step:'badge'}];nextTask(s,now);return true;}
+ return false;
+}
 function startSpeeches(s:DayState,seats:number[],p:'sheriff_speech'|'day_speech',now:number){s.speakers=[...seats];s.speaker=s.speakers.shift()??null;if(s.speaker!==null)phase(s,p,now,90);else if(p==='sheriff_speech')phase(s,'sheriff_withdraw',now);else setupVote(s,'exile',participants(s),participants(s),now);}
-function nextSpeaker(s:DayState,now:number){s.speaker=s.speakers.shift()??null;if(s.speaker!==null)phase(s,s.phase,now,90);else if(s.phase==='sheriff_speech'){if(s.vote?.purpose==='sheriff_pk')setupVote(s,'sheriff_pk',s.candidates,participants(s).filter(p=>!s.candidates.includes(p)),now);else phase(s,'sheriff_withdraw',now);}else setupVote(s,'exile',participants(s),participants(s),now);}
+function nextSpeaker(s:DayState,now:number){if(finishMaskedSpeech(s,now))return;s.speaker=s.speakers.shift()??null;if(s.speaker!==null)phase(s,s.phase,now,90);else if(s.phase==='sheriff_speech'){if(s.vote?.purpose==='sheriff_pk')setupVote(s,'sheriff_pk',s.candidates,participants(s).filter(p=>!s.candidates.includes(p)),now);else phase(s,'sheriff_withdraw',now);}else setupVote(s,'exile',participants(s),participants(s),now);}
 function setupVote(s:DayState,purpose:VotePurpose,candidates:number[],eligible:number[],now:number){s.vote={purpose,candidates:[...candidates],eligible:[...eligible],ballots:{},method:'phone',visibility:'individual'};s.result=null;phase(s,'vote_setup',now);}
 function electSheriff(s:DayState,seat:number,now:number){s.sheriff=seat;s.badge='elected';s.events.push({type:'sheriff_elected',seat,at:now});}
 function electionFinished(s:DayState,now:number){s.speaker=null;s.speakers=[];phase(s,'night_announcement',now);}
@@ -99,7 +115,7 @@ function continueResult(s:DayState,now:number,choose:(n:number)=>number){
   else if(r.purpose==='sheriff_pk'){s.badge='lost';electionFinished(s,now);}
   else{s.candidates=[...r.leaders];s.vote={...s.vote!,purpose:'sheriff_pk',candidates:s.candidates,eligible:participants(s).filter(p=>!s.candidates.includes(p)),ballots:{}};startSpeeches(s,shuffle(s.candidates,choose),'sheriff_speech',now);}
  }else{
-  if(r.leaders.length===1){const seat=r.leaders[0];kill(s,seat,'exile',now);if(checkWin(s,now))return;s.afterDeaths='night';s.tasks=deathTasks(s,seat);nextTask(s,now);}
+  if(r.leaders.length===1){const seat=r.leaders[0];kill(s,seat,'exile',now);if(s.phase==='rules_pending')return;if(s.treasure&&s.players.find(p=>p.seat===seat)?.alive){phase(s,'day_complete',now);return;}if(checkWin(s,now))return;s.afterDeaths='night';s.tasks=deathTasks(s,seat);nextTask(s,now);}
   else if(!r.leaders.length){if(s.rules.zeroVotes==='no_result')phase(s,'day_complete',now);else rulePending(s,'全员弃票时的放逐规则待确认',now);}
   else if(r.purpose==='exile_pk'){phase(s,'day_complete',now);}
   else{if(s.rules.exilePkEligibility===null){rulePending(s,'放逐 PK 投票资格待确认',now);return;}s.candidates=[...r.leaders];s.speakers=shuffle(s.candidates,choose);s.speaker=s.speakers.shift()!;s.vote={...s.vote!,purpose:'exile_pk',candidates:s.candidates,eligible:participants(s).filter(p=>s.rules.exilePkEligibility==='all_alive'||!s.candidates.includes(p)),ballots:{}};phase(s,'day_speech',now,90);}
@@ -118,7 +134,8 @@ function startDaySpeech(s:DayState,now:number,choose:(n:number)=>number){
 function canShoot(s:DayState,seat:number){
  if(s.phase!=='death_skill'||seat!==s.currentDeath||s.winner!==null)return false;
  const p=s.players.find(p=>p.seat===seat),death=s.deaths.find(d=>d.seat===seat);
- if(!p||p.alive||!death||death.reason==='poison'||death.reason==='girl-retaliation')return false;
+ if(!p||p.alive||!death||death.reason==='poison'||death.reason==='girl-retaliation'||death.reason==='dream')return false;
+ if(s.treasure){const role=p.role==='treasureMaster'?s.treasure.selected:p.role;return !s.treasure.shotSpent.includes(seat)&&(role==='hunter'&&['knife','exile'].includes(death.reason)||role==='blackWolf'&&death.reason==='exile');}
  if(s.engine?.board.composition.ruleset==='wolf-girl'&&!['knife','exile'].includes(death.reason))return false;
  if(s.engine){const skill=s.engine.players.find(p=>p.seat===seat)?.abilities.skills.find(a=>a.kind==='shot');return !!skill&&skill.remaining!==0&&skill.availableFromNight<=s.day&&(skill.parameters.damage==='black-wolf-shot'?['knife','exile','shot','white-wolf'].includes(death.reason):p.role==='hunter'||['knife','exile'].includes(death.reason));}
  return p.role==='hunter'&&!s.hunterSpent;
@@ -140,7 +157,7 @@ function finishInterjection(s:DayState,now:number){
 }
 export function advanceDay(s:DayState,now:number,choose=(n:number)=>randomInt(n)){
  while(s.deadline!==null&&now>=s.deadline){const boundary=s.deadline;if(s.interjection){finishInterjection(s,boundary);continue;}if(s.phase==='voting')tally(s,boundary);else if(s.phase==='sheriff_speech'||s.phase==='day_speech'){
-  if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.speakers.length===0){s.speaker=null;setupVote(s,'exile_pk',s.vote.candidates,s.vote.eligible,boundary);}else nextSpeaker(s,boundary);
+  if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.speakers.length===0){if(finishMaskedSpeech(s,boundary))continue;s.speaker=null;setupVote(s,'exile_pk',s.vote.candidates,s.vote.eligible,boundary);}else nextSpeaker(s,boundary);
  }else if(s.phase==='death_skill'||s.phase==='last_words')nextTask(s,boundary);else error();}
 }
 function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayCommand,now:number,choose=(n:number)=>randomInt(n)){
@@ -156,11 +173,11 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
   s.interjection={seat,startedAt:now,remainingSpeechMs:Math.max(0,s.deadline!-now)};s.deadline=now+interjectionRemaining(s,seat);s.turnId=randomUUID();s.events.push({type:'interjection_started',seat,at:now});return;
  }
 
- if(c.action==='start'){host();need('awaiting_host');if(s.rules.winTiming===null||s.rules.preAnnouncementEligibility===null)error('DAY_RULE_UNRESOLVED');if(s.rules.winTiming==='before_election')error('DAY_RULE_UNRESOLVED');if(s.badge==='deferred'){s.candidates=s.candidates.filter(seat=>participants(s).includes(seat));s.speaker=null;s.speakers=[];if(s.candidates.length<=1)closeElection(s,now);else phase(s,'sheriff_withdraw',now);}else phase(s,s.day===1?'sheriff_signup':'night_announcement',now);return;}
+ if(c.action==='start'){host();need('awaiting_host');if(s.treasure){const deaths=[...s.pendingDeaths];const verdict=treasureVictory(s.players.map(p=>({...p,alive:p.alive&&!deaths.some(d=>d.seat===p.seat)})),s.treasure.deal.camp);if(verdict.status==='ended'){for(const d of deaths)kill(s,d.seat,d.reason,now);s.pendingDeaths=[];s.delayedDeaths=[];s.announcement=deaths.map(d=>d.seat);checkWin(s,now);return;}if(verdict.status==='unresolved'){rulePending(s,'同时达成胜负条件待裁决',now);return;}}if(s.rules.winTiming===null||s.rules.preAnnouncementEligibility===null)error('DAY_RULE_UNRESOLVED');if(s.rules.winTiming==='before_election')error('DAY_RULE_UNRESOLVED');if(s.badge==='deferred'){s.candidates=s.candidates.filter(seat=>participants(s).includes(seat));s.speaker=null;s.speakers=[];if(s.candidates.length<=1)closeElection(s,now);else phase(s,'sheriff_withdraw',now);}else phase(s,s.day===1?'sheriff_signup':'night_announcement',now);return;}
  if(c.action==='signup'){need('sheriff_signup');if(!p!.alive||dualFlipped(s,seat))error('NOT_YOUR_TURN',403);s.signup[seat]=c.join;return;}
  if(c.action==='close_signup'){host();need('sheriff_signup');s.originalCandidates=participants(s).filter(seat=>s.signup[seat]);s.candidates=[...s.originalCandidates];if(s.candidates.length===participants(s).length||s.candidates.length===0){s.badge='lost';electionFinished(s,now);}else if(s.candidates.length===1)closeElection(s,now);else{const seats=[...s.candidates].sort((a,b)=>a-b);const start=choose(seats.length);startSpeeches(s,[...seats.slice(start),...seats.slice(0,start)],'sheriff_speech',now);}return;}
- if(c.action==='withdraw'){if(!['sheriff_speech','sheriff_withdraw'].includes(s.phase)||!s.candidates.includes(seat))error();s.candidates=s.candidates.filter(p=>p!==seat);s.speakers=s.speakers.filter(p=>p!==seat);if(s.vote?.purpose==='sheriff_pk'){s.vote.candidates=[...s.candidates];s.vote.eligible=participants(s).filter(p=>!s.candidates.includes(p));}if(s.candidates.length<=1){closeElection(s,now);announce(s,now,choose);return;}if(s.speaker===seat){if(s.interjection)finishInterjection(s,now);nextSpeaker(s,now);}return;}
- if(c.action==='end_speech'){if(!['sheriff_speech','day_speech','last_words','free_speech'].includes(s.phase))error();if(!actor.isHost&&seat!==(s.phase==='last_words'?s.currentDeath:s.speaker))error('NOT_YOUR_TURN',403);if(s.phase==='last_words')nextTask(s,now);else if(s.phase==='free_speech'){host();setupVote(s,'exile',participants(s),participants(s),now);}else if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.speakers.length===0){s.speaker=null;setupVote(s,'exile_pk',s.vote.candidates,s.vote.eligible,now);}else nextSpeaker(s,now);return;}
+ if(c.action==='withdraw'){if(!['sheriff_speech','sheriff_withdraw'].includes(s.phase)||!s.candidates.includes(seat))error();if(s.speaker===seat&&finishMaskedSpeech(s,now))return;s.candidates=s.candidates.filter(p=>p!==seat);s.speakers=s.speakers.filter(p=>p!==seat);if(s.vote?.purpose==='sheriff_pk'){s.vote.candidates=[...s.candidates];s.vote.eligible=participants(s).filter(p=>!s.candidates.includes(p));}if(s.candidates.length<=1){closeElection(s,now);announce(s,now,choose);return;}if(s.speaker===seat){if(s.interjection)finishInterjection(s,now);nextSpeaker(s,now);}return;}
+ if(c.action==='end_speech'){if(!['sheriff_speech','day_speech','last_words','free_speech'].includes(s.phase))error();if(!actor.isHost&&seat!==(s.phase==='last_words'?s.currentDeath:s.speaker))error('NOT_YOUR_TURN',403);if(s.phase==='last_words')nextTask(s,now);else if(s.phase==='free_speech'){host();setupVote(s,'exile',participants(s),participants(s),now);}else if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.speakers.length===0){if(finishMaskedSpeech(s,now))return;s.speaker=null;setupVote(s,'exile_pk',s.vote.candidates,s.vote.eligible,now);}else nextSpeaker(s,now);return;}
  if(c.action==='close_withdraw'){host();need('sheriff_withdraw');closeElection(s,now);return;}
  if(c.action==='start_vote'){host();need('vote_setup');s.voteStarted=true;s.vote!.method=c.method;s.vote!.visibility=c.visibility;phase(s,'voting',now,c.method==='phone'?c.seconds:undefined);return;}
  if(c.action==='vote'||c.action==='offline_vote'){
@@ -187,14 +204,15 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
   need('death_skill');if(!canShoot(s,seat))error('NOT_YOUR_TURN',403);
   const engine=s.engine?.players.find(e=>e.seat===seat),shot=engine?.abilities.skills.find(a=>a.kind==='shot');
   if(engine&&shot)engine.abilities=useSkill(engine.abilities,shot.id,{requestId:s.turnId,night:s.day,target:null});
-  if(p!.role==='hunter')s.hunterSpent=true;const shown=shot?.parameters.damage==='black-wolf-shot'?'blackWolf':'hunter';reveal(s,seat,shown);if(engine)engine.publicState.revealedRole=shown;phase(s,'hunter_target',now);return;
+  if(s.treasure)s.treasure.shotSpent.push(seat);if(p!.role==='hunter')s.hunterSpent=true;const shown=s.treasure&&p!.role==='blackWolf'?'blackWolf':shot?.parameters.damage==='black-wolf-shot'?'blackWolf':'hunter';reveal(s,seat,shown);if(engine)engine.publicState.revealedRole=shown;phase(s,'hunter_target',now);return;
  }
  if(c.action==='record_shot'){host();need('hunter_target');if(!living(s).includes(c.target))error('INVALID_INPUT');kill(s,c.target,'shot',now);s.events.push({type:'hunter_shot',at:now,seat:s.currentDeath!,target:c.target});if(checkWin(s,now))return;s.tasks=[...deathTasks(s,c.target,s.tasks.some(t=>t.seat===s.currentDeath&&t.step==='words')),...s.tasks];nextTask(s,now);return;}
  if(c.action==='record_take'){host();need('white_wolf_target');if(!living(s).includes(c.target))error('INVALID_INPUT');kill(s,c.target,'white-wolf',now);s.events.push({type:'white_wolf_take',at:now,seat:s.currentDeath!,target:c.target});if(checkWin(s,now))return;s.tasks=[...deathTasks(s,c.target,false),...s.tasks];nextTask(s,now);return;}
  if(c.action==='transfer_badge'){need('badge_transfer');if(seat!==s.currentDeath&&(!actor.isHost||c.takeover!==true))error('NOT_YOUR_TURN',403);if(c.target!==null&&!participants(s).includes(c.target))error('INVALID_INPUT');s.sheriff=c.target;s.badge=c.target===null?'lost':'elected';nextTask(s,now);return;}
- if(c.action==='speech_mode'){host();need('day_direction');s.speechMode=c.mode==='ordered'?'phone':c.mode;if(s.sheriff===null)s.direction='ascending';startDaySpeech(s,now,choose);return;}
+ if(c.action==='speech_mode'){host();need('day_direction');if(s.delayedDeaths?.length&&c.mode==='free')error('TREASURE_MASK_ORDERED_REQUIRED');s.speechMode=c.mode==='ordered'?'phone':c.mode;if(s.sheriff===null)s.direction='ascending';startDaySpeech(s,now,choose);return;}
  if(c.action==='direction'){need('day_direction');if(seat!==s.sheriff)error('NOT_YOUR_TURN',403);if(c.start!==undefined&&!participants(s).includes(c.start))error('INVALID_INPUT');s.speechStart=c.start??null;s.direction=c.direction;startDaySpeech(s,now,choose);return;}
  if(c.action==='explode'){
+  if(s.delayedDeaths?.length)error('RULE_DECISION_REQUIRED');
   if(p?.role==='wolfGirl'&&s.engine?.board.composition.ruleset==='wolf-girl'){if(!canExplode(s,seat))error('NOT_YOUR_TURN',403);explodeGirl(s,seat,now,choose);return;}
   if(s.rules.explosionOrder===null||(s.voteStarted&&s.rules.explosionLock===null))error('DAY_RULE_UNRESOLVED');if(s.voteStarted&&s.rules.explosionLock==='after_any_vote')error('PHASE_LOCKED');if(!canExplode(s,seat))error('NOT_YOUR_TURN',403);
   if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.vote.candidates.includes(seat))error('NOT_YOUR_TURN',403);
@@ -244,7 +262,7 @@ function publicDeathSkills(s:DayState):NonNullable<DayPublic['skillResults']>{
  }
  return results;
 }
-export function publicDay(s:DayState,now:number):DayPublic{return {...(s.winner&&s.engine?.victory.status==='ended'?{personalResults:s.engine.victory.personalResults}:{}),skillResults:publicDeathSkills(s),interjection:s.interjection?{seat:s.interjection.seat,originalSpeaker:(s.phase==='last_words'?s.currentDeath:s.speaker)!}:null,day:s.day,speechMode:s.speechMode==='ordered'?'phone':s.speechMode,direction:s.direction,speechStart:s.speechStart,nightDeaths:s.announcement===null?[]:s.nightDeaths,phase:s.phase,turnId:s.turnId,deadline:s.deadline,serverNow:now,alive:living(s),dead:s.deaths.map(d=>d.seat).sort((a,b)=>a-b),signupCount:living(s).filter(seat=>Object.hasOwn(s.signup,seat)).length,sheriff:s.sheriff,badge:s.badge,candidates:[...s.candidates],originalCandidates:[...s.originalCandidates],speaker:s.speaker,currentDeath:s.currentDeath,vote:s.vote?{purpose:s.vote.purpose,method:s.vote.method,visibility:s.vote.visibility,eligible:s.vote.eligible,candidates:s.vote.candidates,submittedCount:Object.keys(s.vote.ballots).length}:null,result:s.phase==='vote_result'?s.result:null,announcement:s.announcement,revealed:s.revealed,winner:s.winner,reason:s.reason};}
+export function publicDay(s:DayState,now:number):DayPublic{return {...(s.winner&&s.treasure?{personalResults:s.players.map(p=>({seat:p.seat,won:(treasureWolf(p.role,s.treasure!.deal.camp)?'wolves':'good')===s.winner}))}:{}),...(s.winner&&s.engine?.victory.status==='ended'?{personalResults:s.engine.victory.personalResults}:{}),skillResults:publicDeathSkills(s),interjection:s.interjection?{seat:s.interjection.seat,originalSpeaker:(s.phase==='last_words'?s.currentDeath:s.speaker)!}:null,day:s.day,speechMode:s.speechMode==='ordered'?'phone':s.speechMode,direction:s.direction,speechStart:s.speechStart,nightDeaths:s.announcement===null?[]:s.nightDeaths,phase:s.phase,turnId:s.turnId,deadline:s.deadline,serverNow:now,alive:living(s),dead:s.deaths.map(d=>d.seat).sort((a,b)=>a-b),signupCount:living(s).filter(seat=>Object.hasOwn(s.signup,seat)).length,sheriff:s.sheriff,badge:s.badge,candidates:[...s.candidates],originalCandidates:[...s.originalCandidates],speaker:s.speaker,currentDeath:s.currentDeath,vote:s.vote?{purpose:s.vote.purpose,method:s.vote.method,visibility:s.vote.visibility,eligible:s.vote.eligible,candidates:s.vote.candidates,submittedCount:Object.keys(s.vote.ballots).length}:null,result:s.phase==='vote_result'?s.result:null,announcement:s.announcement,revealed:s.revealed,winner:s.winner,reason:s.reason};}
 export function privateDay(s:DayState,seat:number):DayPrivate{
  const p=s.players.find(p=>p.seat===seat),vote=s.vote,engine=s.engine?.players.find(e=>e.seat===seat);
  return {turnId:s.turnId,seat,
@@ -266,6 +284,7 @@ export function dayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayCo
 export function selfDay(s:DayState,n:NightState,seat:number):DaySelf{
  if(s.phase==='ended'||s.day!==n.night)error();
  const player=s.players.find(p=>p.seat===seat);if(!player)return error('NOT_SEATED',403);
+ if(s.treasure){const role=player.role==='treasureMaster'?s.treasure.selected:player.role;return {turnId:s.turnId,seat,role:player.role,learnedRole:null,modelSeat:null,idiotRevealed:null,...(player.role==='treasureMaster'?{treasureCamp:s.treasure.deal.camp,treasureCard:s.treasure.selected}:{}),skills:role==='poisoner'?[{kind:'poison',remaining:Number(!s.treasure.poisonSpent.includes(seat)),availableFromNight:1}]:role==='hunter'||role==='blackWolf'?[{kind:'shot',remaining:Number(!s.treasure.shotSpent.includes(seat)),availableFromNight:1}]:role==='spiritSeer'?[{kind:'inspect',remaining:null,availableFromNight:1}]:[]};}
  const engine=s.engine?.players.find(p=>p.seat===seat),profile=engine?.abilities??createNativeAbilityProfile(player.role,seat,'standard');
  return {turnId:s.turnId,seat,role:player.role,learnedRole:profile.mimickedRole,
   ...(s.engine?.confession?.target===seat&&s.engine.confession.notified?{confession:{accepted:s.engine.confession.accepted,...(s.engine.confession.accepted?{girl:s.engine.confession.girl}:{})}}:{}),

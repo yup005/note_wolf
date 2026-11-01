@@ -1,3 +1,4 @@
+import {dealTreasure,validateTreasureDeal,type TreasureDeal} from '../domain/treasure.js';
 import type Database from 'better-sqlite3';
 import {LobbyError,type RoomSettings,type PreparationState,type PrivateIdentity,type PublicSeat,type Role,settingsSchema,roleSchema} from '../contracts/index.js';
 import {assertCanDeal,createDeck,rolesMatchBoard} from '../domain/preparation.js';
@@ -6,7 +7,8 @@ import type {BoardConfiguration} from '../contracts/board.js';
 export interface MemberRow {id:string;room_id:string;nickname:string;is_host:number;is_manager?:boolean;seat:number|null;ready:number}
 interface PreparationRow {settings_revision:number;phase:PreparationState['phase'];deal_method:RoomSettings['dealMethod'];game_mode:RoomSettings['gameMode']}
 export class PreparationStore{
- constructor(private db:Database.Database,private member:(token:string,id:string)=>MemberRow,private seats:(id:string)=>PublicSeat[],private board:(id:string)=>BoardConfiguration=()=>boardPreset('standard-12')){}
+ constructor(private db:Database.Database,private member:(token:string,id:string)=>MemberRow,private seats:(id:string)=>PublicSeat[],private board:(id:string)=>BoardConfiguration=()=>boardPreset('standard-12')){db.exec('CREATE TABLE IF NOT EXISTS treasure_deals(room_id TEXT PRIMARY KEY REFERENCES rooms(id) ON DELETE CASCADE,state TEXT NOT NULL)');}
+ treasureDeal(id:string):TreasureDeal|undefined{const r=this.db.prepare('SELECT state FROM treasure_deals WHERE room_id=?').get(id) as {state:string}|undefined;return r?validateTreasureDeal(JSON.parse(r.state)):undefined;}
  private row(id:string):PreparationRow{
   const row=this.db.prepare('SELECT * FROM preparations WHERE room_id=?').get(id) as PreparationRow|undefined;
   if(!row)throw new LobbyError('ROOM_NOT_FOUND',404);return row;
@@ -33,10 +35,12 @@ export class PreparationStore{
  }
  deal(token:string,id:string){
   this.db.transaction(()=>{this.host(token,id);if(this.row(id).phase!=='lobby')return;
-   const r=this.row(id);const config=assertPlayableBoard(this.board(id),r.game_mode);const seats=this.seats(id);assertCanDeal(seats,config,r.game_mode);
+   const r=this.row(id);const config=assertPlayableBoard(this.board(id),r.game_mode);const seats=this.seats(id);if(config.ruleset==='treasure'&&r.deal_method!=='online')throw new LobbyError('TREASURE_PHYSICAL_UNSUPPORTED',409);assertCanDeal(seats,config,r.game_mode);
    this.db.prepare("UPDATE preparations SET phase='identity_collection' WHERE room_id=?").run(id);
    if(r.deal_method==='online'){
-    const deck=createDeck(config,r.game_mode);const insert=this.db.prepare('INSERT INTO identities(room_id,member_id,role,confirmed) VALUES (?,?,?,0)');
+    const treasure=config.ruleset==='treasure'?dealTreasure(config.treasureMode!):undefined;
+    if(treasure)this.db.prepare('INSERT INTO treasure_deals(room_id,state) VALUES (?,?)').run(id,JSON.stringify(treasure));
+    const deck=treasure?.deck??createDeck(config,r.game_mode);const insert=this.db.prepare('INSERT INTO identities(room_id,member_id,role,confirmed) VALUES (?,?,?,0)');
     seats.forEach((s,i)=>insert.run(id,s.memberId,deck[i]));
    }
    this.bump(id);
@@ -46,7 +50,7 @@ export class PreparationStore{
   const m=this.seated(token,id);const r=this.row(id);
   if(r.phase==='lobby')throw new LobbyError('IDENTITY_UNAVAILABLE',409);
   const card=this.db.prepare('SELECT role,confirmed FROM identities WHERE room_id=? AND member_id=?').get(id,m.id) as {role:Role;confirmed:number}|undefined;
-  return {role:card?.role??null,confirmed:!!card?.confirmed,locked:r.phase==='started'};
+  return {...(card?.role==='treasureMaster'?{treasureCamp:this.treasureDeal(id)?.camp}:{}),role:card?.role??null,confirmed:!!card?.confirmed,locked:r.phase==='started'};
  }
  submitIdentity(token:string,id:string,role:Role):PrivateIdentity{
   if(!roleSchema.safeParse(role).success)throw new LobbyError('INVALID_INPUT');
@@ -75,8 +79,8 @@ export class PreparationStore{
   }).immediate();
  }
  snapshot(id:string):PreparationState{
-  const r=this.row(id);const cards=this.db.prepare('SELECT role,confirmed FROM identities WHERE room_id=?').all(id) as {role:Role;confirmed:number}[];
+  const r=this.row(id);const deal=this.treasureDeal(id);const cards=this.db.prepare('SELECT role,confirmed FROM identities WHERE room_id=?').all(id) as {role:Role;confirmed:number}[];
   return {settingsRevision:r.settings_revision,phase:r.phase,settings:{dealMethod:r.deal_method,gameMode:r.game_mode},submittedCount:cards.length,confirmedCount:cards.filter(c=>c.confirmed).length,
-   validation:cards.length!==this.board(id).seatCount?'waiting':rolesMatchBoard(cards.map(c=>c.role),this.board(id))?'valid':'mismatch'};
+   validation:cards.length!==this.board(id).seatCount?'waiting':(deal?cards.every(c=>deal.deck.filter(r=>r===c.role).length===cards.filter(x=>x.role===c.role).length):rolesMatchBoard(cards.map(c=>c.role),this.board(id)))?'valid':'mismatch'};
  }
 }

@@ -1,9 +1,10 @@
+import {treasureVictory} from './treasure.js';
 import {LobbyError} from '../contracts/index.js';
 import {boardRoleSchema,rulesetSchema,standardRoleCounts,idiotPolicySchema,supportsDualIdiot,isWolfRole,type IdiotPolicy,type BoardRole,type Ruleset} from '../contracts/board.js';
 
 export interface VictoryPlayer {seat:number;role:BoardRole;alive:boolean;personalCamp?:'wolves'|'good';idiotFlipped?:boolean;learnedRole?:BoardRole;modelSeat?:number;modelCamp?:'wolves'|'good'}
 export type VictoryResult={status:'playing'}|{status:'ended';winner:'wolves'|'good';reason:'all-villagers-dead'|'all-gods-dead'|'all-wolves-dead'|'mixer-dead-one-villager'|'mixer-last-civilian';personalResults?:{seat:number;won:boolean}[]}|{status:'unresolved';questionId:string};
-const gods=new Set<BoardRole>(['seer','witch','hunter','idiot','spiritSeer','guard','poisoner']);
+const gods=new Set<BoardRole>(['seer','witch','hunter','idiot','spiritSeer','guard','poisoner','dreamer','masked']);
 export function playerCamp(role:BoardRole):'wolves'|'good'|null{
  return isWolfRole(role)?'wolves':gods.has(role)||role==='villager'?'good':null;
 }
@@ -19,6 +20,7 @@ export function evaluateVictory(players:readonly VictoryPlayer[],ruleset:Ruleset
    p.learnedRole!==undefined&&!boardRoleSchema.safeParse(p.learnedRole).success)||
   ruleset==='standard'&&players.some(p=>!Object.hasOwn(standardRoleCounts,p.role))||
   ruleset!=='mechanical-armor'&&players.some(p=>p.role==='armoredWolf'))throw new LobbyError('INVALID_VICTORY_STATE');
+ if(ruleset==='treasure'){const t=players.find(p=>p.role==='treasureMaster');if(!t?.personalCamp)return {status:'unresolved',questionId:'TM-CAMP-UNKNOWN'};return treasureVictory(players,t.personalCamp);}
  if(ruleset==='wolf-girl'){
   const alive=players.filter(p=>p.alive);
   const winner=!alive.some(p=>isWolfRole(p.role))?'good':!alive.some(p=>p.role==='villager')||!alive.some(p=>gods.has(p.role))?'wolves':null;

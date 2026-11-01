@@ -1,5 +1,9 @@
 # 文档职责与阅读导航
 
+## 盗宝大师（2026-11-01）
+
+[完整规则及Owner确认](TREASURE_MASTER.md) / [稳定需求TM-001–010](NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md) / [实施计划](superpowers/plans/2026-11-01-treasure-master.md)；实际自动检查见[测试报告](TEST_REPORT.md)。首版线上随机发牌，两种留底模式；实现不等于部署或真实iPhone验收。
+
 ## 手机候场与女孩私密时点（2026-10-30）
 
 [当前交互](WEREWOLF_RULES_SPEC.md#mobile-preparation-2026-10-30) / [直接确认](PRODUCT_DECISIONS.md#mobile-preparation-2026-10-30) / [设计与范围](superpowers/specs/2026-10-30-mobile-preparation-controls-design.md) → [验收期望](WEREWOLF_TEST_CASES.md) / [执行结果](TEST_REPORT.md)。候场选择先预览后确认，女孩队友仅限已入夜的本人表白回合；已随[2026-10-31试用源码](RENDER_TRIAL.md#当前发布2026-10-31)上线，平台验证/公网限制与真实设备证据分开。

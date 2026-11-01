@@ -4,14 +4,14 @@ import {LobbyError} from '../contracts/index.js';
 import {boardSaveSchema,boardConfigureSchema,boardRuleVersion,type BoardSave,type BoardConfigure,type BoardTemplate,type BoardLibrary,type RoomBoardSnapshot,type BoardConfiguration} from '../contracts/board.js';
 import {boardPreset,createBoardConfiguration} from '../domain/boardConfig.js';
 
-const names={'standard-12':'12 人 · 预女猎白','mechanical-12':'12 人 · 机械狼通灵师','mechanical-armor-12':'12 人 · 机械装甲','wolf-girl-12':'12 人 · 狼女孩'} as const;
+const names={'standard-12':'12 人 · 预女猎白','mechanical-12':'12 人 · 机械狼通灵师','mechanical-armor-12':'12 人 · 机械装甲','wolf-girl-12':'12 人 · 狼女孩','treasure-12':'12 人 · 盗宝大师'} as const;
 interface Row {id:string;name:string;revision:number;rule_version:string;composition:string}
 function template(row:Row):BoardTemplate{
  if(row.rule_version!==boardRuleVersion)throw new LobbyError('BOARD_VERSION_UNSUPPORTED',409);
  return {id:row.id,name:row.name,revision:row.revision,ruleVersion:boardRuleVersion,composition:createBoardConfiguration(JSON.parse(row.composition))};
 }
 function preset(id:keyof typeof names):BoardTemplate{return {id,name:names[id],revision:1,ruleVersion:boardRuleVersion,composition:boardPreset(id)};}
-const composition=(config:BoardConfiguration)=>({seatCount:config.seatCount,roles:config.roles,...(config.idiotPolicy?{idiotPolicy:config.idiotPolicy}:{})});
+const composition=(config:BoardConfiguration)=>({seatCount:config.seatCount,roles:config.roles,...(config.treasureMode?{treasureMode:config.treasureMode}:{}),...(config.idiotPolicy?{idiotPolicy:config.idiotPolicy}:{})});
 export class BoardsStore{
  constructor(private db:Database.Database,private owner:(token:string)=>string){
   db.exec(`CREATE TABLE IF NOT EXISTS board_templates(id TEXT PRIMARY KEY,owner TEXT NOT NULL,name TEXT NOT NULL,revision INTEGER NOT NULL,rule_version TEXT NOT NULL,composition TEXT NOT NULL);
@@ -35,7 +35,7 @@ export class BoardsStore{
   if(!row)throw new LobbyError('ROOM_NOT_FOUND',404);return row;
  }
  configuration(id:string){return template(this.row(id)).composition;}
- snapshot(id:string):RoomBoardSnapshot{const t=template(this.row(id));return {id:t.id,name:t.name,ruleVersion:t.ruleVersion,composition:{seatCount:t.composition.seatCount,roleCounts:t.composition.roles,ruleset:t.composition.ruleset,playable:t.composition.playable,...(t.composition.idiotPolicy?{idiotPolicy:t.composition.idiotPolicy}:{})}};}
+ snapshot(id:string):RoomBoardSnapshot{const t=template(this.row(id));return {id:t.id,name:t.name,ruleVersion:t.ruleVersion,composition:{seatCount:t.composition.seatCount,roleCounts:t.composition.roles,ruleset:t.composition.ruleset,playable:t.composition.playable,...(t.composition.treasureMode?{treasureMode:t.composition.treasureMode}:{}),...(t.composition.idiotPolicy?{idiotPolicy:t.composition.idiotPolicy}:{})}};}
  configure(token:string,id:string,input:BoardConfigure){
   const parsed=boardConfigureSchema.safeParse(input);if(!parsed.success)throw new LobbyError('INVALID_INPUT');const command=parsed.data;
   this.db.transaction(()=>{
@@ -45,7 +45,7 @@ export class BoardsStore{
    if(p.phase!=='lobby')throw new LobbyError('PHASE_LOCKED',409);
    if(p.settings_revision!==command.settingsRevision)throw new LobbyError('SETTINGS_CHANGED',409);
    const s=command.selection;let next:BoardTemplate;
-   if(s.kind==='preset')next=preset(s.id);
+   if(s.kind==='preset'){if(s.treasureMode&&s.id!=='treasure-12')throw new LobbyError('INVALID_INPUT');next=preset(s.id);if(s.treasureMode)next.composition=createBoardConfiguration({...composition(next.composition),treasureMode:s.treasureMode});}
    else if(s.kind==='custom'){
     const row=this.db.prepare('SELECT * FROM board_templates WHERE owner=? AND id=?').get(this.owner(token),s.id) as Row|undefined;
     if(!row)throw new LobbyError('BOARD_NOT_FOUND',404);next=template(row);

@@ -32,11 +32,14 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
  const sections=record.rounds.map(round=>{
   const lines:string[]=[];const e=effectiveGameEvents(round.events);
   if(round.kind==='night'){
+   if(round.treasure){const t=round.treasure;const actor=record.roles.find(p=>p.role==='treasureMaster');if(round.round===1)lines.push(`盗宝底牌：${t.deal.bottoms.map(r=>boardRoleLabels[r]).join('、')}；${t.deal.camp==='good'?'好人盗宝（计神）':'狼人盗宝'}`);if(t.selected)lines.push(`${actor?.seat} 号盗宝选用${boardRoleLabels[t.selected]}`);for(const d of t.dreams)lines.push(`${d.caster} 号摄梦 ${d.target} 号${d.repeat?'（梦死）':''}`);}
    const knife=e.findLast(x=>x.type==='knife_resolved');const priority=e.find(x=>x.type==='priority_knife');if(knife)lines.push(knife.target==null?'狼人空刀':`狼刀 ${knife.target} 号${priority?`（${priority.seat} 号自爆狼指刀）`:''}`);
    for(const action of e){
     if(action.type==='girl_confession')lines.push(`${action.seat} 号狼女孩表白 ${action.target} 号${roles.get(action.target!)==='villager'?'，平民成为狼混，个人胜负随狼方':'，神职拒绝'}`);
     if(action.type==='wolves_recognized')lines.push('首夜狼队仅相认，无狼刀');
     if(action.type==='poisoner_poison')lines.push(action.target==null?'毒师未用毒':`毒师毒 ${action.target} 号`);
+    if(action.type==='treasure_mask_exemption')lines.push(`${action.seat} 号盗宝蒙面免放逐`);
+    if(action.type==='masked_death_announced')lines.push(`${action.seat} 号蒙面人发言结束，宣布死亡`);
     if(action.type==='witch_save')lines.push(`女巫救 ${action.target} 号`);
     if(action.type==='witch_poison')lines.push(`女巫毒 ${action.target} 号`);
     if(action.type==='witch_skip')lines.push('女巫未用药');
@@ -63,7 +66,8 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
     if(action.type==='guard_protect'){const name=actor==='guard'?'守卫':`${action.seat} 号${actorName}`;lines.push(action.target==null?`${name}空守`:`${name}守 ${action.target} 号`);}
     if(action.type==='spirit_check'||action.type==='mechanical_check'){
      const inspection=round.engine?.actions.find(a=>a.casterId===action.seat&&a.targetId===action.target&&a.abilityType==='inspect')?.privateInspection;
-     const result=inspection?.status==='visible'?boardRoleLabels[inspection.role]:inspection?.status==='camp'?inspection.camp==='wolves'?'狼人':'好人':null;
+     const treasureInspection=round.treasure?.inspections[action.seat!];
+     const result=treasureInspection?boardRoleLabels[treasureInspection.role]:inspection?.status==='visible'?boardRoleLabels[inspection.role]:inspection?.status==='camp'?inspection.camp==='wolves'?'狼人':'好人':null;
      const name=action.type==='spirit_check'?'通灵师':`${action.seat} 号${actorName}`;
      lines.push(action.target==null?`${name}空验`:`${name}验 ${action.target} 号${result?'：'+result:''}`);
     }
@@ -83,11 +87,13 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
    for(const action of e){
     if(action.type==='vote_cancelled')lines.push('狼女孩投票后自爆，本轮放逐投票作废');
     if(action.type==='vote_outcome'&&action.result)lines.push(describeVote(action.result));
+    if(action.type==='treasure_mask_exemption')lines.push(`${action.seat} 号盗宝蒙面免放逐`);
+    if(action.type==='masked_death_announced')lines.push(`${action.seat} 号蒙面人发言结束，宣布死亡`);
     if(action.type==='sheriff_elected'){sheriff=action.seat!;lines.push(`${sheriff} 号当选警长`);}
     if(action.type==='idiot_flip')lines.push(`${action.seat} 号白痴翻牌，神边出局、民边存活`);
     if(action.type.startsWith('death_')){
      const who=`${action.seat} 号`;const reason=action.type.slice(6);if(['shot','white-wolf'].includes(reason)&&shotTargets.has(action.seat))continue;
-     const description:Record<string,string>={knife:'被狼刀杀死',poison:'被毒死',shot:'被开枪带走',exile:roles.get(action.seat!)==='idiot'?'被放逐，白痴翻牌死亡':'被放逐',explosion:'狼人自爆','white-wolf':'被白狼王带走','girl-retaliation':'被狼女孩自爆报复带走'};
+     const description:Record<string,string>={dream:'因摄梦死亡',knife:'被狼刀杀死',poison:'被毒死',shot:'被开枪带走',exile:roles.get(action.seat!)==='idiot'?'被放逐，白痴翻牌死亡':'被放逐',explosion:'狼人自爆','white-wolf':'被白狼王带走','girl-retaliation':'被狼女孩自爆报复带走'};
      if(description[reason])lines.push(`${who}${description[reason]}${roles.get(action.seat!)==='hunter'&&(reason==='poison'||reason==='girl-retaliation'||hunterSpent.has(action.seat!))?'（技能不可发动）':''}`);
     }
     if(action.type==='white_wolf_take')lines.push(`${action.seat} 号白狼王自爆，带走 ${action.target} 号`);
@@ -115,7 +121,7 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
  return combined;
 }
 
-const finalEventTypes=new Set(['girl_confession','wolves_recognized','poisoner_poison','vote_cancelled','death_girl-retaliation','knife_resolved','priority_knife','witch_save','witch_poison','witch_skip','seer_check','hunter_seen','mechanical_learn','armor_learn','guard_protect','spirit_check','mechanical_check','mechanical_poison','mechanical_knife','armor_knife','mixer_model','vote_outcome','sheriff_elected','idiot_flip','hunter_shot','white_wolf_take','death_knife','death_poison','death_shot','death_exile','death_explosion','death_white-wolf']);
+const finalEventTypes=new Set(['treasure_card','dream_target','death_dream','masked_death_announced','treasure_mask_exemption','girl_confession','wolves_recognized','poisoner_poison','vote_cancelled','death_girl-retaliation','knife_resolved','priority_knife','witch_save','witch_poison','witch_skip','seer_check','hunter_seen','mechanical_learn','armor_learn','guard_protect','spirit_check','mechanical_check','mechanical_poison','mechanical_knife','armor_knife','mixer_model','vote_outcome','sheriff_elected','idiot_flip','hunter_shot','white_wolf_take','death_knife','death_poison','death_shot','death_exile','death_explosion','death_white-wolf']);
 function finalVote(result:DayVoteResult):DayVoteResult{return {purpose:result.purpose,counts:result.counts.map(c=>({seat:c.seat,votes:c.votes})),leaders:[...result.leaders],...(result.ballots?{ballots:result.ballots.map(b=>({seat:b.seat,target:b.target}))}:{})};}
 /** Public ended-game facts. Raw runtime and legacy sources remain unchanged. */
 export function finalReplay(record:GameReplay):GameReplay{

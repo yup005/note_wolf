@@ -2,6 +2,7 @@ import {useEffect,useId,useRef,useState} from 'react';
 import {boardRoleLabels,type BoardComposition,type BoardLibrary,type BoardRole,type RoomBoardSnapshot} from '../../../packages/contracts/board';
 
 export function boardRosterText(roles:BoardComposition['roles']){
+ if(roles.treasureMaster)return '15张牌留底3张后发放 · 通灵 / 毒 / 猎 / 摄梦 / 蒙面 · 狼王 · 盗宝';
  return Object.entries(roles).filter(([,count])=>count).map(([role,count])=>`${boardRoleLabels[role as BoardRole]} × ${count}`).join(' · ');
 }
 

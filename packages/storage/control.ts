@@ -90,11 +90,11 @@ export class ControlStore {
  }
  hasGrace(id:string,s:Pick<NightState,'turnId'>){return !!this.db.prepare('SELECT 1 FROM member_presence WHERE room_id=? AND grace_turn=?').get(id,s.turnId);}
  grace(id:string,s:NightState,now:number){
-  if(!['witch','poisoner','seer','hunter','guard','spiritSeer','mechanical','armor','mixer'].includes(s.phase)||s.deadline===null)return;
+  if(!['treasure','dreamer','hunter_signal','masked_signal','witch','poisoner','seer','hunter','guard','spiritSeer','mechanical','armor','mixer'].includes(s.phase)||s.deadline===null)return;
   if(s.engine){const role=s.phase==='mechanical'?'mechanicalWolf':s.phase==='armor'?'armoredWolf':s.phase;const actor=s.engine.players.find(p=>p.role===role&&p.alive);if(!actor||(s.mechanical?.locked[actor.seat]?.turnId===s.turnId||s.wolfGirl?.locked[actor.seat]?.turnId===s.turnId))return;}
   if(s.phase==='poisoner'&&!s.poison)return;
   if(s.phase==='witch'&&(s.witchChoice||!s.antidote&&!s.poison)||s.phase==='seer'&&s.seerCheck||s.phase==='hunter'&&(s.hunterSeen||s.hunterSpent))return;
-  const role=s.phase==='mechanical'?'mechanicalWolf':s.phase==='armor'?'armoredWolf':s.phase;
+  const role=s.phase==='treasure'?'treasureMaster':s.phase==='hunter_signal'?'hunter':s.phase==='masked_signal'?'masked':s.phase==='mechanical'?'mechanicalWolf':s.phase==='armor'?'armoredWolf':s.phase;
   const player=s.players.find(p=>p.role===role&&p.alive!==false);if(!player)return;
   const p=this.db.prepare('SELECT p.* FROM member_presence p JOIN members m ON m.id=p.member_id WHERE m.room_id=? AND m.seat=?').get(id,player.seat) as Presence|undefined;
   if(!p||p.grace_used)return;
