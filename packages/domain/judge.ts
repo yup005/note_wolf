@@ -40,6 +40,7 @@ export function supplementRuntime(runtime:JudgeRuntime,operation:JudgeSupplement
  }else if(operation.kind==='advance'){
   if(runtime.kind==='night'&&tiedMasqueradeKnife(runtime.night).length>1)throw new LobbyError('JUDGE_MASQUERADE_KNIFE_REQUIRED',409);
   if(runtime.kind==='night'&&runtime.night.masquerade){const n=runtime.night,r=n.masquerade!,m=n.engine!.masquerade!;if(n.phase==='dancer'&&!r.danceDone&&r.alive.includes(n.players.find(p=>p.role==='dancer')!.seat)&&r.alive.filter(t=>!m.danced.some(h=>h.target===t)).length>=3||n.phase==='mask'&&!m.penalties.some(p=>p.seat===n.players.find(p=>p.role==='mask')!.seat)&&r.alive.includes(n.players.find(p=>p.role==='mask')!.seat)&&(!r.inspection&&r.alive.some(t=>!m.inspected.some(h=>h.target===t))||!r.mask&&r.alive.some(t=>!m.masked.some(h=>h.target===t))))throw new LobbyError('JUDGE_MASQUERADE_REQUIRED',409);}
+  if(runtime.kind==='night'&&runtime.night.treasure&&['dreamer','treasure'].includes(current.phase))throw new LobbyError('JUDGE_TREASURE_ACTION_REQUIRED',409);
   if(runtime.kind==='night'&&current.phase==='confession'&&!runtime.night.engine?.confession)throw new LobbyError('JUDGE_CONFESSION_REQUIRED',409);
   if(runtime.kind==='night'&&current.phase==='awaiting_host'){beginNight(runtime.night,runtime.clock);return;}
   if(current.deadline===null)throw new LobbyError('PHASE_LOCKED',409);
@@ -70,14 +71,14 @@ export function supplementRuntime(runtime:JudgeRuntime,operation:JudgeSupplement
   const d=runtime.day;
   if(runtime.kind!=='day'||d?.phase!=='day_complete')throw new LobbyError('PHASE_LOCKED',409);
   const n=runtime.night;runtime.history.push({kind:'night',round:n.night,state:structuredClone(n)});
-  runtime.night=createNight(d.players,runtime.clock,{night:n.night+1,antidote:n.antidote,poison:n.poison,hunterSpent:d.hunterSpent,priorityWolf:d.priorityWolf,engine:d.engine,extraNightSeat:d.extraNightSeat},board);runtime.kind='night';beginNight(runtime.night,runtime.clock);
+  runtime.night=createNight(d.players,runtime.clock,{night:n.night+1,antidote:n.antidote,poison:n.poison,hunterSpent:d.hunterSpent,priorityWolf:d.priorityWolf,engine:d.engine,extraNightSeat:d.extraNightSeat,treasure:d.treasure},board);runtime.kind='night';beginNight(runtime.night,runtime.clock);
  }
 }
 export function runtimeFacts(runtime:JudgeRuntime):RecordDocument{
  const result=emptyRecord();const days=runtime.history.filter(h=>h.kind==='day').map(h=>h.state as DayState);if(runtime.day)days.push(runtime.day);
  for(const d of days.sort((a,b)=>a.day-b.day)){
   for(const e of effectiveGameEvents(d.events)){
-   if(e.type.startsWith('death_')&&e.seat!==undefined&&!result.deaths.some(x=>x.seat===e.seat))result.deaths.push({seat:e.seat,round:d.day,period:['death_knife','death_poison','death_dance','death_penalty'].includes(e.type)?'night':'day',cause:e.type.slice(6) as RecordDocument['deaths'][number]['cause']});
+   if(e.type.startsWith('death_')&&e.seat!==undefined&&!result.deaths.some(x=>x.seat===e.seat))result.deaths.push({seat:e.seat,round:d.day,period:['death_knife','death_poison','death_dance','death_penalty','death_dream'].includes(e.type)?'night':'day',cause:e.type.slice(6) as RecordDocument['deaths'][number]['cause']});
    if(e.type==='sheriff_elected')result.badges.push({round:d.day,seat:e.seat!});
    if(e.type==='command'&&e.command?.action==='transfer_badge')result.badges.push({round:d.day,seat:e.command.target as number|null});
    if((e.type==='death_exile'||e.type==='idiot_flip')&&e.seat!==undefined)result.exiles.push({round:d.day,seat:e.seat});

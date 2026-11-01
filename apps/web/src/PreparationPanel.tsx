@@ -10,7 +10,7 @@ export function PreparationPanel({view,busy,connected,onAction}:Props){
  const ready=seats.filter(s=>s.ready).length;const blocked=busy||!connected;
  const hostSeated=seats.some(s=>s.isHost);
  const capacity=room.board.composition.seatCount;const composition=room.board.composition;
- const boardError=boardStartError(createBoardConfiguration({seatCount:capacity,roles:composition.roleCounts,...(composition.idiotPolicy?{idiotPolicy:composition.idiotPolicy}:{})}),p.settings.gameMode);
+ const boardError=boardStartError(createBoardConfiguration({seatCount:capacity,roles:composition.roleCounts,...(composition.treasureMode?{treasureMode:composition.treasureMode}:{}),...(composition.idiotPolicy?{idiotPolicy:composition.idiotPolicy}:{})}),p.settings.gameMode);
  const playable=boardError===null;
  const boardMessage=boardError==='WOLF_FREE_MANUAL_ONLY'?'没有狼人角色，只能选择纯手动记录':boardError==='INVALID_BOARD_FACTIONS'?'只有狼人角色，不能正常开局':'完整玩法开发中，暂不能发牌';
  const dealAllowed=playable&&hostSeated&&seats.length===capacity&&ready===capacity;

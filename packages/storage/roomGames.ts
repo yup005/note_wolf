@@ -27,6 +27,7 @@ export class RoomGamesStore {
   this.assertCurrent(roomId,command.expectedGameId);const current=this.current(roomId),id=randomUUID();
   this.db.prepare('INSERT INTO room_games VALUES (?,?,?,?)').run(id,roomId,current.gameNumber+1,this.now());
   for(const table of ['identities','night_games','day_games','game_history','manual_games','room_controls','room_judges','judge_drafts','judge_requests','judge_manual_checkpoints','judge_knowledge','judge_stale_turns','voice_leases','voice_deliveries','voice_observations'])this.db.prepare(`DELETE FROM ${table} WHERE room_id=?`).run(roomId);
+  if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='treasure_deals'").get())this.db.prepare('DELETE FROM treasure_deals WHERE room_id=?').run(roomId);
   if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='board_engine_states'").get())this.db.prepare('DELETE FROM board_engine_states WHERE room_id=?').run(roomId);
   this.db.prepare('UPDATE members SET ready=0 WHERE room_id=?').run(roomId);
   this.db.prepare("UPDATE preparations SET phase='lobby',settings_revision=settings_revision+1 WHERE room_id=?").run(roomId);

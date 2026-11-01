@@ -1,3 +1,4 @@
+import {validateTreasureDeal,type TreasureDeal} from '../domain/treasure.js';
 import {createBoardConfiguration} from '../domain/boardConfig.js';
 import {ParticipationStore} from './participation.js';
 import {aggregateStatistics,type StatisticsEvidence} from '../domain/statistics.js';
@@ -28,7 +29,7 @@ export class RecordsStore {
    const identity=this.participation.identity(id,owner);if(!identity)continue;
    if(this.db.prepare('SELECT 1 FROM record_deletion_blocks WHERE room_id=? AND owner=?').get(id,owner)&&!this.db.prepare('SELECT 1 FROM record_drafts WHERE room_id=? AND owner=? AND deleted=0').get(id,owner))continue;
    const archive=this.capture(id,false);let winner:'wolves'|'good'|null=null,camp:'wolves'|'good'|null=identity.role==='mixer'?null:isWolfRole(identity.role)?'wolves':'good';
-   try{if(!archive.record_only_ended)winner=this.automaticWinner(id,archive)??this.outcome(id,archive,this.officialDocument(id,false),false);if(identity.role==='mixer')camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.modelCamp??null;if(identity.role==='villager'&&(JSON.parse(archive.roles) as {role:Role}[]).some(p=>p.role==='wolfGirl'))camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.personalCamp??null;}
+   try{if(!archive.record_only_ended)winner=this.automaticWinner(id,archive)??this.outcome(id,archive,this.officialDocument(id,false),false);if(identity.role==='treasureMaster')camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.personalCamp??null;if(identity.role==='mixer')camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.modelCamp??null;if(identity.role==='villager'&&(JSON.parse(archive.roles) as {role:Role}[]).some(p=>p.role==='wolfGirl'))camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.personalCamp??null;}
    catch(e){if(!(e instanceof SyntaxError||e instanceof LobbyError&&['NOT_FOUND','INVALID_VICTORY_STATE'].includes(e.code)))throw e;winner=null;}
    let board={key:'unknown-board',name:'未知板子'};
    try{const stored=archive.board_metadata??(this.db.prepare('SELECT document FROM game_board_archives WHERE game_id=?').get(id) as {document:string}|undefined)?.document,parsed=stored?JSON.parse(stored):null;if(parsed&&typeof parsed.id==='string'&&parsed.id&&typeof parsed.name==='string'&&parsed.name.trim()&&parsed.name.length<=60)board={key:parsed.id,name:parsed.name};}catch{/* Unknown legacy public metadata stays unknown. */}
@@ -58,7 +59,7 @@ export class RecordsStore {
  private preserveBoard(id:string){
   if(!this.live(id)||this.db.prepare('SELECT 1 FROM game_board_archives WHERE game_id=?').get(id))return;
   const board=this.db.prepare('SELECT * FROM room_boards WHERE room_id=?').get(this.live(id)) as {id:string;name:string;revision:number;rule_version:string;composition:string};
-  this.db.prepare('INSERT OR IGNORE INTO game_board_archives VALUES (?,?)').run(id,JSON.stringify({id:board.id,name:board.name,ruleVersion:board.rule_version,composition:(()=>{const c=createBoardConfiguration(JSON.parse(board.composition));return {seatCount:c.seatCount,roleCounts:c.roles,ruleset:c.ruleset,playable:c.playable,...(c.idiotPolicy?{idiotPolicy:c.idiotPolicy}:{})};})()}));
+  this.db.prepare('INSERT OR IGNORE INTO game_board_archives VALUES (?,?)').run(id,JSON.stringify({id:board.id,name:board.name,ruleVersion:board.rule_version,composition:(()=>{const c=createBoardConfiguration(JSON.parse(board.composition));return {seatCount:c.seatCount,roleCounts:c.roles,ruleset:c.ruleset,playable:c.playable,...(c.treasureMode?{treasureMode:c.treasureMode}:{}),...(c.idiotPolicy?{idiotPolicy:c.idiotPolicy}:{})};})()}));
  }
  private live(id:string){return runtimeRoom(this.db,id)??'';}
  constructor(private db:Database.Database,private auth:AuthStore,private now:()=>number,private replay:(id:string)=>GameReplay){
@@ -93,7 +94,10 @@ export class RecordsStore {
   const prep=this.db.prepare('SELECT phase FROM preparations WHERE room_id=?').get(this.live(id)) as {phase:string}|undefined;if(prep?.phase!=='started')throw new LobbyError('PHASE_LOCKED',409);
   const members=this.db.prepare('SELECT m.session_hash AS owner,m.nickname,m.is_host,m.seat,i.role FROM members m JOIN identities i ON i.room_id=m.room_id AND i.member_id=m.id WHERE m.room_id=? ORDER BY m.seat').all(this.live(id)) as {owner:string;nickname:string;is_host:number;seat:number;role:Role}[];
   const composition=JSON.parse((this.db.prepare('SELECT composition FROM room_boards WHERE room_id=?').get(this.live(id)) as {composition:string}).composition) as BoardComposition;
-  if(members.length!==composition.seatCount||new Set(members.map(m=>m.seat)).size!==composition.seatCount||members.some(m=>!Number.isSafeInteger(m.seat)||m.seat<1||m.seat>composition.seatCount)||Object.entries(composition.roles).some(([role,count])=>members.filter(m=>m.role===role).length!==count)||members.some(m=>!composition.roles[m.role]))throw new LobbyError('IDENTITY_INCOMPLETE',409);
+  const treasureRow=composition.treasureMode?this.db.prepare('SELECT state FROM treasure_deals WHERE room_id=?').get(this.live(id)) as {state:string}|undefined:undefined;
+  const deck=treasureRow?validateTreasureDeal(JSON.parse(treasureRow.state)).deck:undefined;
+  const rosterValid=deck?members.every(m=>deck.filter(r=>r===m.role).length===members.filter(p=>p.role===m.role).length):Object.entries(composition.roles).every(([role,count])=>members.filter(m=>m.role===role).length===count)&&members.every(m=>composition.roles[m.role]);
+  if(members.length!==composition.seatCount||new Set(members.map(m=>m.seat)).size!==composition.seatCount||members.some(m=>!Number.isSafeInteger(m.seat)||m.seat<1||m.seat>composition.seatCount)||!rosterValid)throw new LobbyError('IDENTITY_INCOMPLETE',409);
   this.preserveBoard(id);
   const room=this.db.prepare('SELECT code FROM rooms WHERE id=?').get(this.live(id)) as {code:string};
   this.db.prepare('INSERT INTO record_rooms(room_id,code,roles,participants,host_owner,ended) VALUES (?,?,?,?,?,0)').run(id,room.code,JSON.stringify(members.map(({seat,role})=>({seat,role}))),JSON.stringify(members.map(m=>m.owner)),members.find(m=>m.is_host)!.owner);
@@ -135,6 +139,10 @@ export class RecordsStore {
  }
  private victoryFacts(id:string,archive:Archive,persist=true):ManualVictoryFact[]{
   const rows=this.db.prepare('SELECT state FROM day_games WHERE room_id=? UNION ALL SELECT state FROM night_games WHERE room_id=?').all(this.live(id),this.live(id)) as {state:string}[];
+  const treasure=rows.map(r=>JSON.parse(r.state) as {treasure?:{deal:TreasureDeal};night?:number;day?:number}).filter(s=>s.treasure).sort((a,b)=>(b.night??b.day??0)-(a.night??a.day??0))[0]?.treasure;
+  const dealRow=!treasure&&(JSON.parse(archive.roles) as {role:Role}[]).some(p=>p.role==='treasureMaster')?this.db.prepare('SELECT state FROM treasure_deals WHERE room_id=?').get(this.live(id)) as {state:string}|undefined:undefined;
+  const deal=treasure?.deal??(dealRow?validateTreasureDeal(JSON.parse(dealRow.state)):undefined);
+  if(deal){const facts=(JSON.parse(archive.roles) as {seat:number;role:Role}[]).filter(p=>p.role==='treasureMaster').map(p=>({seat:p.seat,learnedRole:null,personalCamp:deal.camp}));if(persist)this.db.prepare('UPDATE record_rooms SET victory_facts=? WHERE room_id=?').run(JSON.stringify(facts),id);return facts;}
   const states=rows.map(r=>JSON.parse(r.state) as {engine?:EngineState;extraNightSeat?:number|null}).filter(s=>s.engine).sort((a,b)=>b.engine!.night-a.engine!.night);
   const latest=states[0],engine=latest?.engine;
   if(!engine)return archive.victory_facts?JSON.parse(archive.victory_facts):[];
@@ -238,7 +246,7 @@ export class RecordsStore {
    const day=JSON.parse(state) as DayState;
    for(const event of effectiveGameEvents(day.events)){
     if(event.type.startsWith('death_')&&event.seat!==undefined&&!doc.deaths.some(d=>d.seat===event.seat)){
-     doc.deaths.push({seat:event.seat,round:day.day,period:['death_knife','death_poison','death_dance','death_penalty'].includes(event.type)?'night':'day',cause:ended?event.type.slice(6) as RecordDocument['deaths'][number]['cause']:'unrecorded'});
+     doc.deaths.push({seat:event.seat,round:day.day,period:['death_knife','death_poison','death_dance','death_penalty','death_dream'].includes(event.type)?'night':'day',cause:ended?event.type.slice(6) as RecordDocument['deaths'][number]['cause']:'unrecorded'});
     }
     if(event.type==='sheriff_elected')doc.badges.push({round:day.day,seat:event.seat!});
     // Successful commands are retained in existing games; a phase event only names the dead holder.

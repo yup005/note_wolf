@@ -15,7 +15,7 @@ export interface DayPublic {
  result:DayVoteResult|null;announcement:number[]|null;revealed:{seat:number;role:Role}[];winner:'wolves'|'good'|null;reason:string|null;
 }
 export interface DayPrivate {turnId:string;seat:number;canSignup:boolean;signup:boolean|null;canWithdraw:boolean;canVote:boolean;voted:boolean;myVote:number|null;canShoot:boolean;canExplode:boolean;canEndSpeech:boolean;canTransfer:boolean;canInterject?:boolean;canEndInterjection?:boolean;interjectionRemainingMs?:number;mixerModel?:{seat:number}}
-export interface DaySelf {confession?:{accepted:boolean;girl?:number};turnId:string;seat:number;role:Role;learnedRole:Role|null;modelSeat:number|null;idiotRevealed:boolean|null;skills:{kind:'poison'|'antidote'|'guard'|'inspect'|'shot'|'extra-knife'|'explode-take';remaining:number|null;availableFromNight:number}[]}
+export interface DaySelf {treasureCamp?:'wolves'|'good';treasureCard?:Role|null;confession?:{accepted:boolean;girl?:number};turnId:string;seat:number;role:Role;learnedRole:Role|null;modelSeat:number|null;idiotRevealed:boolean|null;skills:{kind:'poison'|'antidote'|'guard'|'inspect'|'shot'|'extra-knife'|'explode-take';remaining:number|null;availableFromNight:number}[]}
 const turn=z.string().uuid();const seat=z.number().int().min(1).max(256);
 export const dayCommandSchema=z.discriminatedUnion('action',[
  z.object({action:z.literal('start'),turnId:turn}).strict(),

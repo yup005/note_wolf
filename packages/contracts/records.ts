@@ -1,9 +1,9 @@
 import {z} from 'zod';
 import {seatSchema,type Role} from './index.js';
 const round=z.number().int().min(1).max(100);
-export const deathCauses={knife:'狼刀',poison:'毒杀',dance:'共舞',penalty:'违规点杀',exile:'放逐',shot:'开枪带走',explosion:'自爆','white-wolf':'白狼王带走','girl-retaliation':'狼女孩自爆报复',unrecorded:'未记录'} as const;
+export const deathCauses={knife:'狼刀',poison:'毒杀',dance:'共舞',penalty:'违规点杀',dream:'摄梦致死',exile:'放逐',shot:'开枪带走',explosion:'自爆','white-wolf':'白狼王带走','girl-retaliation':'狼女孩自爆报复',unrecorded:'未记录'} as const;
 export const recordDocumentSchema=z.object({
- deaths:z.array(z.object({seat:seatSchema,round,period:z.enum(['night','day']),cause:z.enum(['knife','poison','dance','penalty','exile','shot','explosion','white-wolf','girl-retaliation','unrecorded'])}).strict()).max(256),
+ deaths:z.array(z.object({seat:seatSchema,round,period:z.enum(['night','day']),cause:z.enum(['knife','poison','dance','penalty','dream','exile','shot','explosion','white-wolf','girl-retaliation','unrecorded'])}).strict()).max(256),
  badges:z.array(z.object({round,seat:seatSchema.nullable()}).strict()).max(100),
  exiles:z.array(z.object({round,seat:seatSchema.nullable()}).strict()).max(100),
  votes:z.array(z.object({round,kind:z.enum(['sheriff','exile']),ballots:z.array(z.object({voter:seatSchema,target:seatSchema.nullable()}).strict()).max(256)}).strict()).max(100),

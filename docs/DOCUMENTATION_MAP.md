@@ -3,6 +3,9 @@
 ## 假面舞会（2026-11-01）
 
 [现行MASQ-001–044完整裁决](MASQUERADE.md) → [决策及开发授权](PRODUCT_DECISIONS.md#masquerade-2026-11-01) → [规则入口](WEREWOLF_RULES_SPEC.md#masquerade-2026-11-01) → [验收场景](WEREWOLF_TEST_CASES.md#masquerade-2026-11-01)。实际执行证据见当前测试报告/交接；不混同规则冻结、实现、自动化、部署或实机验收。
+## 盗宝大师（2026-11-01）
+
+[完整规则及Owner确认](TREASURE_MASTER.md) / [稳定需求TM-001–010](NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md) / [实施计划](superpowers/plans/2026-11-01-treasure-master.md)；实际自动检查见[测试报告](TEST_REPORT.md)。首版线上随机发牌，两种留底模式；实现不等于部署或真实iPhone验收。
 
 ## 手机候场与女孩私密时点（2026-10-30）
 
