@@ -3,6 +3,23 @@ import assert from 'node:assert/strict';
 import {randomUUID,randomBytes} from 'node:crypto';
 import {voiceFixture} from './helpers/voice-fixture.js';
 const client=randomUUID();
+test('ordinary player reconnect does not replace successful night actions with system-error cues',()=>{
+ const {store:s,tokens:t,id,setNow}=voiceFixture();try{
+  const member=s.view(t[1],id).me.id;s.connectMember(id,member,'ordinary-a');s.disconnectMember('ordinary-a');s.connectMember(id,member,'ordinary-b');
+  const first=s.publicVoice(t[0],id,{action:'claim',clientId:client});assert.match(first.cues[0].text,/狼人请睁眼/);assert.equal(s.snapshot(id).control!.reconnecting,false);
+  const night=s.snapshot(id).night!;for(let i=0;i<4;i++)s.nightCommand(t[i],id,{action:'vote',target:5,turnId:night.turnId});const confirmer=s.nightPrivate(t[0],id).confirmer!;s.nightCommand(t[confirmer-1],id,{action:'confirm_wolves',turnId:night.turnId});
+  assert.deepEqual(s.publicVoice(t[0],id,{action:'poll',clientId:client}).cues.map(c=>c.text),['请闭眼。']);setNow(6000);s.tickNights();assert.deepEqual(s.publicVoice(t[0],id,{action:'poll',clientId:client}).cues.map(c=>c.text),['女巫请睁眼，请进行操作。']);
+ }finally{s.close();}
+});
+test('actual skill grace announces once and a successful action clears its notice before the next stage',()=>{
+ const {store:s,tokens:t,id,setNow}=voiceFixture();try{
+  const member=s.view(t[9],id).me.id;s.connectMember(id,member,'witch-a');s.disconnectMember('witch-a');setNow(186000);s.tickNights();assert.equal(s.snapshot(id).night!.phase,'witch');
+  const deadline=s.snapshot(id).night!.deadline!;setNow(deadline);s.tickNights();assert.equal(s.snapshot(id).night!.deadline,deadline+15000);assert.equal(s.snapshot(id).control!.reconnecting,true);
+  assert.deepEqual(s.publicVoice(t[0],id,{action:'claim',clientId:client}).cues.map(c=>c.text),['系统连接异常，正在重新连接，请稍候。']);assert.equal(s.publicVoice(t[0],id,{action:'poll',clientId:client}).cues.length,0);
+  s.connectMember(id,member,'witch-b');s.nightCommand(t[9],id,{action:'witch',choice:'skip',target:null,turnId:s.snapshot(id).night!.turnId});assert.equal(s.snapshot(id).night!.phase,'eyes_closed');assert.equal(s.snapshot(id).control!.reconnecting,false);
+  assert.deepEqual(s.publicVoice(t[0],id,{action:'poll',clientId:client}).cues.map(c=>c.text),['请闭眼。']);assert.deepEqual(s.publicVoice(t[0],id,{action:'replay',clientId:client}).cues.map(c=>c.text),['请闭眼。']);
+ }finally{s.close();}
+});
 test('only managers claim the one room speaker, second tabs cannot poll or release it, and emissions do not repeat',()=>{
  const {store:s,tokens:t,id,setNow}=voiceFixture();try{
  assert.throws(()=>s.publicVoice(t[1],id,{action:'claim',clientId:client}),/HOST_ONLY/);

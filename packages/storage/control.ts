@@ -33,7 +33,10 @@ export class ControlStore {
  frozen(id:string){return this.row(id).status!=='running';}
  snapshot(id:string):GameControl{
   const r=this.row(id),a=this.active(id);const m=r.temp_member?this.db.prepare('SELECT seat FROM members WHERE id=? AND room_id=?').get(r.temp_member,id) as {seat:number|null}|undefined:null;
-  return {status:r.status,version:r.version,remainingMs:r.remaining_ms,resumeAt:r.resume_at,serverNow:this.now(),tempSeat:m&&this.living(id,m.seat)?m.seat:null,reconnecting:r.notice_until>this.now(),...(a?.kind==='day'&&a.state.phase==='vote_setup'?{voteDefaults:(a.state as DayState).voteDefaults??{seconds:r.vote_seconds,visibility:r.vote_visibility}}:{})};
+  // The public notice describes an active skill grace, never ordinary socket loss.
+  // Bind it to that turn so an early skill submission cannot carry it into the next stage.
+  const reconnecting=r.notice_until>this.now()&&a?.kind==='night'&&this.hasGrace(id,a.state);
+  return {status:r.status,version:r.version,remainingMs:r.remaining_ms,resumeAt:r.resume_at,serverNow:this.now(),tempSeat:m&&this.living(id,m.seat)?m.seat:null,reconnecting,...(a?.kind==='day'&&a.state.phase==='vote_setup'?{voteDefaults:(a.state as DayState).voteDefaults??{seconds:r.vote_seconds,visibility:r.vote_visibility}}:{})};
  }
  command(id:string,m:MemberRow,input:ControlCommand){const parsed=controlSchema.safeParse(input);if(!parsed.success)throw new LobbyError('INVALID_INPUT');const c=parsed.data;
   this.db.transaction(()=>{const r=this.row(id);if(!this.canManage(id,m))throw new LobbyError('HOST_ONLY',403);if(c.version!==r.version)throw new LobbyError('STALE_CONTROL',409);const a=this.active(id);if(!a||a.state.phase==='ended')throw new LobbyError('PHASE_LOCKED',409);
@@ -83,9 +86,9 @@ export class ControlStore {
  forgetRooms(ids:readonly string[]){const removed=new Set(ids);for(const [connectionId,p] of this.connections)if(removed.has(p.roomId))this.connections.delete(connectionId);}
  private offline(id:string,memberId:string){const turn=this.active(id)?.state.turnId??null;this.row(id);
   this.db.prepare('UPDATE member_presence SET connected=0,disconnected_at=?,lost_ms=CASE WHEN turn_id=? THEN lost_ms ELSE 0 END,turn_id=? WHERE member_id=?').run(this.frozen(id)?null:this.now(),turn,turn,memberId);
-  if(this.active(id)){this.db.prepare('UPDATE room_controls SET notice_until=? WHERE room_id=?').run(this.now()+15000,id);this.bump(id);}
+  if(this.active(id))this.bump(id);
  }
- hasGrace(id:string,s:NightState){return !!this.db.prepare('SELECT 1 FROM member_presence WHERE room_id=? AND grace_turn=?').get(id,s.turnId);}
+ hasGrace(id:string,s:Pick<NightState,'turnId'>){return !!this.db.prepare('SELECT 1 FROM member_presence WHERE room_id=? AND grace_turn=?').get(id,s.turnId);}
  grace(id:string,s:NightState,now:number){
   if(!['witch','poisoner','seer','hunter','guard','spiritSeer','mechanical','armor','mixer'].includes(s.phase)||s.deadline===null)return;
   if(s.engine){const role=s.phase==='mechanical'?'mechanicalWolf':s.phase==='armor'?'armoredWolf':s.phase;const actor=s.engine.players.find(p=>p.role===role&&p.alive);if(!actor||(s.mechanical?.locked[actor.seat]?.turnId===s.turnId||s.wolfGirl?.locked[actor.seat]?.turnId===s.turnId))return;}
