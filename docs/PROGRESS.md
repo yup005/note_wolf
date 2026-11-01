@@ -1,6 +1,10 @@
 # Project progress
 
-## 当前：白痴双边不限人数（2026-10-31）
+## 当前：重连播报修复与 Oracle 发布（2026-11-01）
+
+修复版已按 Owner 授权部署 Oracle，实际运行源码 [3ca9ab577b9a7a47c311544177fa77da3ee626bf](https://github.com/yup005/note_wolf/commit/3ca9ab577b9a7a47c311544177fa77da3ee626bf)。服务与 SQLite 健康检查通过；数据库独立位于 `/var/lib/note_wolf/lobby.db`，代码切换不覆盖数据。发布前一致性备份、每日洛杉矶时间 04:00 加最多 10 分钟随机延迟备份已启用；备份已还原到隔离目录并验证同一合成测试房及两个座位。公网 HTTPS/WebSocket、刷新、断线重连、发布后再次重启服务均恢复原测试房及两个成员座位。Oracle Linux 的相关 7 文件实际输出 33/33（17.49 秒），与本地全量及浏览器专项分别记录。备份目前仅在同机，异地数据库备份尚未配置；未迁移 Render 历史数据，未改变 Render 服务。真实 iPhone 音频、后台/弱网及现场多人仍待验收。[后续更新流程](ORACLE_DEPLOYMENT.md)。
+
+## 历史：白痴双边不限人数（2026-10-31）
 
 已合并PR #12并部署运行[3af4cf03879caa97f4745652f14bc31b33d32f7b](https://github.com/yup005/note_wolf/commit/3af4cf03879caa97f4745652f14bc31b33d32f7b)，Render于14:08:09 PDT为live；启动/就绪成功，error日志为空。[发布事实及公网限制](RENDER_TRIAL.md#当前发布2026-10-31)。此收尾仅文档，不重跑产品测试/部署。
 
