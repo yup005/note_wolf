@@ -19,7 +19,7 @@
 
 ## 新手提示与手机候场（2026-11-01）
 
-TUTORIAL-001 / SETUP-001 / NIGHT-002–005按[Owner本轮明确请求](PRODUCT_DECISIONS.md#help-mobile-2026-11-01)补充：教学及狼人说明可在本设备收起并回看，候场导航分层、局数解释、单人/少于板子人数候场说明；正式发牌人数和配牌不变。范围见[规则](WEREWOLF_RULES_SPEC.md#help-mobile-2026-11-01)，期望与执行证据分别见用例/报告；原182项ID和状态不变，不授权部署或提升实机验收。
+TUTORIAL-001 / SETUP-001 / NIGHT-002–005按[Owner本轮明确请求](PRODUCT_DECISIONS.md#help-mobile-2026-11-01)补充：教学及狼人说明可在本设备收起并回看，候场导航分层、局数解释、单人/少于板子人数候场说明；正式发牌人数和配牌不变。范围见[规则](WEREWOLF_RULES_SPEC.md#help-mobile-2026-11-01)，期望与执行证据分别见用例/报告；原有需求ID和状态不变；Owner后续已明确授权合并PR #13并部署Oracle，[上线及验证](ORACLE_DEPLOYMENT.md#pr13-2026-11-01)单独记录，不提升实机验收。
 
 ## 11人双边补充（2026-10-31）
 

@@ -21,6 +21,7 @@
 | 本次任务 | 主文档 | 同时核对 |
 |---|---|---|
 | Codex 每次开始/结束任务 | [简短指令入口](../AGENTS.md)、[详细工作流程](CODEX_WORKFLOW.md)中的任务前检查、Git 工作流与进度要求 | 当前分支、远程增量、本地修改及任务范围 |
+| Oracle部署与更新 | [运行流程和当前发布](ORACLE_DEPLOYMENT.md) | PR #13运行SHA、备份、切换前对局检查及公网/合成验证；真实设备和异地备份边界见报告，Render独立保留 |
 | 当前板子玩法/例外/权限 | [规则规格](WEREWOLF_RULES_SPEC.md)的相关 ID 和完整细节 | [产品决策](PRODUCT_DECISIONS.md)、[最新规则确认及未决问题](../OPEN_QUESTIONS.md)、[详细需求 V1](WEREWOLF_REQUIREMENTS_V1.md) |
 | 新需求Issue #2–#7 / 规则速查 | [原需求及来源](NEW_FEATURE_REQUIREMENTS_2026-10-20.md)、[速查范围](WEREWOLF_RULES_SPEC.md#rule-reference-2026-10-20) | [验收](WEREWOLF_TEST_CASES.md#规则速查验收2026-10-20)、矩阵和报告；GUIDE-001实施；REMATCH见下一行，PWA见下行，大屏见下行，战绩/教学见下行，六项均有本地实现，PWA待真实验收，不能由确认代推完成 |
 | 再来一局 / REMATCH-001 技术设计 | [已审阅设计](superpowers/specs/2026-10-20-rematch-design.md)、[实施计划](superpowers/plans/2026-10-20-rematch.md) | 兼容旧归档、事务重开与跨局隔离方案；Owner已批准并实施，实际证据见报告；旧归档/生产与实机边界仍保留 |
