@@ -52,7 +52,11 @@ Consumes NightPrivate.masquerade and new commands.
 - [x] Verify focused E2E and existing board regressions.
 
 ### Task 5: Verification and delivery
-- [ ] Run npm test, npm run typecheck, npm run build, full applicable E2E.
-- [ ] Update rules, acceptance, decisions, requirement matrix and progress with actual evidence.
-- [ ] Independent branch review, fix important findings with failing regression first.
-- [ ] Scoped diff/secret review; commit and push current work branch under standing authorization; verify remote SHA. If publication blocked, retain local changes and report exact blocker.
+- [x] Run npm test, npm run typecheck, npm run build, full applicable E2E.
+- [x] Update rules, acceptance, decisions, requirement matrix and progress with actual evidence.
+- [x] Independent branch review, fix important findings with failing regression first.
+- [x] Scoped diff/secret review; commit and push current work branch under standing authorization; verify remote SHA. If publication blocked, retain local changes and report exact blocker.
+
+## Execution evidence
+
+719 unit tests pass; typecheck/build pass. Full161 browser run:160 passed, one foreground bootstrap429; real Retry-After handling corrected in synthetic test fixture, affected10/10 and controlled recovery2/2 passed. Independent review findings resolved with regressions. Main headcount-review docs merged; feature isolated from remote work treasure changes on codex/masquerade-14. Publication is recorded in final remote SHA/PR result; no merge/deployment.

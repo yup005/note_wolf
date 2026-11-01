@@ -104,4 +104,4 @@ engine 的效果类型明确区分 `dance-death`、`rule-penalty`、狼刀与毒
 
 本地基线：`work`，HEAD `a2b08b6c22e84113e27148ef2195ec96a87d553c`，起始工作树干净，无 upstream/远程跟踪分支可比较。`origin` 地址正确。`git fetch origin` 因无法连接代理 `proxy:8080` 失败；通过 GitHub 连接工具读取远端 main，SHA 与本地一致。**这是远端 SHA 核对，不是成功执行 fetch 或安全集成的声明。**正式发布前仍须重新 fetch 并按项目流程核对。
 
-截至此设计：未修改产品代码、未运行代码测试、未提交推送、未部署。独立 builder check 已完成，结论为“nothing important left”；文档引用及关键约束检查通过，随后 Owner 明确回复「去实现」，批准实施。具体模块内函数、schema 细节、SQL 是否拆表和测试辅助函数由实施者按本设计及现有约束决定，不改变玩法。
+历史设计审阅阶段：未修改产品代码、未运行代码测试、未提交推送、未部署。独立 builder check 已完成，结论为“nothing important left”；文档引用及关键约束检查通过，随后 Owner 明确回复「去实现」，批准实施。具体模块内函数、schema 细节、SQL 是否拆表和测试辅助函数由实施者按本设计及现有约束决定，不改变玩法。

@@ -1,6 +1,6 @@
 import {selectBoard} from './helpers/preparation-settings';
 import {test,expect} from '@playwright/test';
-import {loginTestAdmin} from './helpers/test-admin';
+import {loginTestAdmin,foregroundWithBackoff} from './helpers/test-admin';
 import type {LobbyView,Role} from '../../packages/contracts/index';
 import type {NightPhase} from '../../packages/contracts/night';
 test('wolf girl mobile first night, private refusal, poisoner and post-vote retaliation',async({page})=>{
@@ -15,7 +15,7 @@ test('wolf girl mobile first night, private refusal, poisoner and post-vote reta
  await expect(page.getByText('狼人同伴',{exact:true})).toHaveCount(0);expect((await(await page.request.get(privatePath(girl,'identity'))).json()).wolves).toBeUndefined();await page.getByRole('button',{name:'开始首夜',exact:true}).click();await page.getByRole('checkbox',{name:'自动跟随',exact:true}).uncheck();await move('confession');await actor(girl);
  await expect(page.getByRole('heading',{name:'狼女孩表白',exact:true})).toBeVisible();for(const seat of wolves){const button=page.getByRole('button',{name:new RegExp(`^目标 ${seat} 号`)});await expect(button).toBeDisabled();await expect(button).toContainText('狼人同伴');}await expect(page.getByRole('button',{name:new RegExp(`^目标 ${girl} 号`)})).toBeDisabled();
  await actor(target);await expect(page.getByText('狼人同伴',{exact:true})).toHaveCount(0);await actor(girl);await expect(page.getByText('狼人同伴',{exact:true})).toHaveCount(3);
- await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'});document.dispatchEvent(new Event('visibilitychange'));});await expect(page.getByText('狼人同伴',{exact:true})).toHaveCount(0);await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});document.dispatchEvent(new Event('visibilitychange'));});await expect(page.getByText('狼人同伴',{exact:true})).toHaveCount(3);
+ await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'});document.dispatchEvent(new Event('visibilitychange'));});await expect(page.getByText('狼人同伴',{exact:true})).toHaveCount(0);await foregroundWithBackoff(page);await page.getByRole('checkbox',{name:'自动跟随',exact:true}).uncheck();await actor(girl);await expect(page.getByText('狼人同伴',{exact:true})).toHaveCount(3);
  await expect(page.getByRole('button',{name:new RegExp(`^目标 ${wolf} 号`)})).toBeDisabled();await page.getByRole('button',{name:new RegExp(`^目标 ${target} 号`)}).click();await page.getByRole('button',{name:`确认表白 · ${target} 号`,exact:true}).click();
  await move('wolves');await actor(wolf);await expect(page.getByText('首夜仅相认，不能刀人。',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'提交刀口',exact:false})).toHaveCount(0);
  await move('poisoner');await actor(poisoner);await expect(page.getByRole('heading',{name:'毒师行动',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'救人',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'本夜不用毒',exact:true}).click();

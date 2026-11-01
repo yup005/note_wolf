@@ -35,3 +35,13 @@ export async function loginTestAdmin(page:Page){
  }
  expect(browserSession.ok()).toBe(true);await expect(page.getByRole('button',{name:'后台',exact:true})).toBeVisible();
 }
+// Foreground recovery uses the same real bootstrap limit as login. Wait for its
+// Retry-After before retrying; do not mistake the closed recovery screen for a
+// missing private role card in a long-running synthetic suite.
+export async function foregroundWithBackoff(page:Page){
+ const restored=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/session'&&response.request().method()==='GET');
+ await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});document.dispatchEvent(new Event('visibilitychange'));});
+ let response=await restored;
+ if(response.status()===429){await waitForBackpressure(response);const retry=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/session'&&r.request().method()==='GET');await page.getByRole('button',{name:'重新连接',exact:true}).click();response=await retry;}
+ expect(response.ok()).toBe(true);
+}
