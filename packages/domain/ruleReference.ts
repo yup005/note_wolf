@@ -26,6 +26,12 @@ export function copiedRoleNotes(role:BoardRole,ruleset:Ruleset):string[]{
 }
 
 export function roleRuleNotes(role:BoardRole,ruleset:Ruleset,idiotPolicy:IdiotPolicy='standard'):string[]{
+ if(ruleset==='puppet'){const shared=['首夜傀儡原底牌不改、本人始终不知情，有效阵营变为狼人，退出原神／民屠边人数；没有狼刀且不继承。'];
+  if(role==='seer')return [...shared,'查验当前有效阵营，可自验；正常查傀儡显示狼人。傀儡预言家先判有效阵营再反转，自验显示好人。'];
+  if(role==='witch')return [...shared,'不可自救或同夜双药。受控后解药、毒药实际无效，仍正常扣药并显示已使用，不提示失效原因。'];
+  if(role==='guard')return [...shared,'可自守或空守，不可连续守同一目标。受控后守护无效，首夜已提交的守护也失效，但仍保留连守历史。'];
+  if(role==='hunter')return [...shared,'夜间受控仍显示可开枪；真正死亡时服务器禁止开枪，统一10秒技能问询不公开控制关系。先判终局，毒杀不能开枪。'];
+ }
  switch(role){
   case 'wolfGirl':return ['首夜单独向非狼人表白一次，超时随机选择；不知道接受/拒绝或目标具体身份，狼队不知道表白目标。','平民接受成为无狼刀的狼混，身份仍为平民且查验好人；神职拒绝且不知道女孩号码。','合法发言可自爆，放逐票已统计但结果未生效也可自爆废票；女孩与尚在场的表白目标一同死亡，拒绝的神也被报复。双方无遗言，报复猎人无枪。','目标已死仍可自爆，普通死亡不连带；沿用符合条件的紧接下一夜优先指刀。整事件后判胜。'];
   case 'poisoner':return ['全局仅一瓶毒药，无解药且不知道刀口；首夜及以后都可自毒。守卫挡不住毒，毒杀猎人不能开枪。'];
@@ -48,18 +54,19 @@ export function roleRuleNotes(role:BoardRole,ruleset:Ruleset,idiotPolicy:IdiotPo
 export function buildRuleReference(board:RoomBoardSnapshot):RuleReference{
  const unsupported:RuleReference={version:ruleReferenceVersion,supported:false,roles:[],mechanics:[],cautions:['此规则版本或配置尚未支持速查，请核对已确认规则并由现场裁决；不能据此推断玩法。']};
  if(board.ruleVersion!==boardRuleVersion)return unsupported;
- let config;try{config=createBoardConfiguration({seatCount:board.composition.seatCount,roles:board.composition.roleCounts,...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});}catch{return unsupported;}
+ let config;try{config=createBoardConfiguration({seatCount:board.composition.seatCount,roles:board.composition.roleCounts,...(board.composition.variant?{variant:board.composition.variant}:{}),...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});}catch{return unsupported;}
  if(config.ruleset!==board.composition.ruleset||config.ruleset==='wolf-girl'&&boardStartError(config)!==null)return unsupported;
  const roles=boardRoleSchema.options.filter(role=>(config.roles[role]??0)>0).map(role=>({role,label:boardRoleLabels[role],count:config.roles[role]!,notes:roleRuleNotes(role,config.ruleset,config.idiotPolicy),source:sources[role]}));
  const wolves=roles.reduce((sum,r)=>sum+(isWolfRole(r.role)?r.count:0),0);
  const mechanics=['规则说明不表示任何座位的身份、存活状态、行动目标或技能余量。','各角色保留固定夜间阶段；角色间闭眼5秒，不从阶段是否出现推断角色存活。','普通投票每轮开始前选择方式、时长和公开程度；已开始阶段设置锁定，未结算前不展示票型。'];
  if(wolves===0)mechanics.push('没有任何狼角色：只允许纯手动记录，房主确认结束，不判胜负。');
  else if(wolves===config.seatCount)mechanics.push('只有狼角色的配置不能正常发牌或开局。');
+ else if(config.ruleset==='puppet')mechanics.push('12人：2普通狼人、1黑狼王、4神、5民；傀儡不是额外底牌。首发初始狼人所有圆桌邻座无神时后台完整重发一次，最多两次，第二次无条件采用。','首夜守卫→狼人选傀儡180秒→狼刀→女巫→预言家→猎人。1号和12号相邻；仅选初始狼邻座的非初始狼，至少一票合法票后才能提前确认；超时最高票、最高平票随机，无票才随机全部合法候选。','傀儡锁定立即生效，原角色不变、本人不知情、无刀且不继承；狼队仅知座位，可以刀傀儡。初始三狼全灭但傀儡活着仍继续。','有效狼人（含傀儡）全灭好人胜；有效神边或民边全灭狼人胜；同夜双方同时达成时狼人优先。终局后复盘展示原身份、转换事件和有效阵营。');
  else if(config.ruleset==='wolf-girl')mechanics.push('首夜守卫→狼女孩表白→狼队相认（禁刀）→毒师→预言家→猎人→被表白者私密通知；以后不重复表白。','真狼全灭优先好人胜，即使狼混仍活或同批屠边；狼混个人胜负随狼，真实平民仍计入屠民。','女孩自爆先连带结算、必要时废放逐票，再统一判胜。');
  else mechanics.push('本局按已确认屠边条件结算；真实狼全部出局则好人胜，非空神边或民边全出局则狼人胜；已确认同夜同时达成时狼人优先。胜负确定即停止后续技能、遗言与警徽流程。');
  if(config.roles.mechanicalWolf||config.roles.armoredWolf)mechanics.push('狼刀继承按共享狼刀组 → 机械狼 → 装甲狼顺序判断；首夜无共享狼刀组时机械狼可继承。复制身份不改变真实阵营。');
  if(config.roles.idiot&&(config.roles.mechanicalWolf||config.roles.armoredWolf))mechanics.push(...copiedRoleNotes('idiot',config.ruleset));
  if(config.roles.mixer){const variant={...standardRoleCounts,villager:3,mixer:1};const standardMixer=config.seatCount===12&&Object.entries(variant).every(([r,n])=>config.roles[r as BoardRole]===n);mechanics.push(standardMixer?'本局是12人3民1混血儿变体：四个民职必须全部出局，不套用扩展板的留一民条件。':'扩展混血儿民边：混血儿出局且普通村民仅剩一人，或混血儿成为最后民职时，满足已确认屠民条件；个人胜负仍跟随榜样原阵营。');}
- const cautions=config.ruleset==='wolf-girl'?['首版仅支持官方12人阵容及同阵容副本，不支持与机械或其他角色混搭。']:config.ruleset!=='standard'||!['standard-12','seer-witch-hunter-idiot-12'].includes(board.id)?['自定义与机械组合仅展示已确认单项规则；未定义复制、反弹链或伤害交互需要裁决，配置可保存不代表所有组合已支持。']:[];
+ const cautions=config.ruleset==='puppet'?['仅支持固定12人阵容及同阵容副本。须线上发牌；纯手动且未记录傀儡转换时需现场裁定胜负。']:config.ruleset==='wolf-girl'?['首版仅支持官方12人阵容及同阵容副本，不支持与机械或其他角色混搭。']:config.ruleset!=='standard'||!['standard-12','seer-witch-hunter-idiot-12'].includes(board.id)?['自定义与机械组合仅展示已确认单项规则；未定义复制、反弹链或伤害交互需要裁决，配置可保存不代表所有组合已支持。']:[];
  return {version:ruleReferenceVersion,supported:true,roles,mechanics,cautions};
 }

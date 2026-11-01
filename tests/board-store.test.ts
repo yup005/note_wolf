@@ -34,7 +34,7 @@ test('private saved boards survive restart and room snapshots do not track later
 
 test('four fixed templates cannot be overwritten, and host configuration validates both roles and revision',()=>{
  const store=new LobbyStore(':memory:',undefined,true);try{seedTestAdmin(store,'h');
-  const library=store.boardLibrary('h');assert.equal(library.presets.length,4);library.presets[0].composition.roles.wolf=99;
+  const library=store.boardLibrary('h');assert.equal(library.presets.length,5);library.presets[0].composition.roles.wolf=99;
   assert.equal(store.boardLibrary('h').presets[0].composition.roles.wolf,4);
   assert.throws(()=>store.saveBoard('h',{id:'standard-12',revision:1,name:'overwrite',composition:boardPreset('standard-12')}),/INVALID_INPUT|BOARD_NOT_FOUND/);
   const room=store.create('h','H').room;store.join('g',room.code,'G');store.select('h',room.id,1);store.setReady('h',room.id,true,0);

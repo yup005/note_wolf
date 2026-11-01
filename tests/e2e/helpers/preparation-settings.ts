@@ -1,5 +1,5 @@
 import {expect,type Page} from '@playwright/test';
-const boardNames:Record<string,string>={'standard-12':'12 人 · 预女猎白','seer-witch-hunter-idiot-12':'12 人 · 预女猎白','mechanical-12':'12 人 · 机械狼通灵师','mechanical-armor-12':'12 人 · 机械装甲','wolf-girl-12':'12 人 · 狼女孩'};
+const boardNames:Record<string,string>={'puppet-12':'12 人 · 唯邻是从·傀儡','standard-12':'12 人 · 预女猎白','seer-witch-hunter-idiot-12':'12 人 · 预女猎白','mechanical-12':'12 人 · 机械狼通灵师','mechanical-armor-12':'12 人 · 机械装甲','wolf-girl-12':'12 人 · 狼女孩'};
 export async function selectBoard(page:Page,selection:string|{label:string}){
  const name=typeof selection==='string'?boardNames[selection]??selection:selection.label;
  await page.getByRole('button',{name:'更换板子',exact:true}).click();

@@ -15,6 +15,7 @@ export class LobbyError extends Error {
  constructor(public code:string,public status=400){super(code);}
 }
 export const messages:Record<string,string>={
+ PUPPET_VOTE_REQUIRED:'请先提交至少一票合法傀儡选择，再由确认者确认',PUPPET_ONLINE_DEAL_ONLY:'傀儡板须选择线上发牌，以完成隐藏发牌检查',JUDGE_PUPPET_REQUIRED:'请先补录首夜傀儡选择，不能跳过或重新随机',
  VOICE_BUSY:'本房间已有另一台设备播报，请先关闭或等待15秒后重试',VOICE_LEASE_LOST:'播报连接已失效，请重新开启',
  INVALID_NAME:'请输入 1–24 个字符的昵称',INVALID_CODE:'请输入四位数字房间号',INVALID_SEAT:'请选择本局有效座位',
  INVALID_INPUT:'输入格式不正确，请检查后重试',ROOM_NOT_FOUND:'未找到该房间，请检查房间号',ROOM_CODES_FULL:'可用房间号已满，请稍后重试',

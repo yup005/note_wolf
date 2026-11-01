@@ -1,0 +1,50 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {randomBytes,randomUUID} from 'node:crypto';
+import {LobbyStore} from '../packages/storage/lobby.js';
+import {emptyRecord} from '../packages/contracts/records.js';
+import {boardPreset} from '../packages/domain/boardConfig.js';
+
+function room(s:LobbyStore,physical=false){const tokens=Array.from({length:12},()=>randomBytes(32).toString('base64url'));tokens.forEach(t=>s.issueSession(t));const v=s.create(tokens[0],'合成房主',randomUUID()),id=v.room.id;s.configureBoard(tokens[0],id,{selection:{kind:'preset',id:'puppet-12'},settingsRevision:0});if(physical)s.configure(tokens[0],id,{dealMethod:'physical',gameMode:'automatic'});tokens.forEach((t,i)=>{if(i)s.join(t,v.room.code,'合成'+i);s.select(t,id,i+1);s.setReady(t,id,true,s.snapshot(id).preparation.settingsRevision);});return {tokens,id};}
+function start(s:LobbyStore,tokens:string[],id:string){s.deal(tokens[0],id);tokens.forEach(t=>s.confirmIdentity(t,id));s.start(tokens[0],id);s.enterNight(tokens[0],id);}
+test('only final unique identities persist and duplicate deal is inert; physical bypass is blocked',()=>{
+ const s=new LobbyStore(':memory:');try{const {tokens,id}=room(s);s.deal(tokens[0],id);const cards=tokens.map(t=>s.identity(t,id));s.deal(tokens[0],id);assert.deepEqual(tokens.map(t=>s.identity(t,id)),cards);const c=boardPreset('puppet-12');for(const [role,count] of Object.entries(c.roles))assert.equal(cards.filter(c=>c.role===role).length,count);const pub=JSON.stringify(s.snapshot(id));assert.doesNotMatch(pub,/attempt|discard|puppetSeat|puppet_selected/);const p=room(s,true);assert.throws(()=>s.deal(p.tokens[0],p.id),/PUPPET_ONLINE_DEAL_ONLY/);assert.equal(s.snapshot(p.id).preparation.phase,'lobby');}finally{s.close();}
+});
+test('selection survives real SQLite restart, rejected operations do not unlock it, manual records keep effective allegiance and statistics after cleanup',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'puppet-'));const file=join(dir,'lobby.db');let now=1000,s=new LobbyStore(file,undefined,false,()=>now);
+ try{const {tokens,id}=room(s);start(s,tokens,id);for(let i=0;i<15&&s.snapshot(id).night!.phase!=='puppet';i++){const n=s.snapshot(id).night!;if(n.phase==='awaiting_host')s.beginNight(tokens[0],id,n.turnId);else{now=n.deadline!;s.tickNights();}}
+ const roles=tokens.map((t,i)=>({seat:i+1,role:s.identity(t,id).role!})),wolves=roles.filter(p=>p.role==='wolf'||p.role==='blackWolf'),actor=wolves[0].seat;const card=s.nightPrivate(tokens[actor-1],id),target=card.legalTargets![0],turnId=card.turnId;const confirmer=card.confirmer!;
+ const account=await s.auth.register(tokens[target-1],'puppet_'+randomUUID().slice(0,8),'synthetic-password','合成傀儡');tokens[target-1]=account.token;
+ s.nightCommand(tokens[actor-1],id,{action:'puppet_vote',target,turnId});s.nightCommand(tokens[confirmer-1],id,{action:'confirm_puppet',turnId});const lockedAt=now;s.close();s=new LobbyStore(file,undefined,false,()=>now);assert.doesNotThrow(()=>s.nightCommand(tokens[confirmer-1],id,{action:'confirm_puppet',turnId}));
+ while(s.snapshot(id).night!.phase!=='wolves'){now=s.snapshot(id).night!.deadline!;s.tickNights();}
+ assert.equal(s.nightPrivate(tokens[actor-1],id).puppetSeat,target);assert.equal(s.nightPrivate(tokens[target-1],id).kind,'waiting');assert.equal(s.nightPrivate(tokens[target-1],id).wolves,undefined);assert.equal(s.identity(tokens[target-1],id).role,roles[target-1].role);assert.throws(()=>s.gameReplay(tokens[0],id),/PHASE_LOCKED/);
+ s.switchManual(tokens[0],id,true);assert.equal(s.snapshot(id).manual?.puppet,undefined);const gameId=s.snapshot(id).gameId;let draft=s.recordsList(tokens[0],gameId).own!;
+ s.saveRecord(tokens[0],gameId,draft.revision,{...emptyRecord(),deaths:wolves.map(p=>({seat:p.seat,round:1,period:'day' as const,cause:'unrecorded' as const}))});assert.equal(s.commitManual(tokens[0],gameId,draft.revision+1)?.status,'playing');
+ draft=s.recordsList(tokens[0],gameId).own!;s.saveRecord(tokens[0],gameId,draft.revision,{...emptyRecord(),deaths:[...wolves.map(p=>p.seat),target].map(seat=>({seat,round:1,period:'day' as const,cause:'unrecorded' as const}))});s.commitManual(tokens[0],gameId,draft.revision+1);const stats=s.statistics(account.token);assert.equal(stats.losses,1);assert.equal(stats.wins,0);const endedReplay=s.gameReplay(tokens[0],gameId);assert.match(JSON.stringify(endedReplay.summary),/傀儡/);assert.equal(endedReplay.rounds.flatMap(r=>r.events).filter(e=>e.type==='puppet_selected').length,1);const selected=endedReplay.rounds.flatMap(r=>r.events).find(e=>e.type==='puppet_selected')!;assert.equal(selected.target,target);assert.equal(selected.at,lockedAt);assert.deepEqual(s.snapshot(id).manual?.puppet,{target,at:lockedAt});const published=s.publishRecord(tokens[0],gameId,s.recordsList(tokens[0],gameId).own!.revision);assert.deepEqual(s.recordPost(tokens[0],published.id).puppet,{target,at:lockedAt});const next=s.rematch(tokens[0],id,{requestId:randomUUID(),expectedGameId:gameId});assert.notEqual(next.game.gameId,gameId);assert.deepEqual(s.gameReplay(tokens[0],gameId),endedReplay);now+=25*3600000;s.cleanupExpiredRooms();assert.deepEqual(s.statistics(account.token),stats);assert.deepEqual(s.gameReplay(tokens[0],gameId),endedReplay);assert.deepEqual(s.recordPost(tokens[0],published.id).puppet,{target,at:lockedAt});
+ }finally{s.close();rmSync(dir,{recursive:true,force:true});}
+});
+
+test('complete four-day automatic game archives conversion and rematch keeps the old game isolated',()=>{
+ let now=1000;const s=new LobbyStore(':memory:',undefined,false,()=>now);try{
+ const {tokens,id}=room(s);s.deal(tokens[0],id);tokens.forEach(t=>s.confirmIdentity(t,id));s.start(tokens[0],id);
+ const roles=tokens.map((t,i)=>({seat:i+1,role:s.identity(t,id).role!})),wolves=roles.filter(p=>p.role==='wolf'||p.role==='blackWolf').map(p=>p.seat);let target=0;
+ const day=(body:Record<string,unknown>,seat=1)=>s.dayCommand(tokens[seat-1],id,{...body,turnId:s.snapshot(id).day!.turnId} as import('../packages/contracts/day.js').DayCommand);
+ for(let round=1;round<=4;round++){
+  s.enterNight(tokens[0],id);
+  if(round===1){while(s.snapshot(id).night!.phase!=='puppet'){const n=s.snapshot(id).night!;if(n.phase==='awaiting_host')s.beginNight(tokens[0],id,n.turnId);else{now=n.deadline!;s.tickNights();}}const c=s.nightPrivate(tokens[wolves[0]-1],id);target=c.legalTargets![0];s.nightCommand(tokens[wolves[0]-1],id,{action:'puppet_vote',target,turnId:c.turnId});s.nightCommand(tokens[c.confirmer!-1],id,{action:'confirm_puppet',turnId:c.turnId});}
+  const n=s.snapshot(id).night!;if(n.phase==='awaiting_host')s.beginNight(tokens[0],id,n.turnId);now+=1000000;s.tickNights();assert.equal(s.snapshot(id).night!.phase,'first_night_complete');s.enterDay(tokens[0],id);if(round===1)day({action:'close_signup'});day({action:'continue'});day({action:'continue'});day({action:'speech_mode',mode:'free'});day({action:'end_speech'});day({action:'start_vote',method:'offline',visibility:'individual',seconds:30});day({action:'offline_vote',voter:roles.find(p=>![...wolves,target].includes(p.seat))!.seat,target:round<=3?wolves[round-1]:target});day({action:'close_vote'});day({action:'continue'});
+  if(round===4)break;while(['death_skill','last_words'].includes(s.snapshot(id).day!.phase)){if(s.snapshot(id).day!.phase==='last_words')day({action:'end_speech'});else{now=s.snapshot(id).day!.deadline!;s.tickNights();}}assert.equal(s.snapshot(id).day!.phase,'day_complete');assert.equal(s.snapshot(id).day!.winner,null);
+ }
+ const old=s.snapshot(id).gameId;assert.equal(s.snapshot(id).day!.winner,'good');const replay=s.gameReplay(tokens[0],old);assert.equal(replay.rounds.length,8);assert.equal(replay.roles.find(p=>p.seat===target)!.role,roles[target-1].role);assert.equal(replay.personalResults!.find(p=>p.seat===target)!.won,false);assert.match(JSON.stringify(replay.summary),/狼人阵营/);assert.equal(replay.rounds.flatMap(r=>r.events).filter(e=>e.type==='puppet_selected').length,1);s.saveFavorite(tokens[0],old);
+ const next=s.rematch(tokens[0],id,{requestId:randomUUID(),expectedGameId:old});assert.notEqual(next.game.gameId,old);assert.deepEqual(s.gameReplay(tokens[0],old),replay);assert.equal(s.snapshot(id).board.composition.ruleset,'puppet');
+ tokens.forEach(t=>s.setReady(t,id,true,s.snapshot(id).preparation.settingsRevision));start(s,tokens,id);while(s.snapshot(id).night!.phase!=='puppet'){const n=s.snapshot(id).night!;if(n.phase==='awaiting_host')s.beginNight(tokens[0],id,n.turnId);else{now=n.deadline!;s.tickNights();}}const newRoles=tokens.map(t=>s.identity(t,id).role!),wolf=newRoles.findIndex(r=>r==='wolf');assert.equal(s.nightPrivate(tokens[wolf],id).kind,'puppet');assert.equal(s.nightPrivate(tokens[wolf],id).votes?.length,0);assert.deepEqual(s.favoriteReplay(tokens[0],old).rounds,replay.rounds);
+ }finally{s.close();}
+});
+
+test('pure manual unknown conversion keeps nonwolf personal statistics unresolved rather than assuming original allegiance',async()=>{
+ const s=new LobbyStore(':memory:');try{const {tokens,id}=room(s);s.configure(tokens[0],id,{dealMethod:'online',gameMode:'manual'});tokens.forEach(t=>s.setReady(t,id,true,s.snapshot(id).preparation.settingsRevision));s.deal(tokens[0],id);tokens.forEach(t=>s.confirmIdentity(t,id));s.start(tokens[0],id);const seat=tokens.findIndex(t=>!['wolf','blackWolf'].includes(s.identity(t,id).role!));const account=await s.auth.register(tokens[seat],'unknown_'+randomUUID().slice(0,8),'synthetic-password','合成未知转换');tokens[seat]=account.token;const draft=s.recordsList(tokens[0],s.snapshot(id).gameId).own!;s.adjudicateManual(tokens[0],id,{confirmed:true,version:s.snapshot(id).manual!.version,revision:draft.revision,winner:'good'});const stats=s.statistics(account.token);assert.equal(stats.played,1);assert.equal(stats.resolved,0);assert.equal(stats.unresolved,1);assert.equal(stats.wins,0);assert.equal(stats.losses,0);
+ }finally{s.close();}
+});

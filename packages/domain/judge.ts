@@ -13,7 +13,7 @@ export function phaseDuration(kind:'night'|'day',state:NightState|DayState):numb
  if(kind==='night'){
   const n=state as NightState;
   if(['awaiting_host','first_night_complete','rules_pending'].includes(n.phase))return null;
-  return n.phase==='wolves'?180000:n.phase==='eyes_closed'?5000:n.phase==='mechanical_authority'?15000:n.phase==='witch'&&n.night===1?60000:30000;
+  return n.phase==='wolves'||n.phase==='puppet'?180000:n.phase==='eyes_closed'?5000:n.phase==='mechanical_authority'?15000:n.phase==='witch'&&n.night===1?60000:30000;
  }
  const d=state as DayState;
  if(d.interjection)return Math.max(0,15000-(d.interjectionUsed?.[d.interjection.seat]??0));
@@ -27,6 +27,7 @@ export function supplementRuntime(runtime:JudgeRuntime,operation:JudgeSupplement
  const current=runtime.kind==='night'?runtime.night:runtime.day!;
  if(['ended','rules_pending'].includes(current.phase))throw new LobbyError('JUDGE_RETURN_BLOCKED',409);
  if(operation.kind==='advance'){
+  if(runtime.kind==='night'&&current.phase==='puppet'&&!runtime.night.engine?.puppet)throw new LobbyError('JUDGE_PUPPET_REQUIRED',409);
   if(runtime.kind==='night'&&current.phase==='confession'&&!runtime.night.engine?.confession)throw new LobbyError('JUDGE_CONFESSION_REQUIRED',409);
   if(runtime.kind==='night'&&current.phase==='awaiting_host'){beginNight(runtime.night,runtime.clock);return;}
   if(current.deadline===null)throw new LobbyError('PHASE_LOCKED',409);

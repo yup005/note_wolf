@@ -8,10 +8,10 @@ export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction
  const countId=useId();
  const [library,setLibrary]=useState<BoardLibrary|null>(null);const [error,setError]=useState('');const [saving,setSaving]=useState(false);
  const [pickerRevision,setPickerRevision]=useState<number|null>(null);
- const [draft,setDraft]=useState<BoardComposition>({seatCount:board.composition.seatCount,roles:{...board.composition.roleCounts},...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});const [name,setName]=useState('');
+ const [draft,setDraft]=useState<BoardComposition>({seatCount:board.composition.seatCount,roles:{...board.composition.roleCounts},...(board.composition.variant?{variant:board.composition.variant}:{}),...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});const [name,setName]=useState('');
  const compositionKey=JSON.stringify(board.composition);
  useEffect(()=>{setPickerRevision(null);},[settingsRevision,blocked,board.id,compositionKey]);
- useEffect(()=>{setDraft({seatCount:board.composition.seatCount,roles:{...board.composition.roleCounts},...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});setName(board.id==='custom'?board.name:board.name+' · 自定义');setError('');},[board.id,board.name,compositionKey]);
+ useEffect(()=>{setDraft({seatCount:board.composition.seatCount,roles:{...board.composition.roleCounts},...(board.composition.variant?{variant:board.composition.variant}:{}),...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});setName(board.id==='custom'?board.name:board.name+' · 自定义');setError('');},[board.id,board.name,compositionKey]);
  useEffect(()=>{let active=true;api<BoardLibrary>('/api/boards').then(data=>{if(active)setLibrary(data);}).catch(e=>{if(active)setError(errorText(e));});return()=>{active=false;};},[]);
  const valid=serviceCompositionSchema.safeParse(draft).success;
  const total=Object.values(draft.roles).reduce((sum,count)=>sum+(count??0),0);
@@ -20,7 +20,7 @@ export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction
   setDraft(previous=>{
    const roles={...previous.roles,[role]:Math.max(0,count)},seatCount=Object.values(roles).reduce((sum,n)=>sum+(n??0),0);
    const keepPolicy=supportsDualIdiot(roles.idiot)&&previous.idiotPolicy==='dual-category-14';
-   return {seatCount,roles,...(keepPolicy?{idiotPolicy:'dual-category-14' as const}:{})};
+   return {seatCount,roles,...(previous.variant?{variant:previous.variant}:{}),...(keepPolicy?{idiotPolicy:'dual-category-14' as const}:{})};
   });
  }
  function select(value:string){const id=value==='seer-witch-hunter-idiot-12'?'standard-12':value;setError('');onAction('board',{settingsRevision,selection:{kind:library?.presets.some(t=>t.id===id)?'preset':'custom',id}});}
@@ -46,7 +46,7 @@ export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction
    })}</div>
    {!!draft.roles.idiot&&<label>白痴规则<select aria-label="白痴规则" value={draft.idiotPolicy??'standard'} disabled={blocked||saving} onChange={e=>{const {idiotPolicy:_,...base}=draft;setDraft(e.target.value==='dual-category-14'?{...base,idiotPolicy:'dual-category-14'}:base);}}><option value="standard">默认规则</option><option value="dual-category-14" disabled={!supportsDualIdiot(draft.roles.idiot)}>双边白痴（不限人数）</option></select></label>}
    {draft.idiotPolicy==='dual-category-14'&&<p className="helper">须有一名真实白痴，不限人数。翻牌后无发言、插嘴或投票权，仍可被刀或毒杀。</p>}
-   <p className="helper">{config?config.ruleset==='wolf-girl'?'狼女孩（首版支持固定12人阵容及其副本）':config.ruleset==='mechanical-armor'?'机械装甲':config.ruleset==='standard'?'预女猎白':'机械狼通灵师':'请选择 1–256 个角色'}</p>
+   <p className="helper">{config?config.ruleset==='puppet'?'唯邻是从·傀儡（固定12人阵容及同阵容副本）':config.ruleset==='wolf-girl'?'狼女孩（首版支持固定12人阵容及其副本）':config.ruleset==='mechanical-armor'?'机械装甲':config.ruleset==='standard'?'预女猎白':'机械狼通灵师':'请选择 1–256 个角色'}</p>
    <button className="secondary full" disabled={blocked||saving||!valid||!name.trim()} onClick={()=>void save()}>{saving?'保存中…':'另存板子'}</button>
    <button className="text-button" disabled={blocked||saving||!valid} onClick={()=>onAction('board',{settingsRevision,selection:{kind:'composition',composition:draft}})}>应用本局配置</button>
   </details>

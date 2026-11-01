@@ -33,7 +33,7 @@ export class PreparationStore{
  }
  deal(token:string,id:string){
   this.db.transaction(()=>{this.host(token,id);if(this.row(id).phase!=='lobby')return;
-   const r=this.row(id);const config=assertPlayableBoard(this.board(id),r.game_mode);const seats=this.seats(id);assertCanDeal(seats,config,r.game_mode);
+   const r=this.row(id);const config=assertPlayableBoard(this.board(id),r.game_mode);const seats=this.seats(id);if(config.ruleset==='puppet'&&r.deal_method!=='online')throw new LobbyError('PUPPET_ONLINE_DEAL_ONLY',409);assertCanDeal(seats,config,r.game_mode);
    this.db.prepare("UPDATE preparations SET phase='identity_collection' WHERE room_id=?").run(id);
    if(r.deal_method==='online'){
     const deck=createDeck(config,r.game_mode);const insert=this.db.prepare('INSERT INTO identities(room_id,member_id,role,confirmed) VALUES (?,?,?,0)');

@@ -19,6 +19,12 @@ export function evaluateVictory(players:readonly VictoryPlayer[],ruleset:Ruleset
    p.learnedRole!==undefined&&!boardRoleSchema.safeParse(p.learnedRole).success)||
   ruleset==='standard'&&players.some(p=>!Object.hasOwn(standardRoleCounts,p.role))||
   ruleset!=='mechanical-armor'&&players.some(p=>p.role==='armoredWolf'))throw new LobbyError('INVALID_VICTORY_STATE');
+ if(ruleset==='puppet'){
+  const alive=players.filter(p=>p.alive),wolf=(p:VictoryPlayer)=>isWolfRole(p.role)||p.personalCamp==='wolves';
+  const reason=!alive.some(p=>p.role==='villager'&&!wolf(p))?'all-villagers-dead':!alive.some(p=>gods.has(p.role)&&!wolf(p))?'all-gods-dead':!alive.some(wolf)?'all-wolves-dead':null;
+  if(!reason)return {status:'playing'};const winner=reason==='all-wolves-dead'?'good':'wolves';
+  return {status:'ended',winner,reason,personalResults:players.map(p=>({seat:p.seat,won:(wolf(p)?'wolves':'good')===winner}))};
+ }
  if(ruleset==='wolf-girl'){
   const alive=players.filter(p=>p.alive);
   const winner=!alive.some(p=>isWolfRole(p.role))?'good':!alive.some(p=>p.role==='villager')||!alive.some(p=>gods.has(p.role))?'wolves':null;

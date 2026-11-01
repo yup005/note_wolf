@@ -3,7 +3,7 @@ import {boardRoleSchema,rulesetSchema,boardRuleVersion,boardCompositionSchema,id
 import {snapshotSchema,skillSchema} from './abilities.js';
 const seat=z.number().int().positive().max(256),id=z.string().min(1).max(200),night=z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const camp=z.enum(['wolves','good']);
-export const engineBoardSchema=z.object({id,name:z.string(),ruleVersion:z.literal(boardRuleVersion),composition:z.object({seatCount:seat,roleCounts:boardCompositionSchema.shape.roles,ruleset:rulesetSchema,playable:z.boolean(),idiotPolicy:idiotPolicySchema.optional()}).strict()}).strict();
+export const engineBoardSchema=z.object({id,name:z.string(),ruleVersion:z.literal(boardRuleVersion),composition:z.object({variant:boardCompositionSchema.shape.variant,seatCount:seat,roleCounts:boardCompositionSchema.shape.roles,ruleset:rulesetSchema,playable:z.boolean(),idiotPolicy:idiotPolicySchema.optional()}).strict()}).strict();
 export const engineSeedSchema=z.object({seat,role:boardRoleSchema,knifeGroup:z.enum(['shared','mechanical','armor','none'])}).strict();
 export const enginePlayerSchema=engineSeedSchema.extend({
  camp:camp.nullable(),alive:z.boolean(),abilities:snapshotSchema,
@@ -35,7 +35,7 @@ export const resolutionSchema=z.discriminatedUnion('status',[
  resolutionDecisionSchema.options[1].extend({deaths:z.array(z.object({seat,sourceEffectIds:z.array(id).min(1)}).strict())}).strict()
 ]);
 // Internal only: never include this schema in public room, voice or admin projections.
-export const engineStateSchema=z.object({formatVersion:z.literal(1),board:engineBoardSchema,night,confession:z.object({girl:seat,target:seat,accepted:z.boolean(),turnId:z.string().uuid(),notified:z.boolean()}).strict().optional(),stage:z.enum(['collecting','awaiting-resolution','resolved','awaiting-decision','ended']),players:z.array(enginePlayerSchema),actions:z.array(nightActionSchema),resolution:resolutionSchema.nullable(),victory:victorySchema}).strict();
+export const engineStateSchema=z.object({formatVersion:z.literal(1),board:engineBoardSchema,night,puppet:z.object({target:seat,turnId:z.string().uuid(),at:z.number().finite().nonnegative(),source:z.enum(['confirmed','timeout'])}).strict().optional(),confession:z.object({girl:seat,target:seat,accepted:z.boolean(),turnId:z.string().uuid(),notified:z.boolean()}).strict().optional(),stage:z.enum(['collecting','awaiting-resolution','resolved','awaiting-decision','ended']),players:z.array(enginePlayerSchema),actions:z.array(nightActionSchema),resolution:resolutionSchema.nullable(),victory:victorySchema}).strict();
 export type EngineState=z.infer<typeof engineStateSchema>;
 export type EnginePlayer=z.infer<typeof enginePlayerSchema>;
 export type EngineSeed=z.infer<typeof engineSeedSchema>;

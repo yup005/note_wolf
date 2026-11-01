@@ -34,11 +34,12 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
   if(round.kind==='night'){
    const knife=e.findLast(x=>x.type==='knife_resolved');const priority=e.find(x=>x.type==='priority_knife');if(knife)lines.push(knife.target==null?'狼人空刀':`狼刀 ${knife.target} 号${priority?`（${priority.seat} 号自爆狼指刀）`:''}`);
    for(const action of e){
+    if(action.type==='puppet_selected')lines.push(`${action.target} 号（原始${boardRoleLabels[roles.get(action.target!)!]}）于首夜 ${new Date(action.at).toISOString()} 成为傀儡，最终有效阵营：狼人阵营；个人胜负随狼人`);
     if(action.type==='girl_confession')lines.push(`${action.seat} 号狼女孩表白 ${action.target} 号${roles.get(action.target!)==='villager'?'，平民成为狼混，个人胜负随狼方':'，神职拒绝'}`);
     if(action.type==='wolves_recognized')lines.push('首夜狼队仅相认，无狼刀');
     if(action.type==='poisoner_poison')lines.push(action.target==null?'毒师未用毒':`毒师毒 ${action.target} 号`);
-    if(action.type==='witch_save')lines.push(`女巫救 ${action.target} 号`);
-    if(action.type==='witch_poison')lines.push(`女巫毒 ${action.target} 号`);
+    if(action.type==='witch_save')lines.push(`女巫救 ${action.target} 号${round.engine?.puppet&&round.engine.puppet.target===action.seat?'（傀儡技能无效，解药已消耗）':''}`);
+    if(action.type==='witch_poison')lines.push(`女巫毒 ${action.target} 号${round.engine?.puppet&&round.engine.puppet.target===action.seat?'（傀儡技能无效，毒药已消耗）':''}`);
     if(action.type==='witch_skip')lines.push('女巫未用药');
     if(action.type==='seer_check'){
      const inspection=round.engine?.actions.find(a=>a.casterId===action.seat&&a.targetId===action.target&&a.abilityType==='inspect')?.privateInspection;
@@ -50,7 +51,7 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
      const resolution=round.engine?.resolution;
      const poisoned=resolution?.status==='settled'?resolution.effects.some(effect=>effect.abilityType==='poison'&&effect.outcome==='killed'&&(effect.reflectTarget??effect.targetId)===seat):e.some(x=>x.type==='witch_poison'&&x.target===seat);
      const spent=hunterSpent.has(seat)||round.engine?.players.find(p=>p.seat===seat)?.abilities.skills.find(skill=>skill.kind==='shot')?.remaining===0;
-     lines.push(`猎人查看状态：技能${spent||poisoned?'不可':'可'}发动`);
+     lines.push(`猎人查看状态：技能${round.engine?.puppet?.target===seat?'可':spent||poisoned?'不可':'可'}发动`);
     }
    }
    for(const action of e){
@@ -115,11 +116,13 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
  return combined;
 }
 
-const finalEventTypes=new Set(['girl_confession','wolves_recognized','poisoner_poison','vote_cancelled','death_girl-retaliation','knife_resolved','priority_knife','witch_save','witch_poison','witch_skip','seer_check','hunter_seen','mechanical_learn','armor_learn','guard_protect','spirit_check','mechanical_check','mechanical_poison','mechanical_knife','armor_knife','mixer_model','vote_outcome','sheriff_elected','idiot_flip','hunter_shot','white_wolf_take','death_knife','death_poison','death_shot','death_exile','death_explosion','death_white-wolf']);
+const finalEventTypes=new Set(['puppet_selected','girl_confession','wolves_recognized','poisoner_poison','vote_cancelled','death_girl-retaliation','knife_resolved','priority_knife','witch_save','witch_poison','witch_skip','seer_check','hunter_seen','mechanical_learn','armor_learn','guard_protect','spirit_check','mechanical_check','mechanical_poison','mechanical_knife','armor_knife','mixer_model','vote_outcome','sheriff_elected','idiot_flip','hunter_shot','white_wolf_take','death_knife','death_poison','death_shot','death_exile','death_explosion','death_white-wolf']);
 function finalVote(result:DayVoteResult):DayVoteResult{return {purpose:result.purpose,counts:result.counts.map(c=>({seat:c.seat,votes:c.votes})),leaders:[...result.leaders],...(result.ballots?{ballots:result.ballots.map(b=>({seat:b.seat,target:b.target}))}:{})};}
 /** Public ended-game facts. Raw runtime and legacy sources remain unchanged. */
 export function finalReplay(record:GameReplay):GameReplay{
  const summary=summarizeReplay(record);
+ const puppet=record.rounds.findLast(r=>r.engine?.puppet)?.engine;
+ if(puppet&&!record.summary){const reason=record.rounds.findLast(r=>r.engine?.victory.status==='ended')?.engine?.victory;summary.push({title:'胜负依据',lines:[`有效狼人含首夜傀儡；傀儡不计入原神／民边。同夜双方达成时狼人优先。最终${record.winner==='wolves'?'狼人':'好人'}获胜${reason?.status==='ended'?'：'+({'all-wolves-dead':'全部有效狼人出局','all-gods-dead':'有效神职全部出局','all-villagers-dead':'有效平民全部出局','mixer-dead-one-villager':'屠民','mixer-last-civilian':'屠民'}[reason.reason]):''}`]});}
  const personalResults=record.personalResults??record.rounds.findLast(r=>r.engine?.victory?.status==='ended')?.engine?.victory;
  const results=Array.isArray(personalResults)?personalResults:personalResults?.status==='ended'?personalResults.personalResults:undefined;
  return {...(results?{personalResults:results.map(p=>({seat:p.seat,won:p.won}))}:{}),winner:record.winner,roles:record.roles.map(p=>({seat:p.seat,role:p.role})),

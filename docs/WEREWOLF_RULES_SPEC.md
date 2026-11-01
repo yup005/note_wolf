@@ -1,5 +1,11 @@
 # WEREWOLF_RULES_SPEC.md
 
+<a id="puppet-2026-11-01"></a>
+
+## 唯邻是从·傀儡（2026-11-01）
+
+PU-001–010 的唯一完整现行规则见 [PUPPET.md](PUPPET.md)，来源为 [Issue #15](https://github.com/yup005/note_wolf/issues/15) 三轮已确认修正及隐藏发牌补充。本轮已按 Owner 直接开发指令实现独立 `puppet` / `puppet-12`；不可把傀儡当第13张牌或授予狼刀，不改变原底牌和本人知识。确认、实现、自动验证、部署、实机分别记录。
+
 <a id="mobile-preparation-2026-10-30"></a>
 
 ## 手机候场选择与防误触（2026-10-30，SETUP-001/006）

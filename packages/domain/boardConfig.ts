@@ -2,8 +2,10 @@ import {LobbyError} from '../contracts/index.js';
 import {boardCompositionSchema,standardRoleCounts,isWolfRole,type BoardRole,type BoardComposition,type BoardConfiguration} from '../contracts/board.js';
 
 export const wolfGirlRoles={wolf:3,wolfGirl:1,villager:4,seer:1,poisoner:1,hunter:1,guard:1} as const;
+export const puppetRoles={wolf:2,blackWolf:1,villager:5,seer:1,witch:1,guard:1,hunter:1} as const;
 const mechanicalRoles={wolf:3,villager:4,spiritSeer:1,witch:1,hunter:1,guard:1,mechanicalWolf:1};
 const presets={
+ 'puppet-12':{variant:'puppet',seatCount:12,roles:puppetRoles},
  'wolf-girl-12':{seatCount:12,roles:wolfGirlRoles},
  'standard-12':{seatCount:12,roles:standardRoleCounts},
  'mechanical-12':{seatCount:12,roles:mechanicalRoles},
@@ -20,7 +22,7 @@ export function createBoardConfiguration(input:unknown):BoardConfiguration{
  const standard=parsed.data.seatCount===12&&Object.keys(roles).length===6&&
   Object.entries(standardRoleCounts).every(([role,count])=>roles[role as keyof typeof standardRoleCounts]===count);
  const wolfCount=Object.entries(roles).reduce((sum,[role,count])=>sum+(isWolfRole(role as BoardRole)?count!:0),0);
- return {seatCount:parsed.data.seatCount,roles,...(parsed.data.idiotPolicy?{idiotPolicy:parsed.data.idiotPolicy}:{}),ruleset:roles.wolfGirl||roles.poisoner?'wolf-girl':roles.armoredWolf?'mechanical-armor':standard?'standard':'mechanical-seer',playable:parsed.data.seatCount<=256&&wolfCount>0&&wolfCount<parsed.data.seatCount};
+ return {seatCount:parsed.data.seatCount,roles,...(parsed.data.variant?{variant:parsed.data.variant}:{}),...(parsed.data.idiotPolicy?{idiotPolicy:parsed.data.idiotPolicy}:{}),ruleset:parsed.data.variant==='puppet'?'puppet':roles.wolfGirl||roles.poisoner?'wolf-girl':roles.armoredWolf?'mechanical-armor':standard?'standard':'mechanical-seer',playable:parsed.data.seatCount<=256&&wolfCount>0&&wolfCount<parsed.data.seatCount};
 }
 
 export function boardPreset(id:BoardPresetId):BoardConfiguration{
@@ -30,6 +32,7 @@ export function boardPreset(id:BoardPresetId):BoardConfiguration{
 
 // Recompute eligibility; caller-provided flags cannot authorize an unfinished board.
 export function boardStartError(config:BoardConfiguration,mode:'automatic'|'manual'='automatic'):string|null{
+ if(config.ruleset==='puppet'&&(config.seatCount!==12||config.idiotPolicy||Object.keys(config.roles).filter(r=>config.roles[r as BoardRole]!>0).length!==7||Object.entries(puppetRoles).some(([role,count])=>config.roles[role as BoardRole]!==count)))return 'BOARD_NOT_IMPLEMENTED';
  if(config.ruleset==='wolf-girl'&&(config.seatCount!==12||Object.keys(config.roles).length!==Object.keys(wolfGirlRoles).length||Object.entries(wolfGirlRoles).some(([role,count])=>config.roles[role as BoardRole]!==count)))return 'BOARD_NOT_IMPLEMENTED';
  if(config.seatCount>256)return 'BOARD_NOT_IMPLEMENTED';
  const wolves=Object.entries(config.roles).reduce((sum,[role,count])=>sum+(isWolfRole(role as BoardRole)?count!:0),0);
@@ -38,7 +41,7 @@ export function boardStartError(config:BoardConfiguration,mode:'automatic'|'manu
  return null;
 }
 export function assertPlayableBoard(config:BoardConfiguration,mode:'automatic'|'manual'='automatic'):BoardConfiguration{
- const validated=createBoardConfiguration({seatCount:config.seatCount,roles:config.roles,...(config.idiotPolicy?{idiotPolicy:config.idiotPolicy}:{})});
+ const validated=createBoardConfiguration({seatCount:config.seatCount,roles:config.roles,...(config.variant?{variant:config.variant}:{}),...(config.idiotPolicy?{idiotPolicy:config.idiotPolicy}:{})});
  const reason=boardStartError(validated,mode);if(reason)throw new LobbyError(reason,409);
  return validated;
 }

@@ -1,3 +1,4 @@
+import {endedPuppetDisclosure} from './puppetDisclosure.js';
 import type Database from 'better-sqlite3';
 import {randomBytes} from 'node:crypto';
 import {LobbyError} from '../contracts/index.js';
@@ -63,6 +64,6 @@ export class SharingStore {
    LEFT JOIN record_version_sources src ON src.record_id=v.record_id AND src.version=v.version
    WHERE l.token=? AND l.revoked=0 AND a.status='active' AND vip.enabled=1 AND (vip.expires_at IS NULL OR vip.expires_at>?)
    AND d.withdrawn=0 AND r.ended=1 AND d.owner='account:'||a.id`).get(token,Date.now()) as {room_id:string;author:string;official:number;version:number;document:string;outcome:SharedRecord['outcome'];outcomeSource:SharedRecord['outcomeSource'];publishedAt:number;code:string;roles:string}|undefined;
-  if(!r)throw unavailable();return {code:r.code,author:r.author,official:!!r.official,version:r.version,publishedAt:r.publishedAt,document:JSON.parse(r.document),outcome:r.outcome,outcomeSource:r.outcomeSource,...(r.official?{officialUpdate:officialUpdate(this.db,r.room_id)}:{}),roles:JSON.parse(r.roles)};
+  if(!r)throw unavailable();return {...(endedPuppetDisclosure(this.db,r.room_id)?{puppet:endedPuppetDisclosure(this.db,r.room_id)}:{}),code:r.code,author:r.author,official:!!r.official,version:r.version,publishedAt:r.publishedAt,document:JSON.parse(r.document),outcome:r.outcome,outcomeSource:r.outcomeSource,...(r.official?{officialUpdate:officialUpdate(this.db,r.room_id)}:{}),roles:JSON.parse(r.roles)};
  }
 }

@@ -6,7 +6,7 @@ export type BoardRole=z.infer<typeof boardRoleSchema>;
 export const isSharedWolfRole=(role:BoardRole)=>role==='wolf'||role==='blackWolf'||role==='whiteWolf'||role==='wolfGirl';
 export const isWolfRole=(role:BoardRole)=>isSharedWolfRole(role)||role==='mechanicalWolf'||role==='armoredWolf';
 export const isRepeatableRole=(role:BoardRole)=>['wolf','blackWolf','whiteWolf','villager'].includes(role);
-export const rulesetSchema=z.enum(['standard','mechanical-seer','mechanical-armor','wolf-girl']);
+export const rulesetSchema=z.enum(['standard','mechanical-seer','mechanical-armor','wolf-girl','puppet']);
 export type Ruleset=z.infer<typeof rulesetSchema>;
 export const idiotPolicySchema=z.enum(['standard','dual-category-14']);
 // Keep the persisted policy ID compatible with existing fourteen-player games.
@@ -14,6 +14,7 @@ export const supportsDualIdiot=(idiotCount:number|undefined)=>idiotCount===1;
 export type IdiotPolicy=z.infer<typeof idiotPolicySchema>;
 export const standardRoleCounts={wolf:4,villager:4,seer:1,witch:1,hunter:1,idiot:1} as const;
 export const boardCompositionSchema=z.object({
+ variant:z.literal('puppet').optional(),
  seatCount:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
  roles:z.partialRecord(boardRoleSchema,z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)),
  idiotPolicy:idiotPolicySchema.optional()
@@ -24,7 +25,7 @@ export type BoardComposition=z.infer<typeof boardCompositionSchema>;
 export interface BoardConfiguration extends BoardComposition {ruleset:Ruleset;playable:boolean}
 
 export const boardRuleVersion='2026-10-10-v1' as const;
-export const systemPresetIdSchema=z.enum(['standard-12','mechanical-12','mechanical-armor-12','wolf-girl-12']);
+export const systemPresetIdSchema=z.enum(['standard-12','mechanical-12','mechanical-armor-12','wolf-girl-12','puppet-12']);
 export type SystemPresetId=z.infer<typeof systemPresetIdSchema>;
 // Service capability limit, not a gameplay rule; the domain supports larger compositions.
 export const serviceCompositionSchema=boardCompositionSchema.refine(value=>value.seatCount<=256);
@@ -39,5 +40,5 @@ export const boardConfigureSchema=z.object({selection:boardSelectionSchema,setti
 export type BoardConfigure=z.infer<typeof boardConfigureSchema>;
 export interface BoardTemplate {id:string;name:string;revision:number;ruleVersion:typeof boardRuleVersion;composition:BoardConfiguration}
 export interface BoardLibrary {presets:BoardTemplate[];custom:BoardTemplate[]}
-export interface RoomBoardSnapshot {id:string;name:string;ruleVersion:typeof boardRuleVersion;composition:{seatCount:number;roleCounts:BoardComposition['roles'];ruleset:Ruleset;playable:boolean;idiotPolicy?:IdiotPolicy}}
+export interface RoomBoardSnapshot {id:string;name:string;ruleVersion:typeof boardRuleVersion;composition:{variant?:'puppet';seatCount:number;roleCounts:BoardComposition['roles'];ruleset:Ruleset;playable:boolean;idiotPolicy?:IdiotPolicy}}
 export const boardRoleLabels:Record<BoardRole,string>={wolf:'狼人',villager:'村民',seer:'预言家',witch:'女巫',hunter:'猎人',idiot:'白痴',spiritSeer:'通灵师',guard:'守卫',mechanicalWolf:'机械狼',armoredWolf:'装甲狼',mixer:'混血儿',blackWolf:'黑狼王',whiteWolf:'白狼王',wolfGirl:'狼女孩',poisoner:'毒师'};

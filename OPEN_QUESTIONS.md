@@ -1,5 +1,9 @@
 # 未决问题
 
+## 傀儡规则已确认（2026-11-01）
+
+[Issue #15](https://github.com/yup005/note_wolf/issues/15)的三轮修正、圆桌相邻和最多两次隐藏发牌已明确，本轮Owner要求直接实施，无新增待定玩法。现行 [PU-001–010](docs/PUPPET.md)。实体发牌明确阻断；纯手动未有可信转换证据沿用裁定，不能假定转换或按三狼灭判好人胜。部署与真实设备验收另行记录。
+
 ## 狼女孩本轮确认（2026-10-30）
 
 [Issue #9](https://github.com/yup005/note_wolf/issues/9)的首夜自毒边界已由Owner确认允许；表白超时随机非狼人、女孩沿用普通狼下一夜指刀也已明确，整份[设计](docs/superpowers/specs/2026-10-30-wolf-girl-design.md)已批准实施。警上/PK按既有确认资格及新板专属废放逐票窗口处理；现行细节在[WG-001–010](docs/WEREWOLF_RULES_SPEC.md#wolf-girl-2026-10-30)，确认不等于部署或实机验收。
