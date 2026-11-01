@@ -18,7 +18,18 @@ export class DayStore {
  self(token:string,id:string){const m=this.actor(token,id);this.automatic(id);const s=this.row(id);if(!s)throw new LobbyError('DAY_UNAVAILABLE',409);this.assertActive(id,s);return selfDay(s,this.completedNight(id),m.seat!);}
  private assertActive(id:string,s:DayState){this.automatic(id);const row=this.db.prepare('SELECT state FROM night_games WHERE room_id=?').get(id) as {state:string}|undefined;if(row&&JSON.parse(row.state).night!==s.day)throw new LobbyError('PHASE_LOCKED',409);}
  snapshot(id:string){const s=this.row(id);return s?publicDay(s,this.now()):null;}
- tick(){const changed:string[]=[];const rows=this.db.prepare("SELECT d.room_id FROM day_games d JOIN preparations p ON p.room_id=d.room_id WHERE p.game_mode='automatic'").all() as {room_id:string}[];for(const row of rows)this.db.transaction(()=>{const s=this.row(row.room_id)!;if(this.control?.frozen(row.room_id))return;if(s.deadline===null||s.deadline>this.now())return;advanceDay(s,this.now());this.save(row.room_id,s);changed.push(row.room_id);}).immediate();return changed;}
+ tick(){const changed:string[]=[];
+  // MASQ-043: a settled terminal night starts its public announcement without
+  // waiting for a host action. No other board or unfinished night enters here.
+  const nights=this.db.prepare("SELECT n.room_id,n.state FROM night_games n JOIN preparations p ON p.room_id=n.room_id WHERE p.game_mode='automatic'").all() as {room_id:string;state:string}[];
+  for(const row of nights)this.db.transaction(()=>{
+   if(this.control?.frozen(row.room_id))return;const n=JSON.parse(row.state) as NightState;
+   if(n.phase!=='first_night_complete'||n.engine?.board.composition.ruleset!=='masquerade'||n.engine.victory.status!=='ended')return;
+   const previous=this.row(row.room_id);if(previous&&previous.day>=n.night)return;
+   if(previous){if(previous.phase!=='day_complete'||n.night!==previous.day+1)return;this.db.prepare('INSERT OR IGNORE INTO game_history(room_id,kind,round,state) VALUES (?,?,?,?)').run(row.room_id,'day',previous.day,JSON.stringify(previous));}
+   const at=this.now(),s=createDay(n,this.rules,at,previous??undefined);dayCommand(s,{seat:n.players[0].seat,isHost:true},{action:'start',turnId:s.turnId},at);this.save(row.room_id,s);changed.push(row.room_id);
+  }).immediate();
+  const rows=this.db.prepare("SELECT d.room_id FROM day_games d JOIN preparations p ON p.room_id=d.room_id WHERE p.game_mode='automatic'").all() as {room_id:string}[];for(const row of rows)this.db.transaction(()=>{const s=this.row(row.room_id)!;if(this.control?.frozen(row.room_id))return;if(s.deadline===null||s.deadline>this.now())return;advanceDay(s,this.now());this.save(row.room_id,s);changed.push(row.room_id);}).immediate();return changed;}
  testAdvance(id:string){this.mutate(id,s=>{if(s.deadline===null)throw new LobbyError('PHASE_LOCKED',409);s.deadline=this.now();advanceDay(s,this.now());});}
  testActionSeat(id:string){const s=this.row(id);if(!s)return null;if(s.phase==='death_skill'||s.phase==='last_words'||s.phase==='badge_transfer')return s.currentDeath;if(s.speaker!==null)return s.speaker;if(s.phase==='day_direction'&&s.sheriff!==null)return s.sheriff;if(s.phase==='sheriff_signup')return s.players.find(p=>p.alive&&!Object.hasOwn(s.signup,p.seat))?.seat??null;if(s.phase==='voting'&&s.vote?.method==='phone')return s.vote.eligible.find(p=>!Object.hasOwn(s.vote!.ballots,p))??null;return null;}
 }

@@ -1,5 +1,22 @@
 # 笔记狼人杀｜产品功能需求总表（Product Requirement Matrix）
 
+假面人数审查（PEOPLE-009，来源Issue #17）：当前支持 `minPlayers=maxPlayers=12`，6–11不支持，13–16待独立验证/授权并阻止开局；17以上不支持。必需阵容、零普狼、初始/跨夜目标耗尽、刀权、胜负及跨人数自动/手动测试见 [兼容性审查](MASQUERADE.md#人数兼容性审查people-009--issue-17)。不在本批改变其他板或全局旧范围实现。
+
+## 假面舞会新增范围（2026-11-01，MASQ-001–044）
+
+规则已经冻结，Owner已授权实现；完整现行ID、覆盖关系与来源见 [MASQUERADE.md](MASQUERADE.md)，尤其MASQ-043覆盖041、044优先于040/020。代码与验收对应如下；实际执行状态见 [TEST_REPORT.md](TEST_REPORT.md)，不代表已上线。
+
+| 需求ID | 实现与验收 |
+| --- | --- |
+| MASQ-001–008 | 独立模板/夜序、面具临时计数、自爆限制与公告保密；board/night/day/server |
+| MASQ-009–018 | 三份整局历史、重复点杀、无效池不耗资格、处罚取消后续技能/刀、继承；night/server |
+| MASQ-019–025 | 合法超时补齐、实际目标私密回执、药与免疫、首夜顺序、池耗尽跳过；night/day/browser |
+| MASQ-026–032 | 重复舞者草稿、失权、保护原刀口、三人免刀、死亡公告/同时判胜、默认白痴；night/day |
+| MASQ-033–040 | 60秒共享/180秒继承、死因隐私、夜初快照、即查即回、夜内结果截止、合法草稿优先；deadline/night/server/browser |
+| MASQ-041 | 已作废，仅历史，禁止实现旧45B |
+| MASQ-042–044 | 继承超时空刀、任意夜夜末终局跳竞选、49A非法假面草稿点杀；night/day/deadline |
+| 生命周期/权限（上述ID共用） | judge补录/切回、HTTP/Socket、同房新局、归档/复盘、旧板回归；server/lifecycle及全量回归 |
+
 ## 新手提示与手机候场（2026-11-01）
 
 TUTORIAL-001 / SETUP-001 / NIGHT-002–005按[Owner本轮明确请求](PRODUCT_DECISIONS.md#help-mobile-2026-11-01)补充：教学及狼人说明可在本设备收起并回看，候场导航分层、局数解释、单人/少于板子人数候场说明；正式发牌人数和配牌不变。范围见[规则](WEREWOLF_RULES_SPEC.md#help-mobile-2026-11-01)，期望与执行证据分别见用例/报告；原有需求ID和状态不变；Owner后续已明确授权合并PR #13并部署Oracle，[上线及验证](ORACLE_DEPLOYMENT.md#pr13-2026-11-01)单独记录，不提升实机验收。

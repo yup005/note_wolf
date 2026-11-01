@@ -4,6 +4,7 @@ export type DayPhase='awaiting_host'|'sheriff_signup'|'sheriff_speech'|'sheriff_
 export type VotePurpose='sheriff'|'sheriff_pk'|'exile'|'exile_pk';
 export interface DayVoteResult {purpose:VotePurpose;counts:{seat:number;votes:number}[];ballots?:{seat:number;target:number|null}[];leaders:number[]}
 export interface DayPublic {
+ terminalAnnouncement?:boolean;
  personalResults?:{seat:number;won:boolean}[];
  skillResults?:{key:string;seat:number;activated:boolean;at:number}[];
  day:number;phase:DayPhase;turnId:string;deadline:number|null;serverNow:number;alive:number[];dead:number[];

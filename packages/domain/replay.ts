@@ -32,6 +32,8 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
  const sections=record.rounds.map(round=>{
   const lines:string[]=[];const e=effectiveGameEvents(round.events);
   if(round.kind==='night'){
+   const m=round.engine?.masquerade;if(m){if(m.pool.length)lines.push(`共舞：${seats(m.pool)}`);for(const h of m.inspected.filter(h=>h.night===round.round))lines.push(`假面查验 ${h.target} 号：${m.pool.includes(h.target)?'入池':'未入池'}（${h.source==='random'?'系统随机':h.source==='draft'?'截止草稿':'本人确认'}）`);for(const h of m.masked.filter(h=>h.night===round.round))lines.push(`假面给 ${h.target} 号戴面具（仅影响当夜舞池计数）`);for(const p of m.penalties)lines.push(`${p.seat} 号违规点杀（${p.reason}）`);}
+
    const knife=e.findLast(x=>x.type==='knife_resolved');const priority=e.find(x=>x.type==='priority_knife');if(knife)lines.push(knife.target==null?'狼人空刀':`狼刀 ${knife.target} 号${priority?`（${priority.seat} 号自爆狼指刀）`:''}`);
    for(const action of e){
     if(action.type==='girl_confession')lines.push(`${action.seat} 号狼女孩表白 ${action.target} 号${roles.get(action.target!)==='villager'?'，平民成为狼混，个人胜负随狼方':'，神职拒绝'}`);
@@ -87,7 +89,7 @@ export function summarizeReplay(record:GameReplay):ReplaySection[]{
     if(action.type==='idiot_flip')lines.push(`${action.seat} 号白痴翻牌，神边出局、民边存活`);
     if(action.type.startsWith('death_')){
      const who=`${action.seat} 号`;const reason=action.type.slice(6);if(['shot','white-wolf'].includes(reason)&&shotTargets.has(action.seat))continue;
-     const description:Record<string,string>={knife:'被狼刀杀死',poison:'被毒死',shot:'被开枪带走',exile:roles.get(action.seat!)==='idiot'?'被放逐，白痴翻牌死亡':'被放逐',explosion:'狼人自爆','white-wolf':'被白狼王带走','girl-retaliation':'被狼女孩自爆报复带走'};
+     const description:Record<string,string>={dance:'因共舞出局',penalty:'因违规点杀出局',knife:'被狼刀杀死',poison:'被毒死',shot:'被开枪带走',exile:roles.get(action.seat!)==='idiot'?'被放逐，白痴翻牌死亡':'被放逐',explosion:'狼人自爆','white-wolf':'被白狼王带走','girl-retaliation':'被狼女孩自爆报复带走'};
      if(description[reason])lines.push(`${who}${description[reason]}${roles.get(action.seat!)==='hunter'&&(reason==='poison'||reason==='girl-retaliation'||hunterSpent.has(action.seat!))?'（技能不可发动）':''}`);
     }
     if(action.type==='white_wolf_take')lines.push(`${action.seat} 号白狼王自爆，带走 ${action.target} 号`);

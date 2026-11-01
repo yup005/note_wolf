@@ -9,10 +9,10 @@ import {evaluateVictory} from './victory.js';
 import type {EngineState} from '../contracts/engine.js';
 import {isWolfRole,isSharedWolfRole} from '../contracts/board.js';
 import {useSkill} from './skills.js';
-type DeathReason='knife'|'poison'|'shot'|'exile'|'explosion'|'white-wolf'|'girl-retaliation';
+type DeathReason='knife'|'poison'|'shot'|'exile'|'explosion'|'white-wolf'|'girl-retaliation'|'dance'|'penalty';
 type Task={seat:number;step:'skill'|'words'|'badge'};
 export interface DayState {
- engine?:EngineState;extraNightSeat?:number|null;flippedIdiots?:number[];
+ terminalNight?:boolean;engine?:EngineState;extraNightSeat?:number|null;flippedIdiots?:number[];
  interjection?:{seat:number;startedAt:number;remainingSpeechMs:number;pausedElapsedMs?:number}|null;interjectionUsed?:Record<number,number>;
  voteDefaults?:{seconds:number;visibility:'individual'|'totals'};
  day:number;phase:DayPhase;turnId:string;deadline:number|null;players:{seat:number;role:Role;alive:boolean}[];rules:FirstDayRules;
@@ -34,7 +34,7 @@ export function createDay(n:NightState,rules:FirstDayRules,now:number,previous?:
   const resolution=n.engine.resolution;if(!resolution||resolution.status!=='settled')return error('NIGHT_NOT_SETTLED');
   for(const death of resolution.deaths){
    const effects=resolution.effects.filter(e=>death.sourceEffectIds.includes(e.id));
-   pendingDeaths.push({seat:death.seat,reason:effects.some(e=>e.abilityType==='poison')?'poison':'knife'});
+   pendingDeaths.push({seat:death.seat,reason:effects.some(e=>e.abilityType==='rule-penalty')?'penalty':effects.some(e=>e.abilityType==='dance-death')?'dance':effects.some(e=>e.abilityType==='poison')?'poison':'knife'});
   }
  }else{
   if(n.knife!==null&&n.witchChoice?.choice!=='save')pendingDeaths.push({seat:n.knife,reason:'knife'});
@@ -80,6 +80,7 @@ function shuffle<T>(items:T[],choose:(n:number)=>number){const out=[...items];fo
 function announce(s:DayState,now:number,choose:(n:number)=>number){
  s.announcement=s.pendingDeaths.map(p=>p.seat).sort((a,b)=>a-b);for(const d of s.pendingDeaths)kill(s,d.seat,d.reason,now);s.pendingDeaths=[];
  if(s.extraNightSeat!==null&&s.extraNightSeat!==undefined)s.extraNightSeat=null;
+ if(s.engine?.board.composition.ruleset==='masquerade'&&s.engine.victory.status==='ended'){s.terminalNight=true;phase(s,'night_announcement',now,5);return;}
  if(checkWin(s,now))return;s.tasks=shuffle(s.announcement,choose).flatMap(seat=>deathTasks(s,seat,s.day===1));phase(s,'night_announcement',now);
 }
 function startSpeeches(s:DayState,seats:number[],p:'sheriff_speech'|'day_speech',now:number){s.speakers=[...seats];s.speaker=s.speakers.shift()??null;if(s.speaker!==null)phase(s,p,now,90);else if(p==='sheriff_speech')phase(s,'sheriff_withdraw',now);else setupVote(s,'exile',participants(s),participants(s),now);}
@@ -139,7 +140,7 @@ function finishInterjection(s:DayState,now:number){
  s.deadline=now+current.remainingSpeechMs;s.interjection=null;s.turnId=randomUUID();s.events.push({type:'interjection_ended',seat:current.seat,at:now});
 }
 export function advanceDay(s:DayState,now:number,choose=(n:number)=>randomInt(n)){
- while(s.deadline!==null&&now>=s.deadline){const boundary=s.deadline;if(s.interjection){finishInterjection(s,boundary);continue;}if(s.phase==='voting')tally(s,boundary);else if(s.phase==='sheriff_speech'||s.phase==='day_speech'){
+ while(s.deadline!==null&&now>=s.deadline){const boundary=s.deadline;if(s.interjection){finishInterjection(s,boundary);continue;}if(s.terminalNight&&s.phase==='night_announcement'){checkWin(s,boundary);}else if(s.phase==='voting')tally(s,boundary);else if(s.phase==='sheriff_speech'||s.phase==='day_speech'){
   if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.speakers.length===0){s.speaker=null;setupVote(s,'exile_pk',s.vote.candidates,s.vote.eligible,boundary);}else nextSpeaker(s,boundary);
  }else if(s.phase==='death_skill'||s.phase==='last_words')nextTask(s,boundary);else error();}
 }
@@ -156,7 +157,7 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
   s.interjection={seat,startedAt:now,remainingSpeechMs:Math.max(0,s.deadline!-now)};s.deadline=now+interjectionRemaining(s,seat);s.turnId=randomUUID();s.events.push({type:'interjection_started',seat,at:now});return;
  }
 
- if(c.action==='start'){host();need('awaiting_host');if(s.rules.winTiming===null||s.rules.preAnnouncementEligibility===null)error('DAY_RULE_UNRESOLVED');if(s.rules.winTiming==='before_election')error('DAY_RULE_UNRESOLVED');if(s.badge==='deferred'){s.candidates=s.candidates.filter(seat=>participants(s).includes(seat));s.speaker=null;s.speakers=[];if(s.candidates.length<=1)closeElection(s,now);else phase(s,'sheriff_withdraw',now);}else phase(s,s.day===1?'sheriff_signup':'night_announcement',now);return;}
+ if(c.action==='start'){host();need('awaiting_host');if(s.engine?.board.composition.ruleset==='masquerade'&&s.engine.victory.status==='ended'){announce(s,now,choose);return;}if(s.rules.winTiming===null||s.rules.preAnnouncementEligibility===null)error('DAY_RULE_UNRESOLVED');if(s.rules.winTiming==='before_election')error('DAY_RULE_UNRESOLVED');if(s.badge==='deferred'){s.candidates=s.candidates.filter(seat=>participants(s).includes(seat));s.speaker=null;s.speakers=[];if(s.candidates.length<=1)closeElection(s,now);else phase(s,'sheriff_withdraw',now);}else phase(s,s.day===1?'sheriff_signup':'night_announcement',now);return;}
  if(c.action==='signup'){need('sheriff_signup');if(!p!.alive||dualFlipped(s,seat))error('NOT_YOUR_TURN',403);s.signup[seat]=c.join;return;}
  if(c.action==='close_signup'){host();need('sheriff_signup');s.originalCandidates=participants(s).filter(seat=>s.signup[seat]);s.candidates=[...s.originalCandidates];if(s.candidates.length===participants(s).length||s.candidates.length===0){s.badge='lost';electionFinished(s,now);}else if(s.candidates.length===1)closeElection(s,now);else{const seats=[...s.candidates].sort((a,b)=>a-b);const start=choose(seats.length);startSpeeches(s,[...seats.slice(start),...seats.slice(0,start)],'sheriff_speech',now);}return;}
  if(c.action==='withdraw'){if(!['sheriff_speech','sheriff_withdraw'].includes(s.phase)||!s.candidates.includes(seat))error();s.candidates=s.candidates.filter(p=>p!==seat);s.speakers=s.speakers.filter(p=>p!==seat);if(s.vote?.purpose==='sheriff_pk'){s.vote.candidates=[...s.candidates];s.vote.eligible=participants(s).filter(p=>!s.candidates.includes(p));}if(s.candidates.length<=1){closeElection(s,now);announce(s,now,choose);return;}if(s.speaker===seat){if(s.interjection)finishInterjection(s,now);nextSpeaker(s,now);}return;}
@@ -182,7 +183,7 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
   const counts=v.candidates.map(seat=>({...c.counts.find(c=>c.seat===seat)!}));const max=Math.max(0,...counts.map(c=>c.votes));s.result={purpose:v.purpose,counts,leaders:max?counts.filter(c=>c.votes===max).map(c=>c.seat):[]};s.events.push({type:'vote_outcome',at:now,result:structuredClone(s.result!)});phase(s,'vote_result',now);return;
  }
  if(c.action==='close_vote'){host();need('voting');if(s.vote!.method!=='offline')error();tally(s,now);return;}
- if(c.action==='continue'){host();if(s.phase==='vote_result')continueResult(s,now,choose);else if(s.phase==='night_announcement'){if(s.announcement===null)announce(s,now,choose);else nextTask(s,now);}else error();return;}
+ if(c.action==='continue'){host();if(s.phase==='vote_result')continueResult(s,now,choose);else if(s.phase==='night_announcement'){if(s.terminalNight){checkWin(s,now);return;}if(s.announcement===null)announce(s,now,choose);else nextTask(s,now);}else error();return;}
  if(c.action==='shoot'){
   need('death_skill');if(!canShoot(s,seat))error('NOT_YOUR_TURN',403);
   const engine=s.engine?.players.find(e=>e.seat===seat),shot=engine?.abilities.skills.find(a=>a.kind==='shot');
@@ -244,7 +245,7 @@ function publicDeathSkills(s:DayState):NonNullable<DayPublic['skillResults']>{
  }
  return results;
 }
-export function publicDay(s:DayState,now:number):DayPublic{return {...(s.winner&&s.engine?.victory.status==='ended'?{personalResults:s.engine.victory.personalResults}:{}),skillResults:publicDeathSkills(s),interjection:s.interjection?{seat:s.interjection.seat,originalSpeaker:(s.phase==='last_words'?s.currentDeath:s.speaker)!}:null,day:s.day,speechMode:s.speechMode==='ordered'?'phone':s.speechMode,direction:s.direction,speechStart:s.speechStart,nightDeaths:s.announcement===null?[]:s.nightDeaths,phase:s.phase,turnId:s.turnId,deadline:s.deadline,serverNow:now,alive:living(s),dead:s.deaths.map(d=>d.seat).sort((a,b)=>a-b),signupCount:living(s).filter(seat=>Object.hasOwn(s.signup,seat)).length,sheriff:s.sheriff,badge:s.badge,candidates:[...s.candidates],originalCandidates:[...s.originalCandidates],speaker:s.speaker,currentDeath:s.currentDeath,vote:s.vote?{purpose:s.vote.purpose,method:s.vote.method,visibility:s.vote.visibility,eligible:s.vote.eligible,candidates:s.vote.candidates,submittedCount:Object.keys(s.vote.ballots).length}:null,result:s.phase==='vote_result'?s.result:null,announcement:s.announcement,revealed:s.revealed,winner:s.winner,reason:s.reason};}
+export function publicDay(s:DayState,now:number):DayPublic{return {...(s.terminalNight?{terminalAnnouncement:true}:{}),...(s.winner&&s.engine?.victory.status==='ended'?{personalResults:s.engine.victory.personalResults}:{}),skillResults:publicDeathSkills(s),interjection:s.interjection?{seat:s.interjection.seat,originalSpeaker:(s.phase==='last_words'?s.currentDeath:s.speaker)!}:null,day:s.day,speechMode:s.speechMode==='ordered'?'phone':s.speechMode,direction:s.direction,speechStart:s.speechStart,nightDeaths:s.announcement===null?[]:s.nightDeaths,phase:s.phase,turnId:s.turnId,deadline:s.deadline,serverNow:now,alive:living(s),dead:s.deaths.map(d=>d.seat).sort((a,b)=>a-b),signupCount:living(s).filter(seat=>Object.hasOwn(s.signup,seat)).length,sheriff:s.sheriff,badge:s.badge,candidates:[...s.candidates],originalCandidates:[...s.originalCandidates],speaker:s.speaker,currentDeath:s.currentDeath,vote:s.vote?{purpose:s.vote.purpose,method:s.vote.method,visibility:s.vote.visibility,eligible:s.vote.eligible,candidates:s.vote.candidates,submittedCount:Object.keys(s.vote.ballots).length}:null,result:s.phase==='vote_result'?s.result:null,announcement:s.announcement,revealed:s.revealed,winner:s.winner,reason:s.reason};}
 export function privateDay(s:DayState,seat:number):DayPrivate{
  const p=s.players.find(p=>p.seat===seat),vote=s.vote,engine=s.engine?.players.find(e=>e.seat===seat);
  return {turnId:s.turnId,seat,

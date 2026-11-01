@@ -1,5 +1,18 @@
 # 阶段验证记录
 
+## 当前开发：假面舞会（2026-11-01，MASQ-001–044）
+
+范围为 [MASQUERADE.md](MASQUERADE.md) 和 Owner 批准的 [实施设计](superpowers/specs/2026-11-01-masquerade-design.md)。验证只使用隔离合成玩家/SQLite、Chromium手机视口，不访问线上真实玩家数据。
+
+- 基线：690单元通过。
+- 新增规则/期限/HTTP/Socket/重启/重开/私密UI用例与手机流程见 `tests/masquerade-*.test.ts`、`tests/e2e/masquerade.spec.ts`。
+- 第一轮全量709项中两项失败均为既有测试硬编码官方模板数4；本板新增后应为5，已更新并保持标准模板首位。随后714项全通过；后续审阅及生命周期补充后的最终计数待本轮命令结束记录。
+- 开始时沙箱连接代理EPERM，授予命令网络权限后 `npm ci` / `git fetch origin` 成功；不能将其归为产品失败。手机初次失败为测试缺失新板名称映射；后台恢复后 SessionBoundary 会重建测试操作者，重新选择本人测试角色后继续，不能复用已卸载组件的模拟身份。
+- 独立审阅及修复记录见交接；构建仍保留既有500KB包体提示，不影响命令成功。
+
+最终测试/构建/E2E结果待验证结束补齐。未合并/部署，真实iPhone/VoiceOver/真实声音、锁屏/弱网/现场多人尚未验收。
+
+
 ## 当前发布：教学提示与手机候场（2026-11-01，Oracle）
 
 已按本次明确授权合并[PR #13](https://github.com/yup005/note_wolf/pull/13)，并部署源码[8765da006f6e79565aa9921bdad7b5c8e6d2b37c](https://github.com/yup005/note_wolf/commit/8765da006f6e79565aa9921bdad7b5c8e6d2b37c)至[Oracle](https://note-wolf.192-18-134-130.sslip.io/)，11:54:48 PST上线。合并树与已验证分支一致；本地690单元、typecheck/build、12项手机专项及7项生产PWA通过，Oracle690单元及生产构建通过，公网手机3/3、发布前同一合成房两个座位和HTTPS/WebSocket重连恢复通过。切换前非候场房数0，一致性备份已生成；Render保持原状。完整命令范围、环境失败历史及验证边界见[发布记录](ORACLE_DEPLOYMENT.md#pr13-2026-11-01)。真实iPhone/VoiceOver/声音、后台弱网及实体多人另验；本批只补部署文档，不重复发布或重跑产品测试。
