@@ -212,7 +212,6 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
  if(c.action==='speech_mode'){host();need('day_direction');if(s.delayedDeaths?.length&&c.mode==='free')error('TREASURE_MASK_ORDERED_REQUIRED');s.speechMode=c.mode==='ordered'?'phone':c.mode;if(s.sheriff===null)s.direction='ascending';startDaySpeech(s,now,choose);return;}
  if(c.action==='direction'){need('day_direction');if(seat!==s.sheriff)error('NOT_YOUR_TURN',403);if(c.start!==undefined&&!participants(s).includes(c.start))error('INVALID_INPUT');s.speechStart=c.start??null;s.direction=c.direction;startDaySpeech(s,now,choose);return;}
  if(c.action==='explode'){
-  if(s.delayedDeaths?.length)error('RULE_DECISION_REQUIRED');
   if(p?.role==='wolfGirl'&&s.engine?.board.composition.ruleset==='wolf-girl'){if(!canExplode(s,seat))error('NOT_YOUR_TURN',403);explodeGirl(s,seat,now,choose);return;}
   if(s.rules.explosionOrder===null||(s.voteStarted&&s.rules.explosionLock===null))error('DAY_RULE_UNRESOLVED');if(s.voteStarted&&s.rules.explosionLock==='after_any_vote')error('PHASE_LOCKED');if(!canExplode(s,seat))error('NOT_YOUR_TURN',403);
   if(s.phase==='day_speech'&&s.vote?.purpose==='exile_pk'&&s.vote.candidates.includes(seat))error('NOT_YOUR_TURN',403);
@@ -221,7 +220,7 @@ function applyDayCommand(s:DayState,actor:{seat:number;isHost:boolean},c:DayComm
   if(onSheriff&&s.sheriff===null){s.electionPurpose=s.vote?.purpose==='sheriff_pk'?'sheriff_pk':s.electionPurpose??'sheriff';s.explosions++;s.badge=s.explosions>=2?'lost':'deferred';}
   const engine=s.engine?.players.find(e=>e.seat===seat),take=engine?.abilities.skills.find(a=>a.kind==='explode-take');
   kill(s,seat,'explosion',now);const shown=take?'whiteWolf':p!.role;reveal(s,seat,shown);if(engine)engine.publicState.revealedRole=shown;s.priorityWolf=!swallowing&&isSharedWolfRole(p!.role)&&s.players.some(p=>p.alive&&isSharedWolfRole(p.role))?seat:null;
-  s.afterDeaths='night';const pending=s.pendingDeaths.filter(p=>p.seat!==seat);for(const death of pending)kill(s,death.seat,death.reason,now);s.announcement=[...new Set([seat,...pending.map(d=>d.seat)])].sort((a,b)=>a-b);s.pendingDeaths=[];if(checkWin(s,now))return;
+  s.afterDeaths='night';const pending=[...s.pendingDeaths,...(s.delayedDeaths??[])].filter(p=>p.seat!==seat);s.delayedDeaths=[];for(const death of pending)kill(s,death.seat,death.reason,now);s.announcement=[...new Set([seat,...pending.map(d=>d.seat)])].sort((a,b)=>a-b);s.pendingDeaths=[];if(checkWin(s,now))return;
   s.tasks=shuffle([...pending.map(p=>p.seat),seat],choose).flatMap(dead=>deathTasks(s,dead,dead===seat?swallowing&&s.day===1:s.day===1));s.vote=null;s.speaker=null;if(engine&&take&&!swallowing){engine.abilities=useSkill(engine.abilities,take.id,{requestId:s.turnId,night:s.day,target:null});s.currentDeath=seat;phase(s,'white_wolf_target',now);}else phase(s,'night_announcement',now);return;
  }
  error();

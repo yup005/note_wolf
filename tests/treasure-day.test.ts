@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createDay,dayCommand,selfDay} from '../packages/domain/day.js';
 import {firstDayRules} from '../packages/contracts/day.js';
 import {fixture,move} from './treasure-fixture.js';
-import {beginNight} from '../packages/domain/night.js';
+import {beginNight,createNight} from '../packages/domain/night.js';
 import {settleTreasure} from '../packages/domain/treasureNight.js';
 const seat=(s:ReturnType<typeof fixture>,r:string)=>s.players.find(p=>p.role===r)!.seat;
 test('last god masked knife death ends before election or delayed speech',()=>{
@@ -40,9 +40,10 @@ test('masked campaign speaker withdrawal resolves death before electing other fi
  const n=fixture();beginNight(n,0,()=>0);move(n,'first_night_complete');const m=seat(n,'masked'),v=seat(n,'villager');n.knife=m;settleTreasure(n);const d=createDay(n,firstDayRules,1);d.phase='sheriff_speech';d.speaker=m;d.candidates=[m,v];d.originalCandidates=[m,v];d.speakers=[v];
  dayCommand(d,{seat:m,isHost:false},{action:'withdraw',turnId:d.turnId},2);assert.equal(d.players.find(p=>p.seat===m)!.alive,false);assert.equal(d.sheriff,v);
 });
-test('explosion cannot silently discard a pending masked death',()=>{
+test('explosion announces a pending masked death and clears it before the next night',()=>{
  const n=fixture();beginNight(n,0,()=>0);move(n,'first_night_complete');const m=seat(n,'masked'),w=seat(n,'wolf');n.knife=m;settleTreasure(n);const d=createDay(n,firstDayRules,1);dayCommand(d,{seat:1,isHost:true},{action:'start',turnId:d.turnId},2);
- assert.throws(()=>dayCommand(d,{seat:w,isHost:false},{action:'explode',confirmed:true,turnId:d.turnId},3),/RULE_DECISION_REQUIRED/);assert.ok(d.delayedDeaths?.some(p=>p.seat===m));assert.equal(d.players.find(p=>p.seat===w)!.alive,true);
+ dayCommand(d,{seat:w,isHost:false},{action:'explode',confirmed:true,turnId:d.turnId},3);assert.deepEqual(d.delayedDeaths,[]);assert.equal(d.players.find(p=>p.seat===m)!.alive,false);assert.equal(d.players.find(p=>p.seat===w)!.alive,false);assert.ok(d.announcement?.includes(m));assert.ok(d.announcement?.includes(w));assert.equal(d.deaths.find(p=>p.seat===m)!.reason,'knife');
+ const next=createNight(d.players,1000,{night:2,antidote:false,poison:true,hunterSpent:false,priorityWolf:d.priorityWolf,treasure:d.treasure});assert.equal(next.players.find(p=>p.seat===m)!.alive,false);
 });
 test('last masked god poison and dream deaths also bypass delayed speech',()=>{
  for(const [pick,cause] of [[1,'poison'],[3,'dream']] as const){
@@ -50,4 +51,14 @@ test('last masked god poison and dream deaths also bypass delayed speech',()=>{
   if(cause==='poison'){n.treasure!.selected='poisoner';n.treasure!.poisons=[{caster:t,target:m}];}else{n.treasure!.selected='dreamer';n.treasure!.dreams=[{caster:t,target:m,repeat:true}];}
   settleTreasure(n);assert.equal(n.treasure!.deaths.find(d=>d.seat===m)!.delayed,false);const d=createDay(n,firstDayRules,1);dayCommand(d,{seat:1,isHost:true},{action:'start',turnId:d.turnId},2);assert.equal(d.winner,'wolves');assert.equal(d.phase,'ended');
  }
+});
+
+test('explosion settles delayed masked wolf in the same batch before declaring good victory',()=>{
+ const n=fixture('fixed-wolf',4);beginNight(n,0,()=>0);move(n,'first_night_complete');const t=seat(n,'treasureMaster'),w=seat(n,'wolf');n.treasure!.selected='masked';for(const p of n.players)if((p.role==='wolf'||p.role==='blackWolf')&&p.seat!==w)p.alive=false;n.knife=t;settleTreasure(n);
+ const d=createDay(n,firstDayRules,1);dayCommand(d,{seat:1,isHost:true},{action:'start',turnId:d.turnId},2);assert.equal(d.winner,null);dayCommand(d,{seat:w,isHost:false},{action:'explode',confirmed:true,turnId:d.turnId},3);
+ assert.equal(d.winner,'good');assert.equal(d.phase,'ended');assert.deepEqual(d.delayedDeaths,[]);assert.ok(d.announcement?.includes(t));assert.equal(d.deaths.filter(p=>p.seat===t).length,1);
+});
+test('a nonwolf cannot flush delayed masked death by forging an explosion',()=>{
+ const n=fixture();beginNight(n,0,()=>0);move(n,'first_night_complete');const m=seat(n,'masked'),v=seat(n,'villager');n.knife=m;settleTreasure(n);const d=createDay(n,firstDayRules,1);dayCommand(d,{seat:1,isHost:true},{action:'start',turnId:d.turnId},2);const before=structuredClone(d);
+ assert.throws(()=>dayCommand(d,{seat:v,isHost:false},{action:'explode',confirmed:true,turnId:d.turnId},3),/NOT_YOUR_TURN/);assert.deepEqual(d,before);
 });
