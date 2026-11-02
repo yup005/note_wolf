@@ -22,7 +22,7 @@ export function RecordsPanel({view,onClose,onRefresh,historical=false}:{historic
  const [post,setPost]=useState<string>();const [history,setHistory]=useState<OfficialRevision[]>();const [confirm,setConfirm]=useState<'commit'|'switch'|'accept'|'adjudicate'|'finish-record'|null>(null);const [request,setRequest]=useState<{version:number;request:{author:string;document:RecordDocument}|null}>();
  const [ruling,setRuling]=useState<'wolves'|'good'|''>('');
  const recordOnly=!Object.entries(room.board.composition.roleCounts).some(([role,count])=>count!>0&&isWolfRole(role as BoardRole));
- const hasManualConflict=!!room.board.composition.roleCounts.mixer||!!room.board.composition.roleCounts.mechanicalWolf&&!!room.board.composition.roleCounts.idiot;
+ const hasManualConflict=room.board.composition.ruleset==='puppet'||!!room.board.composition.roleCounts.mixer||!!room.board.composition.roleCounts.mechanicalWolf&&!!room.board.composition.roleCounts.idiot;
  const ended=historical||room.manual?.status==='ended'||room.day?.phase==='ended';const editable=!!list?.canRecord;const dirty=!!document&&!!draft&&JSON.stringify(document)!==JSON.stringify(draft.document);
  async function load(){const r=await api<RecordList>(base+'/records');setList(r);setDraft(r.own??undefined);setDocument(r.own?.document);if(me.isHost&&room.manual)setRequest(await api(liveBase+'/manual/request'));}
  useEffect(()=>{let cancelled=false;void api<RecordList>(base+'/records').then(r=>{if(!cancelled){setList(r);setDraft(r.own??undefined);setDocument(r.own?.document);}}).catch(e=>{if(!cancelled)setError(errorText(e));});return()=>{cancelled=true;};},[base,me.isHost]);

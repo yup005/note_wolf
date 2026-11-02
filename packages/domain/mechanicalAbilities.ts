@@ -109,7 +109,7 @@ export function useConfirmedAbility(input:SkillSnapshot,skillId:string,command:S
   if(context.settledVictory?.status==='unresolved')return blocked(context.settledVictory.questionId);
   if(actor.alive||context.settledVictory?.status!=='playing'||!context.deathCauses?.some(c=>c==='wolf-knife'||c==='extra-knife'||c==='exile'||instance.parameters.damage==='black-wolf-shot'&&(c==='shot'||c==='white-wolf'))||context.deathCauses.some(c=>c==='poison'||c==='explosion')||use.target===actor.seat)throw new LobbyError('SHOT_NOT_AUTHORIZED',409);
  }else if(!actor.alive)throw new LobbyError('INVALID_TARGET');
- if(instance.kind==='inspect'&&use.target===actor.seat)throw new LobbyError('INVALID_TARGET');
+ if(instance.kind==='inspect'&&use.target===actor.seat&&context.ruleset!=='puppet')throw new LobbyError('INVALID_TARGET');
  if(instance.kind==='guard'&&!previous&&use.target!==null&&instance.uses.some(u=>u.night===use.night-1&&u.target===use.target))throw new LobbyError('GUARD_CONSECUTIVE_TARGET',409);
  if(instance.kind==='poison'||instance.kind==='antidote'){
   if(snapshot.originalRole==='witch'&&snapshot.skills.some(s=>s.kind!==instance.kind&&['poison','antidote'].includes(s.kind)&&s.uses.some(u=>u.night===use.night)))throw new LobbyError('WITCH_TWO_MEDICINES',409);

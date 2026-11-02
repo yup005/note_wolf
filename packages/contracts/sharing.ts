@@ -6,4 +6,4 @@ export const shareCommandSchema=z.object({action:z.enum(['create','regenerate','
 export type ShareCommand=z.infer<typeof shareCommandSchema>;
 export interface ShareStatus {state:'none'|'active'|'paused'|'revoked'|'withdrawn';revision:number;token:string|null;canCreate:boolean}
 export interface OwnShare {recordId:string;code:string;author:string;official:boolean;status:ShareStatus}
-export interface SharedRecord {code:string;author:string;official:boolean;version:number;publishedAt:number;document:RecordDocument;outcome:RecordOutcome;outcomeSource?:RecordOutcomeSource;officialUpdate?:OfficialUpdate;roles:{seat:number;role:Role}[]}
+export interface SharedRecord {puppet?:import('./records.js').PuppetDisclosure;code:string;author:string;official:boolean;version:number;publishedAt:number;document:RecordDocument;outcome:RecordOutcome;outcomeSource?:RecordOutcomeSource;officialUpdate?:OfficialUpdate;roles:{seat:number;role:Role}[]}
