@@ -5,10 +5,11 @@ import {createBoardConfiguration,boardStartError} from './boardConfig.js';
 export const ruleReferenceVersion='2026-10-20-v1';
 export interface RoleReference {role:BoardRole;label:string;count:number;notes:string[];source:string}
 export interface RuleReference {version:string;supported:boolean;roles:RoleReference[];mechanics:string[];cautions:string[]}
-const sources:Record<BoardRole,string>={wolfGirl:'WG-002–009',poisoner:'WG-005',wolf:'N-002 / N-003 / X-001',villager:'B-001 / D-003',seer:'N-005',witch:'N-004',hunter:'N-006 / R-003',idiot:'B-002 v3',spiritSeer:'机械狼通灵师：查验与拟态',guard:'N-007',mechanicalWolf:'COPY-001 / 机械狼通灵师',armoredWolf:'COPY-001 / 机械装甲',mixer:'WIN-001 / 混血儿确认',blackWolf:'CFG-05 / 黑白狼王确认',whiteWolf:'CFG-05 / 黑白狼王确认'};
+const sources:Record<BoardRole,string>={dancer:'MASQ-003–005/010–012/019/026/029/033',mask:'MASQ-001/002/006/009/013–018/020/025/027/034–044',wolfGirl:'WG-002–009',poisoner:'WG-005',wolf:'N-002 / N-003 / X-001',villager:'B-001 / D-003',seer:'N-005',witch:'N-004',hunter:'N-006 / R-003',idiot:'B-002 v3',spiritSeer:'机械狼通灵师：查验与拟态',guard:'N-007',mechanicalWolf:'COPY-001 / 机械狼通灵师',armoredWolf:'COPY-001 / 机械装甲',mixer:'WIN-001 / 混血儿确认',blackWolf:'CFG-05 / 黑白狼王确认',whiteWolf:'CFG-05 / 黑白狼王确认'};
 
 export function copiedRoleNotes(role:BoardRole,ruleset:Ruleset):string[]{
  switch(role){
+  case 'dancer':case 'mask':return ['首版不支持机械/装甲复制舞者或假面。'];
   case 'wolfGirl':case 'poisoner':return ['首版不支持机械/装甲复制狼女孩或毒师。'];
   case 'wolf':return [ruleset==='mechanical-armor'?'额外普通刀全局一次，继承普通狼刀后才解锁；可与普通刀同夜选择相同或不同目标。两刀同目标可破普通盾，不能击破无敌盾。':'学习狼人后获得一次额外破盾刀，继承普通狼刀后才解锁；额外刀与普通刀分别结算。'];
   case 'armoredWolf':return ['学习装甲狼：未拟态时获得一次额外普通刀，仍须先继承普通狼刀；已拟态时冻结其当前复制能力并获得独立完整次数，沿用对应技能限制。'];
@@ -27,6 +28,8 @@ export function copiedRoleNotes(role:BoardRole,ruleset:Ruleset):string[]{
 
 export function roleRuleNotes(role:BoardRole,ruleset:Ruleset,idiotPolicy:IdiotPolicy='standard'):string[]{
  switch(role){
+  case 'dancer':return ['第二夜起60秒选择三人，可包含自己。整局每人最多有效入池一次，重复确认或保留重复草稿到截止会点杀舞者并取消整池，不消耗其他人名额。','合法三人舞池按当晚计算阵营杀少数方，全同则无人死亡；舞者自己在池内时三人免狼刀，舞者本人免毒但仍耗毒药。','合法部分草稿超时补满三人并私下告知完整名单；合法候选不足三人提示今晚不能舞。'];
+  case 'mask':return ['真实狼阵营，与普通狼互不相认，不能自爆，免毒但仍耗毒药；三普狼全部出局后下一夜独立继承狼刀，可自刀/空刀，180秒未确认空刀。','第二夜起查验与面具共用60秒，先查是否入池，立即私下看结果，再给任意存活目标戴面具，仅翻转当晚舞池计数，真实身份/验人不变。','查验与面具各自整局不能重复目标；未入池的面具仍耗资格。重复确认或违规草稿保留到期点杀自己，停止后续技能及继承刀。','超时先采用合法已保存草稿，否则随机合法未用目标，耗尽则跳过；49A违规草稿优先处罚。结果可在本夜内私下查看，白天不开放历史查询。'];
   case 'wolfGirl':return ['首夜单独向非狼人表白一次，超时随机选择；不知道接受/拒绝或目标具体身份，狼队不知道表白目标。','平民接受成为无狼刀的狼混，身份仍为平民且查验好人；神职拒绝且不知道女孩号码。','合法发言可自爆，放逐票已统计但结果未生效也可自爆废票；女孩与尚在场的表白目标一同死亡，拒绝的神也被报复。双方无遗言，报复猎人无枪。','目标已死仍可自爆，普通死亡不连带；沿用符合条件的紧接下一夜优先指刀。整事件后判胜。'];
   case 'poisoner':return ['全局仅一瓶毒药，无解药且不知道刀口；首夜及以后都可自毒。守卫挡不住毒，毒杀猎人不能开枪。'];
   case 'villager':return ['没有夜间主动技能，白天参与发言与合法投票；按本局民边条件结算。'];
@@ -49,17 +52,18 @@ export function buildRuleReference(board:RoomBoardSnapshot):RuleReference{
  const unsupported:RuleReference={version:ruleReferenceVersion,supported:false,roles:[],mechanics:[],cautions:['此规则版本或配置尚未支持速查，请核对已确认规则并由现场裁决；不能据此推断玩法。']};
  if(board.ruleVersion!==boardRuleVersion)return unsupported;
  let config;try{config=createBoardConfiguration({seatCount:board.composition.seatCount,roles:board.composition.roleCounts,...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});}catch{return unsupported;}
- if(config.ruleset!==board.composition.ruleset||config.ruleset==='wolf-girl'&&boardStartError(config)!==null)return unsupported;
+ if(config.ruleset!==board.composition.ruleset||['wolf-girl','masquerade'].includes(config.ruleset)&&boardStartError(config)!==null)return unsupported;
  const roles=boardRoleSchema.options.filter(role=>(config.roles[role]??0)>0).map(role=>({role,label:boardRoleLabels[role],count:config.roles[role]!,notes:roleRuleNotes(role,config.ruleset,config.idiotPolicy),source:sources[role]}));
  const wolves=roles.reduce((sum,r)=>sum+(isWolfRole(r.role)?r.count:0),0);
  const mechanics=['规则说明不表示任何座位的身份、存活状态、行动目标或技能余量。','各角色保留固定夜间阶段；角色间闭眼5秒，不从阶段是否出现推断角色存活。','普通投票每轮开始前选择方式、时长和公开程度；已开始阶段设置锁定，未结算前不展示票型。'];
  if(wolves===0)mechanics.push('没有任何狼角色：只允许纯手动记录，房主确认结束，不判胜负。');
  else if(wolves===config.seatCount)mechanics.push('只有狼角色的配置不能正常发牌或开局。');
+ else if(config.ruleset==='masquerade')mechanics.push('首夜狼人180秒→女巫60秒→预言家30秒；以后舞者60秒→假面共60秒→狼人/继承刀180秒→预言家30秒→女巫30秒，角色间闭眼5秒。','狼刀、毒药、共舞和点杀在夜末统一结算，死亡去重再判胜；双方同时满足胜利条件时狼人优先。任何夜夜末终局都跳过警长竞选，先公开死者座位，再公布胜负，不公布死因。');
  else if(config.ruleset==='wolf-girl')mechanics.push('首夜守卫→狼女孩表白→狼队相认（禁刀）→毒师→预言家→猎人→被表白者私密通知；以后不重复表白。','真狼全灭优先好人胜，即使狼混仍活或同批屠边；狼混个人胜负随狼，真实平民仍计入屠民。','女孩自爆先连带结算、必要时废放逐票，再统一判胜。');
  else mechanics.push('本局按已确认屠边条件结算；真实狼全部出局则好人胜，非空神边或民边全出局则狼人胜；已确认同夜同时达成时狼人优先。胜负确定即停止后续技能、遗言与警徽流程。');
  if(config.roles.mechanicalWolf||config.roles.armoredWolf)mechanics.push('狼刀继承按共享狼刀组 → 机械狼 → 装甲狼顺序判断；首夜无共享狼刀组时机械狼可继承。复制身份不改变真实阵营。');
  if(config.roles.idiot&&(config.roles.mechanicalWolf||config.roles.armoredWolf))mechanics.push(...copiedRoleNotes('idiot',config.ruleset));
  if(config.roles.mixer){const variant={...standardRoleCounts,villager:3,mixer:1};const standardMixer=config.seatCount===12&&Object.entries(variant).every(([r,n])=>config.roles[r as BoardRole]===n);mechanics.push(standardMixer?'本局是12人3民1混血儿变体：四个民职必须全部出局，不套用扩展板的留一民条件。':'扩展混血儿民边：混血儿出局且普通村民仅剩一人，或混血儿成为最后民职时，满足已确认屠民条件；个人胜负仍跟随榜样原阵营。');}
- const cautions=config.ruleset==='wolf-girl'?['首版仅支持官方12人阵容及同阵容副本，不支持与机械或其他角色混搭。']:config.ruleset!=='standard'||!['standard-12','seer-witch-hunter-idiot-12'].includes(board.id)?['自定义与机械组合仅展示已确认单项规则；未定义复制、反弹链或伤害交互需要裁决，配置可保存不代表所有组合已支持。']:[];
+ const cautions=['wolf-girl','masquerade'].includes(config.ruleset)?['首版仅支持官方12人阵容及同阵容副本，不支持与机械或其他角色混搭。']:config.ruleset!=='standard'||!['standard-12','seer-witch-hunter-idiot-12'].includes(board.id)?['自定义与机械组合仅展示已确认单项规则；未定义复制、反弹链或伤害交互需要裁决，配置可保存不代表所有组合已支持。']:[];
  return {version:ruleReferenceVersion,supported:true,roles,mechanics,cautions};
 }

@@ -1,5 +1,9 @@
 # 文档职责与阅读导航
 
+## 假面舞会（2026-11-01）
+
+[现行MASQ-001–044完整裁决](MASQUERADE.md) → [决策及开发授权](PRODUCT_DECISIONS.md#masquerade-2026-11-01) → [规则入口](WEREWOLF_RULES_SPEC.md#masquerade-2026-11-01) → [验收场景](WEREWOLF_TEST_CASES.md#masquerade-2026-11-01)。实际执行证据见当前测试报告/交接；不混同规则冻结、实现、自动化、部署或实机验收。
+
 ## 手机候场与女孩私密时点（2026-10-30）
 
 [当前交互](WEREWOLF_RULES_SPEC.md#mobile-preparation-2026-10-30) / [直接确认](PRODUCT_DECISIONS.md#mobile-preparation-2026-10-30) / [设计与范围](superpowers/specs/2026-10-30-mobile-preparation-controls-design.md) → [验收期望](WEREWOLF_TEST_CASES.md) / [执行结果](TEST_REPORT.md)。候场选择先预览后确认，女孩队友仅限已入夜的本人表白回合；已随[2026-10-31试用源码](RENDER_TRIAL.md#当前发布2026-10-31)上线，平台验证/公网限制与真实设备证据分开。

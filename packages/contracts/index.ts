@@ -66,3 +66,7 @@ Object.assign(messages,{EXPORT_TOO_LARGE:'导出结果超过 5000 条，请缩�
 Object.assign(messages,{STALE_GAME:'对局已切换，请重新读取当前局',REMATCH_REQUEST_CONFLICT:'此重开请求已用于其他操作，请重新读取'});
 
 Object.assign(messages,{STALE_DISPLAY:'大屏链接已更新，请重新读取后操作',DISPLAY_UNAVAILABLE:'大屏链接暂不可用'});
+
+Object.assign(messages,{STALE_DRAFT:'选人已更新，请重新查看后操作',REQUEST_CONFLICT:'此请求已用于其他操作，请刷新后重试',JUDGE_MASQUERADE_REQUIRED:'请先补录实际共舞、查验或面具结果，不能随机补造过去事实'});
+
+Object.assign(messages,{JUDGE_MASQUERADE_KNIFE_REQUIRED:'狼票平票，请先补录现场实际刀口，不能重新随机',LEGAL_TARGETS_REMAIN:'尚有合法目标，不能跳过此技能'});

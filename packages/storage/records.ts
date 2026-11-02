@@ -238,7 +238,7 @@ export class RecordsStore {
    const day=JSON.parse(state) as DayState;
    for(const event of effectiveGameEvents(day.events)){
     if(event.type.startsWith('death_')&&event.seat!==undefined&&!doc.deaths.some(d=>d.seat===event.seat)){
-     doc.deaths.push({seat:event.seat,round:day.day,period:['death_knife','death_poison'].includes(event.type)?'night':'day',cause:ended?event.type.slice(6) as RecordDocument['deaths'][number]['cause']:'unrecorded'});
+     doc.deaths.push({seat:event.seat,round:day.day,period:['death_knife','death_poison','death_dance','death_penalty'].includes(event.type)?'night':'day',cause:ended?event.type.slice(6) as RecordDocument['deaths'][number]['cause']:'unrecorded'});
     }
     if(event.type==='sheriff_elected')doc.badges.push({round:day.day,seat:event.seat!});
     // Successful commands are retained in existing games; a phase event only names the dead holder.

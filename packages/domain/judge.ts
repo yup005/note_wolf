@@ -13,7 +13,7 @@ export function phaseDuration(kind:'night'|'day',state:NightState|DayState):numb
  if(kind==='night'){
   const n=state as NightState;
   if(['awaiting_host','first_night_complete','rules_pending'].includes(n.phase))return null;
-  return n.phase==='wolves'?180000:n.phase==='eyes_closed'?5000:n.phase==='mechanical_authority'?15000:n.phase==='witch'&&n.night===1?60000:30000;
+  return n.phase==='dancer'||n.phase==='mask'?60000:n.phase==='wolves'?180000:n.phase==='eyes_closed'?5000:n.phase==='mechanical_authority'?15000:n.phase==='witch'&&n.night===1?60000:30000;
  }
  const d=state as DayState;
  if(d.interjection)return Math.max(0,15000-(d.interjectionUsed?.[d.interjection.seat]??0));
@@ -23,17 +23,38 @@ export function phaseDuration(kind:'night'|'day',state:NightState|DayState):numb
  if(d.phase==='voting')return Number(d.events.findLast(e=>e.type==='command'&&e.command?.action==='start_vote')?.command?.seconds??d.voteDefaults?.seconds??30)*1000;
  return null;
 }
+export function restoredPhaseDuration(kind:'night'|'day',state:NightState|DayState,clock:number):number|null{
+ if(kind==='night'&&(state as NightState).masquerade&&state.deadline!==null)return Math.max(0,state.deadline-clock);
+ return phaseDuration(kind,state);
+}
+function tiedMasqueradeKnife(n:NightState):number[]{
+ if(!n.masquerade||n.phase!=='wolves'||n.priorityCommitted)return [];const counts=new Map<number,number>();for(const seat of n.masquerade.shared){const t=n.votes[seat];if(t!=null)counts.set(t,(counts.get(t)??0)+1);}const max=Math.max(0,...counts.values());return [...counts].filter(([,count])=>count===max).map(([seat])=>seat);
+}
 export function supplementRuntime(runtime:JudgeRuntime,operation:JudgeSupplement['operation'],board:RoomBoardSnapshot,rules:FirstDayRules,hostSeat:number){
  const current=runtime.kind==='night'?runtime.night:runtime.day!;
  if(['ended','rules_pending'].includes(current.phase))throw new LobbyError('JUDGE_RETURN_BLOCKED',409);
- if(operation.kind==='advance'){
+ if(operation.kind==='masquerade-knife'){
+  const n=runtime.night,r=n.masquerade;if(runtime.kind!=='night'||n.phase!=='wolves'||!r||n.deadline===null||operation.target!==null&&!r.alive.includes(operation.target))throw new LobbyError('PHASE_LOCKED',409);
+  const candidates=tiedMasqueradeKnife(n);if(r.shared.length&&n.priorityWolf===null&&!n.priorityCommitted&&(candidates.length?!candidates.includes(operation.target!):operation.target!==null))throw new LobbyError('INVALID_TARGET',400);
+  n.priorityTarget=operation.target;n.priorityCommitted=true;runtime.clock=n.deadline;advanceNight(n,runtime.clock);
+ }else if(operation.kind==='advance'){
+  if(runtime.kind==='night'&&tiedMasqueradeKnife(runtime.night).length>1)throw new LobbyError('JUDGE_MASQUERADE_KNIFE_REQUIRED',409);
+  if(runtime.kind==='night'&&runtime.night.masquerade){const n=runtime.night,r=n.masquerade!,m=n.engine!.masquerade!;if(n.phase==='dancer'&&!r.danceDone&&r.alive.includes(n.players.find(p=>p.role==='dancer')!.seat)&&r.alive.filter(t=>!m.danced.some(h=>h.target===t)).length>=3||n.phase==='mask'&&!m.penalties.some(p=>p.seat===n.players.find(p=>p.role==='mask')!.seat)&&r.alive.includes(n.players.find(p=>p.role==='mask')!.seat)&&(!r.inspection&&r.alive.some(t=>!m.inspected.some(h=>h.target===t))||!r.mask&&r.alive.some(t=>!m.masked.some(h=>h.target===t))))throw new LobbyError('JUDGE_MASQUERADE_REQUIRED',409);}
   if(runtime.kind==='night'&&current.phase==='confession'&&!runtime.night.engine?.confession)throw new LobbyError('JUDGE_CONFESSION_REQUIRED',409);
   if(runtime.kind==='night'&&current.phase==='awaiting_host'){beginNight(runtime.night,runtime.clock);return;}
   if(current.deadline===null)throw new LobbyError('PHASE_LOCKED',409);
   runtime.clock=current.deadline;
   if(runtime.kind==='night')advanceNight(runtime.night,runtime.clock);else advanceDay(runtime.day!,runtime.clock);
+ }else if(operation.kind==='masquerade'){
+  if(runtime.kind!=='night'||!runtime.night.masquerade||!['dance_confirm','mask_confirm'].includes(operation.command.action))throw new LobbyError('PHASE_LOCKED',409);
+  const n=runtime.night,m=n.engine!.masquerade!,before={danced:m.danced.length,inspected:m.inspected.length,masked:m.masked.length};
+  nightCommand(n,operation.actorSeat,operation.command,runtime.clock);
+  for(const key of ['danced','inspected','masked'] as const)for(const h of n.engine!.masquerade![key].slice(before[key]))h.source=operation.source;
+  if(operation.command.action==='dance_confirm')n.masquerade!.poolSource=operation.source;
+  if(operation.command.action==='mask_confirm'){const receipt=operation.command.step==='inspect'?n.masquerade!.inspection:n.masquerade!.mask;if(receipt)receipt.source=operation.source;}
  }else if(operation.kind==='night'){
   if(runtime.kind!=='night')throw new LobbyError('PHASE_LOCKED',409);
+  if(operation.command.action==='confirm_wolves'&&tiedMasqueradeKnife(runtime.night).length>1)throw new LobbyError('JUDGE_MASQUERADE_KNIFE_REQUIRED',409);
   nightCommand(runtime.night,operation.actorSeat,operation.command,runtime.clock);
  }else if(operation.kind==='day'){
   if(runtime.kind!=='day')throw new LobbyError('PHASE_LOCKED',409);
@@ -56,7 +77,7 @@ export function runtimeFacts(runtime:JudgeRuntime):RecordDocument{
  const result=emptyRecord();const days=runtime.history.filter(h=>h.kind==='day').map(h=>h.state as DayState);if(runtime.day)days.push(runtime.day);
  for(const d of days.sort((a,b)=>a.day-b.day)){
   for(const e of effectiveGameEvents(d.events)){
-   if(e.type.startsWith('death_')&&e.seat!==undefined&&!result.deaths.some(x=>x.seat===e.seat))result.deaths.push({seat:e.seat,round:d.day,period:['death_knife','death_poison'].includes(e.type)?'night':'day',cause:e.type.slice(6) as RecordDocument['deaths'][number]['cause']});
+   if(e.type.startsWith('death_')&&e.seat!==undefined&&!result.deaths.some(x=>x.seat===e.seat))result.deaths.push({seat:e.seat,round:d.day,period:['death_knife','death_poison','death_dance','death_penalty'].includes(e.type)?'night':'day',cause:e.type.slice(6) as RecordDocument['deaths'][number]['cause']});
    if(e.type==='sheriff_elected')result.badges.push({round:d.day,seat:e.seat!});
    if(e.type==='command'&&e.command?.action==='transfer_badge')result.badges.push({round:d.day,seat:e.command.target as number|null});
    if((e.type==='death_exile'||e.type==='idiot_flip')&&e.seat!==undefined)result.exiles.push({round:d.day,seat:e.seat});

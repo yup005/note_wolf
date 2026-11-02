@@ -3,7 +3,7 @@ import {boardRoleSchema,rulesetSchema,standardRoleCounts,idiotPolicySchema,suppo
 
 export interface VictoryPlayer {seat:number;role:BoardRole;alive:boolean;personalCamp?:'wolves'|'good';idiotFlipped?:boolean;learnedRole?:BoardRole;modelSeat?:number;modelCamp?:'wolves'|'good'}
 export type VictoryResult={status:'playing'}|{status:'ended';winner:'wolves'|'good';reason:'all-villagers-dead'|'all-gods-dead'|'all-wolves-dead'|'mixer-dead-one-villager'|'mixer-last-civilian';personalResults?:{seat:number;won:boolean}[]}|{status:'unresolved';questionId:string};
-const gods=new Set<BoardRole>(['seer','witch','hunter','idiot','spiritSeer','guard','poisoner']);
+const gods=new Set<BoardRole>(['dancer','seer','witch','hunter','idiot','spiritSeer','guard','poisoner']);
 export function playerCamp(role:BoardRole):'wolves'|'good'|null{
  return isWolfRole(role)?'wolves':gods.has(role)||role==='villager'?'good':null;
 }

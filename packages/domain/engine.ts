@@ -7,7 +7,7 @@ import {knifeAuthorityAtNightStart} from './knifeAuthority.js';
 import {copySkills,useSkill} from './skills.js';
 import {projectMechanicalCopyProfile} from './mechanicalAbilities.js';
 
-const attacks=new Set(['wolf-knife','extra-knife','poison','shot']);
+const attacks=new Set(['wolf-knife','extra-knife','poison','shot','dance-death','rule-penalty']);
 export interface ResolutionStrategy {ruleset:Ruleset;ruleVersion:typeof boardRuleVersion;resolve(context:Readonly<EngineState>):ResolutionDecision}
 
 export function validateEngineState(input:unknown):EngineState{
@@ -22,6 +22,11 @@ export function validateEngineState(input:unknown):EngineState{
   state.players.some(p=>!derived.roles[p.role]))throw new LobbyError('INVALID_ENGINE_STATE');
  if(state.confession){const c=state.confession;const girl=state.players.find(p=>p.seat===c.girl),target=state.players.find(p=>p.seat===c.target);if(b.ruleset!=='wolf-girl'||girl?.role!=='wolfGirl'||!target||playerCamp(target.role)!=='good'||c.accepted!==(target.role==='villager'))throw new LobbyError('INVALID_ENGINE_STATE');}
  const seats=new Set(state.players.map(p=>p.seat));
+ if(state.masquerade){
+  const m=state.masquerade;if(b.ruleset!=='masquerade'||m.pool.length!==0&&m.pool.length!==3||new Set(m.pool).size!==m.pool.length||m.pool.some(s=>!seats.has(s))||m.mask!==null&&!seats.has(m.mask)||new Set(m.penalties.map(p=>p.seat)).size!==m.penalties.length)throw new LobbyError('INVALID_ENGINE_STATE');
+  if(m.pool.some(target=>!m.danced.some(h=>h.night===state.night&&h.target===target))||m.danced.filter(h=>h.night===state.night).some(h=>!m.pool.includes(h.target))||m.mask!==null&&!m.masked.some(h=>h.night===state.night&&h.target===m.mask)||m.masked.filter(h=>h.night===state.night).some(h=>h.target!==m.mask)||m.penalties.some(p=>!state.players.some(actor=>actor.seat===p.seat&&actor.role===(p.reason==='dance-repeat'?'dancer':'mask'))))throw new LobbyError('INVALID_ENGINE_STATE');
+  for(const [key,role] of [['danced','dancer'],['inspected','mask'],['masked','mask']] as const){const history=m[key];if(new Set(history.map(h=>h.target)).size!==history.length||history.some(h=>h.night>state.night||!seats.has(h.target)||state.players.find(p=>p.seat===h.actor)?.role!==role))throw new LobbyError('INVALID_ENGINE_STATE');}
+ }else if(b.ruleset==='masquerade'&&state.night>1)throw new LobbyError('INVALID_ENGINE_STATE');
  if(new Set(state.actions.map(a=>a.id)).size!==state.actions.length||
   new Set(state.actions.map(a=>`${a.casterId}:${a.requestId}`)).size!==state.actions.length||
   state.actions.some(a=>!seats.has(a.casterId)||a.targetId!==null&&!seats.has(a.targetId)||a.night!==state.night||a.ruleset!==b.ruleset||a.sourceRole!==state.players.find(p=>p.seat===a.casterId)!.role)||
@@ -67,6 +72,11 @@ export function validateEngineState(input:unknown):EngineState{
  }
  for(const action of state.actions){
   if(action.abilityType==='wolf-knife'){if(action.abilityId!==null)throw new LobbyError('INVALID_ENGINE_STATE');continue;}
+  if(['dance-death','rule-penalty'].includes(action.abilityType)){
+   const m=state.masquerade,actor=state.players.find(p=>p.seat===action.casterId)!;
+   if(b.ruleset!=='masquerade'||!m||action.abilityId!==null||action.abilityType==='dance-death'&&(actor.role!=='dancer'||!m.pool.includes(action.targetId!))||action.abilityType==='rule-penalty'&&(!m.penalties.some(p=>p.id===action.id&&p.seat===actor.seat)||action.targetId!==actor.seat))throw new LobbyError('INVALID_ENGINE_STATE');
+   continue;
+  }
   const skill=state.players.find(p=>p.seat===action.casterId)!.abilities.skills.find(s=>s.id===action.abilityId);
   const consumablePass=action.targetId===null&&['poison','antidote','extra-knife','shot'].includes(action.abilityType);
   if(!skill||skill.kind!==action.abilityType||!consumablePass&&!skill.uses.some(u=>u.requestId===action.requestId&&u.night===action.night&&u.target===action.targetId))throw new LobbyError('INVALID_ENGINE_STATE');
