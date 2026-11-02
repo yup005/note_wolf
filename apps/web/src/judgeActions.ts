@@ -1,13 +1,14 @@
 import type {JudgePrivate,JudgeSupplement} from '../../../packages/contracts/judge';
 type Operation=JudgeSupplement['operation'];
 export interface JudgeAction {key:string;label:string;target?:'required'|'optional';counts?:boolean;voteSettings?:boolean;speechSettings?:boolean}
-export const judgePhaseNames:Record<string,string>={dancer:'舞者共舞',mask:'假面行动',confession:'狼女孩表白',confession_notice:'被表白者查看信息',poisoner:'毒师行动',awaiting_host:'等待开始',mechanical_authority:'狼刀权限确认',guard:'守卫行动',wolves:'狼人行动',eyes_closed:'闭眼间隔',witch:'女巫行动',mechanical:'机械狼行动',armor:'装甲狼行动',spiritSeer:'通灵师行动',mixer:'混血儿选择榜样',seer:'预言家行动',hunter:'猎人状态',first_night_complete:'夜晚完成',rules_pending:'规则待确认',sheriff_signup:'警长报名',sheriff_speech:'警上发言',sheriff_withdraw:'退水',vote_setup:'投票设置',voting:'投票中',vote_result:'投票结果',night_announcement:'死亡公告',death_skill:'死亡技能询问',hunter_target:'开枪目标',white_wolf_target:'白狼王目标',last_words:'遗言',badge_transfer:'警徽移交',day_direction:'发言设置',day_speech:'白天发言',free_speech:'自由发言',day_complete:'白天结束',ended:'对局结束'};
+export const judgePhaseNames:Record<string,string>={dancer:'舞者共舞',mask:'假面行动',puppet:'狼人选择傀儡',confession:'狼女孩表白',confession_notice:'被表白者查看信息',poisoner:'毒师行动',awaiting_host:'等待开始',mechanical_authority:'狼刀权限确认',guard:'守卫行动',wolves:'狼人行动',eyes_closed:'闭眼间隔',witch:'女巫行动',mechanical:'机械狼行动',armor:'装甲狼行动',spiritSeer:'通灵师行动',mixer:'混血儿选择榜样',seer:'预言家行动',hunter:'猎人状态',first_night_complete:'夜晚完成',rules_pending:'规则待确认',sheriff_signup:'警长报名',sheriff_speech:'警上发言',sheriff_withdraw:'退水',vote_setup:'投票设置',voting:'投票中',vote_result:'投票结果',night_announcement:'死亡公告',death_skill:'死亡技能询问',hunter_target:'开枪目标',white_wolf_target:'白狼王目标',last_words:'遗言',badge_transfer:'警徽移交',day_direction:'发言设置',day_speech:'白天发言',free_speech:'自由发言',day_complete:'白天结束',ended:'对局结束'};
 export function judgeActions(data:JudgePrivate,seat:number):JudgeAction[]{
  const draft=data.draft;if(!draft)return [];const card=data.cards.find(c=>c.seat===seat),actions:JudgeAction[]=[];
  const add=(key:string,label:string,extra:Omit<JudgeAction,'key'|'label'>={})=>actions.push({key,label,...extra});
  if(draft.kind==='night'){
   const c=card?.night;if(!c||c.kind==='waiting'||c.kind==='dancer'||c.kind==='mask')return [];
-  if(c.kind==='wolves'){if(!c.recognitionOnly)add('vote','狼刀选择',{target:'optional'});if(c.confirmer===seat)add('confirm_wolves','确认狼队选择');if(c.priorityWolf===seat)add('priority_knife','确认优先指刀',{target:'optional'});}
+  if(c.kind==='puppet'){add('puppet_vote','傀儡选择投票',{target:'required'});if(c.confirmer===seat&&c.votes?.some(v=>v.target!==null&&c.legalTargets?.includes(v.target)))add('confirm_puppet','确认傀儡选择');}
+  else if(c.kind==='wolves'){if(!c.recognitionOnly)add('vote','狼刀选择',{target:'optional'});if(c.confirmer===seat)add('confirm_wolves','确认狼队选择');if(c.priorityWolf===seat)add('priority_knife','确认优先指刀',{target:'optional'});}
   else if(c.kind==='confession')add('confess','表白目标',{target:'required'});
   else if(c.kind==='confession_notice')add('confession_seen','已查看表白信息');
   else if(c.kind==='poisoner'){if(c.poison)add('poisoner','毒杀目标',{target:'required'});add('poisoner:skip','不用毒药');}
@@ -49,12 +50,12 @@ export function judgeOperation(data:JudgePrivate,seat:number,key:string,fields:{
  if(draft.kind==='night'){
   const [action,choice]=key.split(':');
   if(action==='ability')return {kind:'night',actorSeat:seat,command:{action,turnId,choice:choice as 'learn'|'guard'|'poison'|'inspect'|'extra-knife'|'skip',target}};
-  if(action==='witch')return {kind:'night',actorSeat:seat,command:{action,turnId,choice:choice as 'save'|'poison'|'skip',target:choice==='poison'?target:null}};
+  if(action==='witch')return {kind:'night',actorSeat:seat,command:{action,turnId,choice:choice as 'save'|'poison'|'skip',target:choice==='poison'?target:choice==='save'?data.cards.find(c=>c.seat===seat)?.night?.knife??null:null}};
   if(action==='poisoner')return {kind:'night',actorSeat:seat,command:{action,turnId,target:choice==='skip'?null:target}};
   if(action==='confession_seen')return {kind:'night',actorSeat:seat,command:{action,turnId}};
-  if(action==='confess'||action==='mixer'||action==='seer'){if(target===null)throw Error('请选择目标');return {kind:'night',actorSeat:seat,command:{action,turnId,target}};}
+  if(action==='puppet_vote'||action==='confess'||action==='mixer'||action==='seer'){if(target===null)throw Error('请选择目标');return {kind:'night',actorSeat:seat,command:{action,turnId,target}};}
   if(action==='vote'||action==='priority_knife')return {kind:'night',actorSeat:seat,command:{action,turnId,target}};
-  if(['confirm_wolves','ability_finish','authority_seen','seer_finish','hunter_seen'].includes(action))return {kind:'night',actorSeat:seat,command:{action:action as 'confirm_wolves'|'ability_finish'|'authority_seen'|'seer_finish'|'hunter_seen',turnId}};
+  if(['confirm_puppet','confirm_wolves','ability_finish','authority_seen','seer_finish','hunter_seen'].includes(action))return {kind:'night',actorSeat:seat,command:{action:action as 'confirm_puppet'|'confirm_wolves'|'ability_finish'|'authority_seen'|'seer_finish'|'hunter_seen',turnId}};
  }else{
   if(key.startsWith('signup:'))return {kind:'day',actorSeat:seat,command:{action:'signup',turnId,join:key==='signup:yes'}};
   if(key==='vote'||key==='offline_vote'||key==='transfer_badge')return {kind:'day',actorSeat:seat,command:key==='vote'?{action:key,turnId,target}:key==='offline_vote'?{action:key,turnId,voter:seat,target}:{action:key,turnId,target,takeover:true}};

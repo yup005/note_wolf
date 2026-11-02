@@ -6,6 +6,9 @@
 ## 盗宝大师（2026-11-01）
 
 [完整规则及Owner确认](TREASURE_MASTER.md) / [稳定需求TM-001–010](NOTE_WOLF_PRODUCT_REQUIREMENTS_MATRIX.md) / [实施计划](superpowers/plans/2026-11-01-treasure-master.md)；实际自动检查见[测试报告](TEST_REPORT.md)。首版线上随机发牌，两种留底模式；实现不等于部署或真实iPhone验收。
+## 唯邻是从·傀儡（2026-11-01）
+
+[PU-001–010完整规则与验收索引](PUPPET.md) → [原始Issue #15](https://github.com/yup005/note_wolf/issues/15) / [Owner开发授权](PRODUCT_DECISIONS.md#puppet-2026-11-01) / [实施计划](superpowers/plans/2026-11-01-puppet.md) / [实际验证](TEST_REPORT.md)。独立12人，线上隐藏发牌；不代表已部署或实机验收。
 
 ## 手机候场与女孩私密时点（2026-10-30）
 

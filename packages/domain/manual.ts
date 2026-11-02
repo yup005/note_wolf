@@ -4,10 +4,12 @@ import {evaluateVictory} from './victory.js';
 import {createBoardConfiguration} from './boardConfig.js';
 import {type BoardRole,type Ruleset,type IdiotPolicy,isWolfRole} from '../contracts/board.js';
 export interface ManualVictoryFact {seat:number;personalCamp?:'wolves'|'good';learnedRole:BoardRole|null;learningKnown?:boolean;extraNightPending?:boolean;modelSeat?:number;modelCamp?:'wolves'|'good'}
-export interface ManualVictoryOptions {idiotPolicy?:IdiotPolicy;flippedIdiots?:readonly number[]}
+export interface ManualVictoryOptions {variant?:'puppet';idiotPolicy?:IdiotPolicy;flippedIdiots?:readonly number[]}
 export function manualDecision(roles:readonly {seat:number;role:Role}[],dead:readonly number[],facts:readonly ManualVictoryFact[]=[],options:ManualVictoryOptions={}):{outcome:RecordOutcome;requiresAdjudication:boolean}{
  const counts:Partial<Record<BoardRole,number>>={};for(const p of roles)counts[p.role]=(counts[p.role]??0)+1;
- const ruleset:Ruleset=createBoardConfiguration({seatCount:roles.length,roles:counts,...(options.idiotPolicy?{idiotPolicy:options.idiotPolicy}:{})}).ruleset;
+ const ruleset:Ruleset=createBoardConfiguration({seatCount:roles.length,roles:counts,...(options.variant?{variant:options.variant}:{}),...(options.idiotPolicy?{idiotPolicy:options.idiotPolicy}:{})}).ruleset;
+ // Without a recorded first-night conversion, a manual puppet result needs existing adjudication.
+ if(ruleset==='puppet'&&!roles.some(p=>!isWolfRole(p.role)&&facts.some(f=>f.seat===p.seat&&f.personalCamp==='wolves')))return {outcome:null,requiresAdjudication:true};
  // Wolf-free compositions are records, not an automatic victory simulation.
  if(!roles.some(p=>isWolfRole(p.role)))return {outcome:null,requiresAdjudication:false};
  // Pure manual games do not collect secret learning. The mechanical idiot exception

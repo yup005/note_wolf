@@ -35,7 +35,7 @@ export class PreparationStore{
  }
  deal(token:string,id:string){
   this.db.transaction(()=>{this.host(token,id);if(this.row(id).phase!=='lobby')return;
-   const r=this.row(id);const config=assertPlayableBoard(this.board(id),r.game_mode);const seats=this.seats(id);if(config.ruleset==='treasure'&&r.deal_method!=='online')throw new LobbyError('TREASURE_PHYSICAL_UNSUPPORTED',409);assertCanDeal(seats,config,r.game_mode);
+   const r=this.row(id);const config=assertPlayableBoard(this.board(id),r.game_mode);const seats=this.seats(id);if(config.ruleset==='treasure'&&r.deal_method!=='online')throw new LobbyError('TREASURE_PHYSICAL_UNSUPPORTED',409);if(config.ruleset==='puppet'&&r.deal_method!=='online')throw new LobbyError('PUPPET_ONLINE_DEAL_ONLY',409);assertCanDeal(seats,config,r.game_mode);
    this.db.prepare("UPDATE preparations SET phase='identity_collection' WHERE room_id=?").run(id);
    if(r.deal_method==='online'){
     const treasure=config.ruleset==='treasure'?dealTreasure(config.treasureMode!):undefined;

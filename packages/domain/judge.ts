@@ -13,7 +13,7 @@ export function phaseDuration(kind:'night'|'day',state:NightState|DayState):numb
  if(kind==='night'){
   const n=state as NightState;
   if(['awaiting_host','first_night_complete','rules_pending'].includes(n.phase))return null;
-  return n.phase==='dancer'||n.phase==='mask'?60000:n.phase==='wolves'?180000:n.phase==='eyes_closed'?5000:n.phase==='mechanical_authority'?15000:n.phase==='witch'&&n.night===1?60000:30000;
+  return n.phase==='dancer'||n.phase==='mask'?60000:n.phase==='wolves'||n.phase==='puppet'?180000:n.phase==='eyes_closed'?5000:n.phase==='mechanical_authority'?15000:n.phase==='witch'&&n.night===1?60000:30000;
  }
  const d=state as DayState;
  if(d.interjection)return Math.max(0,15000-(d.interjectionUsed?.[d.interjection.seat]??0));
@@ -41,6 +41,7 @@ export function supplementRuntime(runtime:JudgeRuntime,operation:JudgeSupplement
   if(runtime.kind==='night'&&tiedMasqueradeKnife(runtime.night).length>1)throw new LobbyError('JUDGE_MASQUERADE_KNIFE_REQUIRED',409);
   if(runtime.kind==='night'&&runtime.night.masquerade){const n=runtime.night,r=n.masquerade!,m=n.engine!.masquerade!;if(n.phase==='dancer'&&!r.danceDone&&r.alive.includes(n.players.find(p=>p.role==='dancer')!.seat)&&r.alive.filter(t=>!m.danced.some(h=>h.target===t)).length>=3||n.phase==='mask'&&!m.penalties.some(p=>p.seat===n.players.find(p=>p.role==='mask')!.seat)&&r.alive.includes(n.players.find(p=>p.role==='mask')!.seat)&&(!r.inspection&&r.alive.some(t=>!m.inspected.some(h=>h.target===t))||!r.mask&&r.alive.some(t=>!m.masked.some(h=>h.target===t))))throw new LobbyError('JUDGE_MASQUERADE_REQUIRED',409);}
   if(runtime.kind==='night'&&runtime.night.treasure&&['dreamer','treasure'].includes(current.phase))throw new LobbyError('JUDGE_TREASURE_ACTION_REQUIRED',409);
+  if(runtime.kind==='night'&&current.phase==='puppet'&&!runtime.night.engine?.puppet)throw new LobbyError('JUDGE_PUPPET_REQUIRED',409);
   if(runtime.kind==='night'&&current.phase==='confession'&&!runtime.night.engine?.confession)throw new LobbyError('JUDGE_CONFESSION_REQUIRED',409);
   if(runtime.kind==='night'&&current.phase==='awaiting_host'){beginNight(runtime.night,runtime.clock);return;}
   if(current.deadline===null)throw new LobbyError('PHASE_LOCKED',409);

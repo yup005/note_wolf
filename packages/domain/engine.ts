@@ -4,6 +4,7 @@ import {boardRuleVersion,type RoomBoardSnapshot,type Ruleset} from '../contracts
 import {createBoardConfiguration} from './boardConfig.js';
 import {playerCamp,evaluateVictory} from './victory.js';
 import {knifeAuthorityAtNightStart} from './knifeAuthority.js';
+import {puppetCandidates} from './puppet.js';
 import {copySkills,useSkill} from './skills.js';
 import {projectMechanicalCopyProfile} from './mechanicalAbilities.js';
 
@@ -13,13 +14,14 @@ export interface ResolutionStrategy {ruleset:Ruleset;ruleVersion:typeof boardRul
 export function validateEngineState(input:unknown):EngineState{
  if(typeof input==='object'&&input!==null&&'formatVersion' in input&&input.formatVersion!==1)throw new LobbyError('ENGINE_VERSION_UNSUPPORTED',409);
  const parsed=engineStateSchema.safeParse(input);if(!parsed.success)throw new LobbyError('INVALID_ENGINE_STATE');const state=parsed.data;
- const b=state.board.composition;const derived=createBoardConfiguration({seatCount:b.seatCount,roles:b.roleCounts,...(b.idiotPolicy?{idiotPolicy:b.idiotPolicy}:{})});
+ const b=state.board.composition;const derived=createBoardConfiguration({seatCount:b.seatCount,roles:b.roleCounts,...(b.variant?{variant:b.variant}:{}),...(b.idiotPolicy?{idiotPolicy:b.idiotPolicy}:{})});
  // playable is release/UI metadata. Old internal snapshots retain their original
  // flag; gameplay authority always derives from the current validated composition.
  if(derived.ruleset!==b.ruleset||state.players.length!==b.seatCount||
   new Set(state.players.map(p=>p.seat)).size!==state.players.length||state.players.some(p=>p.seat>b.seatCount||p.camp!==playerCamp(p.role)||p.abilities.ownerSeat!==p.seat||p.abilities.originalRole!==p.role)||
   Object.entries(derived.roles).some(([role,count])=>state.players.filter(p=>p.role===role).length!==count)||
   state.players.some(p=>!derived.roles[p.role]))throw new LobbyError('INVALID_ENGINE_STATE');
+ if(state.puppet&&(b.ruleset!=='puppet'||!puppetCandidates([...state.players].sort((a,b)=>a.seat-b.seat).map(p=>p.role)).includes(state.puppet.target)))throw new LobbyError('INVALID_ENGINE_STATE');
  if(state.confession){const c=state.confession;const girl=state.players.find(p=>p.seat===c.girl),target=state.players.find(p=>p.seat===c.target);if(b.ruleset!=='wolf-girl'||girl?.role!=='wolfGirl'||!target||playerCamp(target.role)!=='good'||c.accepted!==(target.role==='villager'))throw new LobbyError('INVALID_ENGINE_STATE');}
  const seats=new Set(state.players.map(p=>p.seat));
  if(state.masquerade){
@@ -155,6 +157,7 @@ function victoryFor(state:EngineState){
  return evaluateVictory(state.players.map(p=>({seat:p.seat,role:p.role,alive:p.alive,
   ...(state.board.composition.idiotPolicy==='dual-category-14'&&p.role==='idiot'?{idiotFlipped:p.publicState.revealedRole==='idiot'}:{}),
   ...(p.abilities.mimickedRole?{learnedRole:p.abilities.mimickedRole}:{}),
+  ...(state.puppet?.target===p.seat?{personalCamp:'wolves' as const}:{}),
   ...(state.confession?.accepted&&state.confession.target===p.seat?{personalCamp:'wolves' as const}:{}),
   ...(p.model?{modelSeat:p.model.seat,modelCamp:p.model.camp}:{})})),state.board.composition.ruleset,state.board.composition.idiotPolicy);
 }

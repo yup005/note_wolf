@@ -4,6 +4,7 @@ import {type RoomBoardSnapshot,isSharedWolfRole} from '../contracts/board.js';
 import {createEngineState,validateEngineState,appendNightAction} from './engine.js';
 import {createNativeAbilityProfile,learnMechanicalAbility,useConfirmedAbility,type ProductDecisionBlocked,type LearningFeedback,type InspectionResult} from './mechanicalAbilities.js';
 import {knifeAuthorityAtNightStart} from './knifeAuthority.js';
+import {puppetInspection} from './puppet.js';
 import {playerCamp} from './victory.js';
 import type {SkillSnapshot} from './skills.js';
 
@@ -39,7 +40,7 @@ export function validateConfirmedEngineState(input:unknown):EngineState{
   for(const skill of snapshot.skills){
    if(skill.capacity!==null&&skill.remaining!==skill.capacity-skill.uses.length||new Set(skill.uses.map(u=>u.night)).size!==skill.uses.length)throw new LobbyError('INVALID_ENGINE_STATE');
    if(skill.kind==='guard'&&skill.uses.some(u=>u.target!==null&&skill.uses.some(previous=>previous.night===u.night-1&&previous.target===u.target)))throw new LobbyError('INVALID_ENGINE_STATE');
-   if(skill.kind==='inspect'&&skill.uses.some(u=>u.target===player.seat)||skill.kind==='antidote'&&skill.uses.some(u=>u.target===player.seat))throw new LobbyError('INVALID_ENGINE_STATE');
+   if(ruleset!=='puppet'&&skill.kind==='inspect'&&skill.uses.some(u=>u.target===player.seat)||skill.kind==='antidote'&&skill.uses.some(u=>u.target===player.seat))throw new LobbyError('INVALID_ENGINE_STATE');
   }
   if(player.role==='witch'&&snapshot.skills.find(s=>s.kind==='antidote')?.uses.some(u=>snapshot.skills.find(s=>s.kind==='poison')?.uses.some(p=>p.night===u.night)))throw new LobbyError('INVALID_ENGINE_STATE');
  }
@@ -53,7 +54,7 @@ export function validateConfirmedEngineState(input:unknown):EngineState{
    // Prior-night learning already applied when every current action was made.
    if(target.learning&&target.learning.night<=action.night&&target.abilities.mimickedRole){if(target.learning.night<action.night)roles.length=0;roles.push(target.abilities.mimickedRole);}
    if(skill.parameters.inspection==='camp'){
-    const valid=result.status==='camp'&&(action.inspectionPolicy==='mimic-camp-v1'
+    const valid=result.status==='camp'&&(ruleset==='puppet'?result.camp===puppetInspection(state,actor.seat,target.seat):action.inspectionPolicy==='mimic-camp-v1'
      ?roles.some(role=>result.camp===(playerCamp(role)??'good'))
      :result.camp===playerCamp(target.role));
     if(!valid)throw new LobbyError('INVALID_ENGINE_STATE');
@@ -92,6 +93,7 @@ export function appendConfirmedEngineAction(input:EngineState,command:NightActio
  const authority=knifeAuthorityAtNightStart(state.players.map(({seat,alive,knifeGroup})=>({seat,alive,knifeGroup})));
  const result=useConfirmedAbility(actor.abilities,skill.id,{requestId:c.requestId,night:state.night,target:c.targetId},{ruleset:state.board.composition.ruleset,players:state.players,inheritedWolfKnife:authority.inheritedKnifeSeat===actor.seat,witchKnifeTarget:state.actions.find(a=>a.abilityType==='wolf-knife')?.targetId});
  if(result.status==='blocked')return result;
+ if(state.board.composition.ruleset==='puppet'&&result.status==='used'&&result.inspection&&c.targetId!==null)result.inspection={status:'camp',camp:puppetInspection(state,actor.seat,c.targetId)};
  actor.abilities=result.abilities;
  state.actions.push({...c,night:state.night,sourceRole:actor.role,ruleset:state.board.composition.ruleset,...(result.status==='used'&&result.inspection?{privateInspection:result.inspection,...(result.inspection.status==='camp'?{inspectionPolicy:'mimic-camp-v1' as const}:{})}:{})});
  return {status:'committed',state:validateConfirmedEngineState(state),...(result.status==='used'&&result.inspection?{inspection:result.inspection}:{})};

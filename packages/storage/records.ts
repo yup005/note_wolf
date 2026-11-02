@@ -1,4 +1,6 @@
 import {validateTreasureDeal,type TreasureDeal} from '../domain/treasure.js';
+import {endedPuppetDisclosure} from './puppetDisclosure.js';
+import {manualPuppetReplay} from '../domain/puppetReplay.js';
 import {createBoardConfiguration} from '../domain/boardConfig.js';
 import {ParticipationStore} from './participation.js';
 import {aggregateStatistics,type StatisticsEvidence} from '../domain/statistics.js';
@@ -17,7 +19,7 @@ import type {GameReplay} from '../contracts/game.js';
 import {sessionHash} from './auth.js';
 import {officialUpdate} from './officialUpdate.js';
 import type {AuthStore} from './auth.js';
-interface Archive {room_id:string;code:string;roles:string;participants:string;host_owner:string;ended:number;victory_facts:string|null;board_metadata:string|null;idiot_policy:IdiotPolicy|null;record_only_ended:number;automatic_winner:'wolves'|'good'|null}
+interface Archive {puppet:string|null;room_id:string;code:string;roles:string;participants:string;host_owner:string;ended:number;victory_facts:string|null;board_metadata:string|null;idiot_policy:IdiotPolicy|null;record_only_ended:number;automatic_winner:'wolves'|'good'|null}
 interface DraftRow {id:string;room_id:string;owner:string;author:string;official:number;draft:string;revision:number;published_version:number|null;withdrawn:number;published_at:number;deleted:number}
 interface ManualRow {room_id:string;status:ManualPublic['status'];version:number;official:string;winner:'wolves'|'good'|null;request:string|null}
 export class RecordsStore {
@@ -29,7 +31,7 @@ export class RecordsStore {
    const identity=this.participation.identity(id,owner);if(!identity)continue;
    if(this.db.prepare('SELECT 1 FROM record_deletion_blocks WHERE room_id=? AND owner=?').get(id,owner)&&!this.db.prepare('SELECT 1 FROM record_drafts WHERE room_id=? AND owner=? AND deleted=0').get(id,owner))continue;
    const archive=this.capture(id,false);let winner:'wolves'|'good'|null=null,camp:'wolves'|'good'|null=identity.role==='mixer'?null:isWolfRole(identity.role)?'wolves':'good';
-   try{if(!archive.record_only_ended)winner=this.automaticWinner(id,archive)??this.outcome(id,archive,this.officialDocument(id,false),false);if(identity.role==='treasureMaster')camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.personalCamp??null;if(identity.role==='mixer')camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.modelCamp??null;if(identity.role==='villager'&&(JSON.parse(archive.roles) as {role:Role}[]).some(p=>p.role==='wolfGirl'))camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.personalCamp??null;}
+   try{if(!archive.record_only_ended)winner=this.automaticWinner(id,archive)??this.outcome(id,archive,this.officialDocument(id,false),false);if(identity.role==='treasureMaster')camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.personalCamp??null;const effectiveCamp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.personalCamp;if(effectiveCamp)camp=effectiveCamp;else if(!isWolfRole(identity.role)){const stored=this.db.prepare('SELECT document FROM game_board_archives WHERE game_id=?').get(id) as {document:string}|undefined;if(stored&&JSON.parse(stored.document).composition?.variant==='puppet')camp=null;}if(identity.role==='mixer')camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.modelCamp??null;if(identity.role==='villager'&&(JSON.parse(archive.roles) as {role:Role}[]).some(p=>p.role==='wolfGirl'))camp=this.victoryFacts(id,archive,false).find(f=>f.seat===identity.seat)?.personalCamp??null;}
    catch(e){if(!(e instanceof SyntaxError||e instanceof LobbyError&&['NOT_FOUND','INVALID_VICTORY_STATE'].includes(e.code)))throw e;winner=null;}
    let board={key:'unknown-board',name:'未知板子'};
    try{const stored=archive.board_metadata??(this.db.prepare('SELECT document FROM game_board_archives WHERE game_id=?').get(id) as {document:string}|undefined)?.document,parsed=stored?JSON.parse(stored):null;if(parsed&&typeof parsed.id==='string'&&parsed.id&&typeof parsed.name==='string'&&parsed.name.trim()&&parsed.name.length<=60)board={key:parsed.id,name:parsed.name};}catch{/* Unknown legacy public metadata stays unknown. */}
@@ -39,6 +41,7 @@ export class RecordsStore {
  }).deferred();}
  archivedReplay(token:string,id:string):GameReplay{
   this.participant(token,id);if(!this.ended(id))throw new LobbyError('PHASE_LOCKED',409);
+  this.persistManualPuppetReplay(id);
   const r=this.db.prepare('SELECT document FROM game_replay_archives WHERE game_id=?').get(id) as {document:string}|undefined;
   if(!r)throw new LobbyError('NOT_FOUND',404);return JSON.parse(r.document);
  }
@@ -59,7 +62,7 @@ export class RecordsStore {
  private preserveBoard(id:string){
   if(!this.live(id)||this.db.prepare('SELECT 1 FROM game_board_archives WHERE game_id=?').get(id))return;
   const board=this.db.prepare('SELECT * FROM room_boards WHERE room_id=?').get(this.live(id)) as {id:string;name:string;revision:number;rule_version:string;composition:string};
-  this.db.prepare('INSERT OR IGNORE INTO game_board_archives VALUES (?,?)').run(id,JSON.stringify({id:board.id,name:board.name,ruleVersion:board.rule_version,composition:(()=>{const c=createBoardConfiguration(JSON.parse(board.composition));return {seatCount:c.seatCount,roleCounts:c.roles,ruleset:c.ruleset,playable:c.playable,...(c.treasureMode?{treasureMode:c.treasureMode}:{}),...(c.idiotPolicy?{idiotPolicy:c.idiotPolicy}:{})};})()}));
+  this.db.prepare('INSERT OR IGNORE INTO game_board_archives VALUES (?,?)').run(id,JSON.stringify({id:board.id,name:board.name,ruleVersion:board.rule_version,composition:(()=>{const c=createBoardConfiguration(JSON.parse(board.composition));return {seatCount:c.seatCount,roleCounts:c.roles,ruleset:c.ruleset,playable:c.playable,...(c.treasureMode?{treasureMode:c.treasureMode}:{}),...(c.variant?{variant:c.variant}:{}),...(c.idiotPolicy?{idiotPolicy:c.idiotPolicy}:{})};})()}));
  }
  private live(id:string){return runtimeRoom(this.db,id)??'';}
  constructor(private db:Database.Database,private auth:AuthStore,private now:()=>number,private replay:(id:string)=>GameReplay){
@@ -82,6 +85,7 @@ export class RecordsStore {
   if(!(db.prepare('PRAGMA table_info(record_rooms)').all() as {name:string}[]).some(c=>c.name==='idiot_policy'))db.exec('ALTER TABLE record_rooms ADD COLUMN idiot_policy TEXT');
   if(!(db.prepare('PRAGMA table_info(record_rooms)').all() as {name:string}[]).some(c=>c.name==='record_only_ended'))db.exec('ALTER TABLE record_rooms ADD COLUMN record_only_ended INTEGER NOT NULL DEFAULT 0');
   if(!(db.prepare('PRAGMA table_info(record_rooms)').all() as {name:string}[]).some(c=>c.name==='automatic_winner'))db.exec('ALTER TABLE record_rooms ADD COLUMN automatic_winner TEXT');
+  if(!(db.prepare('PRAGMA table_info(record_rooms)').all() as {name:string}[]).some(c=>c.name==='puppet'))db.exec('ALTER TABLE record_rooms ADD COLUMN puppet TEXT');
   this.participation=new ParticipationStore(db);
   db.exec("UPDATE record_rooms SET idiot_policy=(SELECT json_extract(composition,'$.idiotPolicy') FROM room_boards b WHERE b.room_id=record_rooms.room_id) WHERE idiot_policy IS NULL AND EXISTS (SELECT 1 FROM room_game_heads h WHERE h.room_id=record_rooms.room_id AND h.game_id=record_rooms.room_id);");
   db.exec("UPDATE record_rooms SET board_metadata=(SELECT json_object('id',id,'name',name) FROM room_boards b WHERE b.room_id=record_rooms.room_id) WHERE board_metadata IS NULL AND EXISTS (SELECT 1 FROM room_game_heads h WHERE h.room_id=record_rooms.room_id AND h.game_id=record_rooms.room_id);");
@@ -116,7 +120,7 @@ export class RecordsStore {
   this.preserveOfficial(id,document,manual?.version);
   const winner=ended?this.automaticWinner(id,this.capture(id)):null;
   if(winner)this.db.prepare('UPDATE record_rooms SET automatic_winner=? WHERE room_id=?').run(winner,id);
-  if(ended)this.db.prepare('UPDATE record_rooms SET ended=1 WHERE room_id=?').run(id);
+  if(ended){this.db.prepare('UPDATE record_rooms SET ended=1 WHERE room_id=?').run(id);this.persistManualPuppetReplay(id);}
  }
  private preserveOfficial(id:string,document:RecordDocument,version?:number):void{
   this.db.prepare('INSERT INTO record_official_snapshots VALUES (?,?) ON CONFLICT(room_id) DO UPDATE SET document=excluded.document').run(id,JSON.stringify({...document,notes:''}));
@@ -132,6 +136,12 @@ export class RecordsStore {
   const replay=this.db.prepare('SELECT document FROM game_replay_archives WHERE game_id=?').get(id) as {document:string}|undefined;
   if(replay){const winner=JSON.parse(replay.document).winner;if(winner==='good'||winner==='wolves')return winner;}
   return null;
+ }
+ private persistManualPuppetReplay(id:string){
+  const room=this.live(id);if(!room||!this.db.prepare("SELECT 1 FROM manual_games WHERE room_id=? AND status='ended'").get(room))return;
+  const a=this.capture(id);if(!a.puppet)return;const winner=this.outcome(id,a,this.officialDocument(id));if(!winner)return;
+  const board=a.board_metadata?JSON.parse(a.board_metadata):undefined;const replay=manualPuppetReplay(JSON.parse(a.roles),this.officialDocument(id),winner,JSON.parse(a.puppet),!!this.adjudicated(id));
+  this.db.prepare('INSERT OR REPLACE INTO game_replay_archives VALUES (?,?)').run(id,JSON.stringify({...replay,...(board?{board}:{} )}));
  }
  private preservedDocument(id:string):RecordDocument|null{
   const row=this.db.prepare('SELECT document FROM record_official_snapshots WHERE room_id=?').get(id) as {document:string}|undefined;
@@ -150,13 +160,15 @@ export class RecordsStore {
   if(roles.length!==engine.players.length||roles.some(p=>!engine.players.some(e=>e.seat===p.seat&&e.role===p.role)))throw new LobbyError('INVALID_VICTORY_STATE');
   // Successful learning is frozen; a dead unlearned actor cannot learn later.
   // Alive unlearned actors can learn offline after switching to manual.
-  const facts=engine.players.map(p=>({seat:p.seat,learnedRole:p.abilities.mimickedRole,learningKnown:!!p.learning||!p.alive,extraNightPending:latest.extraNightSeat!==undefined&&latest.extraNightSeat!==null,...(engine.confession?{personalCamp:engine.confession.accepted&&engine.confession.target===p.seat?'wolves' as const:isWolfRole(p.role)?'wolves' as const:'good' as const}:{}),...(p.model?{modelSeat:p.model.seat,modelCamp:p.model.camp}:{})}));
+  if(persist&&engine.puppet)this.db.prepare('UPDATE record_rooms SET puppet=? WHERE room_id=?').run(JSON.stringify(engine.puppet),id);
+  const facts=engine.players.map(p=>({seat:p.seat,learnedRole:p.abilities.mimickedRole,learningKnown:!!p.learning||!p.alive,extraNightPending:latest.extraNightSeat!==undefined&&latest.extraNightSeat!==null,...(engine.puppet?{personalCamp:engine.puppet.target===p.seat||isWolfRole(p.role)?'wolves' as const:'good' as const}:{}),...(engine.confession?{personalCamp:engine.confession.accepted&&engine.confession.target===p.seat?'wolves' as const:isWolfRole(p.role)?'wolves' as const:'good' as const}:{}),...(p.model?{modelSeat:p.model.seat,modelCamp:p.model.camp}:{})}));
   if(persist)this.db.prepare('UPDATE record_rooms SET victory_facts=? WHERE room_id=?').run(JSON.stringify(facts),id);return facts;
  }
  private adjudicated(id:string){return this.db.prepare('SELECT winner FROM manual_adjudications WHERE room_id=?').get(id) as {winner:'wolves'|'good'}|undefined;}
  private outcomeSource(id:string):RecordOutcomeSource{if(this.capture(id).record_only_ended)return 'record-only';return this.adjudicated(id)?'host-adjudicated' as const:'computed' as const;}
  private decision(id:string,archive:Archive,document:RecordDocument,persist=true){
-  return manualDecision(JSON.parse(archive.roles),document.deaths.map(d=>d.seat),this.victoryFacts(id,archive,persist),{idiotPolicy:archive.idiot_policy??undefined,flippedIdiots:document.exiles.flatMap(e=>e.seat===null?[]:[e.seat])});
+  const storedBoard=this.db.prepare('SELECT document FROM game_board_archives WHERE game_id=?').get(id) as {document:string}|undefined;const variant=storedBoard?JSON.parse(storedBoard.document).composition?.variant:undefined;
+  return manualDecision(JSON.parse(archive.roles),document.deaths.map(d=>d.seat),this.victoryFacts(id,archive,persist),{variant,idiotPolicy:archive.idiot_policy??undefined,flippedIdiots:document.exiles.flatMap(e=>e.seat===null?[]:[e.seat])});
  }
  private outcome(id:string,archive:Archive,document:RecordDocument,persist=true){return this.adjudicated(id)?.winner??this.decision(id,archive,document,persist).outcome;}
  private validateRoster(document:RecordDocument,archive:Archive){
@@ -216,7 +228,7 @@ export class RecordsStore {
  adminList(token:string,id:string){this.auth.requireAdmin(token);if(!this.ended(id))throw new LobbyError('PHASE_LOCKED',409);return (this.db.prepare('SELECT * FROM record_drafts WHERE room_id=? AND published_version IS NOT NULL AND deleted=0 ORDER BY official DESC,published_at DESC').all(id) as DraftRow[]).map(r=>this.summary(r));}
  post(token:string,recordId:string,version?:number,admin=false):RecordPost{if(admin)this.auth.requireAdmin(token);const r=this.db.prepare('SELECT * FROM record_drafts WHERE id=? AND published_version IS NOT NULL AND deleted=0').get(recordId) as DraftRow|undefined;if(!r)throw new LobbyError('NOT_FOUND',404);const {a,owner}=admin?{a:this.capture(r.room_id),owner:this.auth.owner(token)}:this.participant(token,r.room_id);if(r.withdrawn)throw new LobbyError('RECORD_WITHDRAWN',409);if(!this.ended(r.room_id))throw new LobbyError('PHASE_LOCKED',409);const v=this.db.prepare('SELECT * FROM record_versions WHERE record_id=? AND version=?').get(recordId,version??r.published_version) as {document:string;outcome:'wolves'|'good'|null;version:number;published_at:number}|undefined;if(!v)throw new LobbyError('NOT_FOUND',404);
   const account=this.auth.account(token),manage=!admin&&!!account&&r.owner==='account:'+account.id;
-  return {...this.summary(r),version:v.version,publishedAt:v.published_at,document:JSON.parse(v.document),outcome:v.outcome,outcomeSource:(this.db.prepare('SELECT source FROM record_version_sources WHERE record_id=? AND version=?').get(recordId,v.version) as {source:RecordOutcomeSource}|undefined)?.source??'computed',...(r.official?{officialUpdate:officialUpdate(this.db,r.room_id)}:{}),roles:JSON.parse(a.roles),versions:(this.db.prepare('SELECT version FROM record_versions WHERE record_id=? ORDER BY version DESC').all(recordId) as {version:number}[]).map(x=>x.version),saved:!!this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(owner,recordId),shareAccess:{manage,create:manage&&!!account?.vip?.active}};
+  return {...this.summary(r),version:v.version,publishedAt:v.published_at,document:JSON.parse(v.document),outcome:v.outcome,outcomeSource:(this.db.prepare('SELECT source FROM record_version_sources WHERE record_id=? AND version=?').get(recordId,v.version) as {source:RecordOutcomeSource}|undefined)?.source??'computed',...(r.official?{officialUpdate:officialUpdate(this.db,r.room_id)}:{}),roles:JSON.parse(a.roles),...(endedPuppetDisclosure(this.db,r.room_id)?{puppet:endedPuppetDisclosure(this.db,r.room_id)}:{}),versions:(this.db.prepare('SELECT version FROM record_versions WHERE record_id=? ORDER BY version DESC').all(recordId) as {version:number}[]).map(x=>x.version),saved:!!this.db.prepare('SELECT 1 FROM record_favorites WHERE owner=? AND record_id=?').get(owner,recordId),shareAccess:{manage,create:manage&&!!account?.vip?.active}};
  }
  private ownUnpublished(token:string,recordId:string):DraftRow{
   const owner=this.authorizedOwner(token),r=this.db.prepare('SELECT * FROM record_drafts WHERE id=? AND owner=? AND official=1 AND published_version IS NULL AND deleted=0').get(recordId,owner) as DraftRow|undefined;
@@ -263,7 +275,7 @@ export class RecordsStore {
  }
  switch(token:string,id:string,confirmed:boolean){return this.db.transaction(()=>{this.host(token,id);if(!confirmed)throw new LobbyError('INVALID_INPUT');if(this.ended(id))throw new LobbyError('PHASE_LOCKED',409);if(this.db.prepare('SELECT 1 FROM manual_games WHERE room_id=?').get(this.live(id)))return;const doc=this.automaticDocument(id);this.db.prepare('INSERT INTO manual_games(room_id,official,version) VALUES (?,?,COALESCE((SELECT MAX(version) FROM manual_revisions WHERE room_id=?),0))').run(this.live(id),JSON.stringify(doc),id);this.db.prepare("UPDATE preparations SET game_mode='manual' WHERE room_id=?").run(this.live(id));this.db.prepare("UPDATE room_controls SET status='running',remaining_ms=NULL,resume_at=NULL,kind=NULL,turn_id=NULL,temp_member=NULL,version=version+1 WHERE room_id=?").run(this.live(id));this.bump(id);
  }).immediate();}
- public(id:string):ManualPublic|null{const r=this.db.prepare('SELECT * FROM manual_games WHERE room_id=?').get(this.live(id)) as ManualRow|undefined;return r?{status:r.status,version:r.version,dead:(JSON.parse(r.official) as RecordDocument).deaths.map(d=>d.seat).sort((a,b)=>a-b),winner:r.winner,outcomeSource:this.outcomeSource(id),revealed:r.status==='ended'?JSON.parse(this.capture(id).roles):[]}:null;}
+ public(id:string):ManualPublic|null{const r=this.db.prepare('SELECT * FROM manual_games WHERE room_id=?').get(this.live(id)) as ManualRow|undefined;return r?{status:r.status,version:r.version,dead:(JSON.parse(r.official) as RecordDocument).deaths.map(d=>d.seat).sort((a,b)=>a-b),winner:r.winner,outcomeSource:this.outcomeSource(id),...(r.status==='ended'&&endedPuppetDisclosure(this.db,id)?{puppet:endedPuppetDisclosure(this.db,id)}:{}),revealed:r.status==='ended'?JSON.parse(this.capture(id).roles):[]}:null;}
  private bump(id:string){this.db.prepare('UPDATE rooms SET revision=revision+1 WHERE id=?').run(this.live(id));}
  private applyOfficial(id:string,document:RecordDocument){document={...document,notes:''};const r=this.manual(id),a=this.capture(id),outcome=this.outcome(id,a,document),body=JSON.stringify(document);const latest=this.db.prepare('SELECT document,outcome FROM manual_revisions WHERE room_id=? AND version=?').get(id,r.version) as {document:string;outcome:'wolves'|'good'|null}|undefined;if(r.status!=='pending'&&r.official===body&&latest?.document===body&&latest.outcome===outcome&&(!this.adjudicated(id)||r.status==='ended'))return;const version=r.version+1,status=r.status==='ended'||outcome?'ended':'playing';
   this.db.prepare('UPDATE manual_games SET official=?,winner=?,version=?,status=?,request=NULL WHERE room_id=?').run(JSON.stringify(document),outcome,version,status,this.live(id));this.db.prepare('INSERT INTO manual_revisions VALUES (?,?,?,?,?)').run(id,version,this.now(),JSON.stringify(document),outcome);this.db.prepare('INSERT INTO manual_revision_sources VALUES (?,?,?)').run(id,version,this.outcomeSource(id));this.preserveOfficial(id,document,status==='ended'?version:undefined);if(status==='ended')this.db.prepare('UPDATE record_rooms SET ended=1 WHERE room_id=?').run(id);this.bump(id);

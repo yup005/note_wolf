@@ -313,6 +313,7 @@ export class LobbyStore {
  }
  gameReplay(token:string,id:string):import('../contracts/game.js').GameReplay{
   const live=this.games.runtime(id);if(!live)return this.records.archivedReplay(token,id);
+  if(this.records.public(id)?.status==='ended'&&this.boards.snapshot(live).composition.ruleset==='puppet')return this.records.archivedReplay(token,id);
   const member=this.member(token,live);if(member.seat===null||!this.db.prepare('SELECT 1 FROM identities WHERE room_id=? AND member_id=?').get(live,member.id))throw new LobbyError('PARTICIPANT_ONLY',403);return this.readReplay(live);
  }
  private readReplay(id:string):import('../contracts/game.js').GameReplay{const day=this.day.snapshot(id);if(day?.phase!=='ended')throw new LobbyError('PHASE_LOCKED',409);
