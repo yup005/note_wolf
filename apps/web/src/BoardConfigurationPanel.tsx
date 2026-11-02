@@ -7,11 +7,12 @@ interface Props {board:RoomBoardSnapshot;settingsRevision:number;blocked:boolean
 export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction}:Props){
  const countId=useId();
  const [library,setLibrary]=useState<BoardLibrary|null>(null);const [error,setError]=useState('');const [saving,setSaving]=useState(false);
+ const [treasureMode,setTreasureMode]=useState(board.composition.treasureMode??'fixed-wolf');
  const [pickerRevision,setPickerRevision]=useState<number|null>(null);
- const [draft,setDraft]=useState<BoardComposition>({seatCount:board.composition.seatCount,roles:{...board.composition.roleCounts},...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});const [name,setName]=useState('');
+ const [draft,setDraft]=useState<BoardComposition>({seatCount:board.composition.seatCount,roles:{...board.composition.roleCounts},...(board.composition.treasureMode?{treasureMode:board.composition.treasureMode}:{}),...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});const [name,setName]=useState('');
  const compositionKey=JSON.stringify(board.composition);
  useEffect(()=>{setPickerRevision(null);},[settingsRevision,blocked,board.id,compositionKey]);
- useEffect(()=>{setDraft({seatCount:board.composition.seatCount,roles:{...board.composition.roleCounts},...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});setName(board.id==='custom'?board.name:board.name+' · 自定义');setError('');},[board.id,board.name,compositionKey]);
+ useEffect(()=>{setTreasureMode(board.composition.treasureMode??'fixed-wolf');setDraft({seatCount:board.composition.seatCount,roles:{...board.composition.roleCounts},...(board.composition.treasureMode?{treasureMode:board.composition.treasureMode}:{}),...(board.composition.idiotPolicy?{idiotPolicy:board.composition.idiotPolicy}:{})});setName(board.id==='custom'?board.name:board.name+' · 自定义');setError('');},[board.id,board.name,compositionKey]);
  useEffect(()=>{let active=true;api<BoardLibrary>('/api/boards').then(data=>{if(active)setLibrary(data);}).catch(e=>{if(active)setError(errorText(e));});return()=>{active=false;};},[]);
  const valid=serviceCompositionSchema.safeParse(draft).success;
  const total=Object.values(draft.roles).reduce((sum,count)=>sum+(count??0),0);
@@ -35,6 +36,7 @@ export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction
   <button type="button" className="board-current-trigger" aria-label="更换板子" aria-describedby={countId+'-current'} aria-haspopup="dialog" disabled={blocked||saving||!library} onClick={()=>setPickerRevision(settingsRevision)}><span id={countId+'-current'} className="board-current-copy"><strong>{board.name}</strong><small>{boardRosterText(board.composition.roleCounts)}</small></span><span className="board-current-action" aria-hidden="true"><b>›</b>更换</span></button>
   {library&&pickerRevision===settingsRevision&&!blocked&&!saving&&<BoardPickerDialog library={library} board={board} onClose={()=>setPickerRevision(null)} onSelect={id=>{setPickerRevision(null);select(id);}}/>}
   {board.composition.idiotPolicy==='dual-category-14'&&<p className="helper">双边白痴 · 翻牌后神边出局、民边存活</p>}
+  {board.composition.ruleset==='treasure'&&<div className="treasure-mode-settings"><label>盗宝模式<select aria-label="盗宝模式" value={treasureMode} disabled={blocked||saving} onChange={e=>setTreasureMode(e.target.value as 'fixed-wolf'|'random')}><option value="fixed-wolf">固定狼人盗宝</option><option value="random">随机盗宝</option></select></label><p className="helper">{treasureMode==='random'?'先留一张平民，再从五神一狼中随机留两张。两神底牌为好人盗宝，固定计神；一神一狼底牌为狼人盗宝。':'留底一狼、一随机神职、一平民；盗宝固定属于狼人。'}每晚须换底牌，首夜狼人可交流但禁刀。使用线上随机发牌。</p>{treasureMode!==(board.composition.treasureMode??'fixed-wolf')&&<button className="primary full" disabled={blocked||saving} onClick={()=>onAction('board',{settingsRevision,selection:{kind:'preset',id:'treasure-12',treasureMode}})}>确认盗宝模式 · 全员重新准备</button>}</div>}
   <details className="custom-board-editor"><summary>自定义调整</summary>
    <p className="helper">复制配置并另存，系统模板保持不变。</p>
    <label>名称<input aria-label="板子名称" maxLength={60} value={name} disabled={blocked||saving} onChange={e=>setName(e.target.value)}/></label>
@@ -46,7 +48,7 @@ export function BoardConfigurationPanel({board,settingsRevision,blocked,onAction
    })}</div>
    {!!draft.roles.idiot&&<label>白痴规则<select aria-label="白痴规则" value={draft.idiotPolicy??'standard'} disabled={blocked||saving} onChange={e=>{const {idiotPolicy:_,...base}=draft;setDraft(e.target.value==='dual-category-14'?{...base,idiotPolicy:'dual-category-14'}:base);}}><option value="standard">默认规则</option><option value="dual-category-14" disabled={!supportsDualIdiot(draft.roles.idiot)}>双边白痴（不限人数）</option></select></label>}
    {draft.idiotPolicy==='dual-category-14'&&<p className="helper">须有一名真实白痴，不限人数。翻牌后无发言、插嘴或投票权，仍可被刀或毒杀。</p>}
-   <p className="helper">{config?config.ruleset==='masquerade'?'假面舞会（固定12人阵容及其副本）':config.ruleset==='wolf-girl'?'狼女孩（首版支持固定12人阵容及其副本）':config.ruleset==='mechanical-armor'?'机械装甲':config.ruleset==='standard'?'预女猎白':'机械狼通灵师':'请选择 1–256 个角色'}</p>
+   <p className="helper">{config?config.ruleset==='masquerade'?'假面舞会（固定12人阵容及其副本）':config.ruleset==='treasure'?'盗宝大师（固定12人，留底后发牌）':config.ruleset==='wolf-girl'?'狼女孩（首版支持固定12人阵容及其副本）':config.ruleset==='mechanical-armor'?'机械装甲':config.ruleset==='standard'?'预女猎白':'机械狼通灵师':'请选择 1–256 个角色'}</p>
    <button className="secondary full" disabled={blocked||saving||!valid||!name.trim()} onClick={()=>void save()}>{saving?'保存中…':'另存板子'}</button>
    <button className="text-button" disabled={blocked||saving||!valid} onClick={()=>onAction('board',{settingsRevision,selection:{kind:'composition',composition:draft}})}>应用本局配置</button>
   </details>

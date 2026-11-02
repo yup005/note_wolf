@@ -33,6 +33,7 @@ export function IdentityPanel({roomId,gameId,phase,dealMethod,connected,roleCoun
   {!visible?<><p className="helper">仅本人可查看，请注意周围视线。</p><button className="secondary full" disabled={busy||!connected} onClick={()=>void reveal()}>{busy?'加载中…':'查看身份'}</button></>:<>
    {dealMethod==='physical'&&!card?.locked?<><label className="input-label" htmlFor="physical-role">你的实体身份</label><select id="physical-role" value={selection} disabled={busy||!connected} onChange={e=>setSelection(e.target.value as Role|'')}><option value="" disabled>选择实体牌上的角色</option>{Object.entries(roleLabels).filter(([r])=>(roleCounts[r as Role]??0)>0).map(([r,label])=><option key={r} value={r}>{label}</option>)}</select><button className="primary full" disabled={busy||!connected||selection===''} onClick={()=>void save()}>提交身份</button></>:<>
     {card?.role&&<p className="private-role" data-testid="private-role">{roleLabels[card.role]}</p>}
+    {card?.treasureCamp&&<p className="helper">你是{card.treasureCamp==='good'?'好人盗宝，整局计入神职':'狼人盗宝，不与其他狼人见面'}；每晚换牌不改变阵营。</p>}
     {phase==='identity_collection'&&!card?.confirmed&&<button className="primary full" disabled={busy||!connected} onClick={()=>void save()}>确认身份</button>}
     {card?.confirmed&&<p className="helper">身份已确认</p>}
    </>}

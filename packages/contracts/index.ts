@@ -32,7 +32,7 @@ export const readySchema=z.object({ready:z.boolean(),settingsRevision:z.number()
 export const identitySchema=z.object({role:roleSchema}).strict();
 export const emptySchema=z.object({}).strict();
 export interface PreparationState {settingsRevision:number;phase:'lobby'|'identity_collection'|'started';settings:RoomSettings;submittedCount:number;confirmedCount:number;validation:'waiting'|'valid'|'mismatch'}
-export interface PrivateIdentity {role:Role|null;confirmed:boolean;locked:boolean}
+export interface PrivateIdentity {treasureCamp?:'wolves'|'good';role:Role|null;confirmed:boolean;locked:boolean}
 Object.assign(messages,{
  TEST_PLAYERS_DISABLED:'测试功能未启用',TEST_ROOM_PRIVATE:'测试房间仅限创建它的管理员使用',NOT_TEST_PLAYER:'只能操作测试玩家',TEST_ROOM_NOT_EMPTY:'请创建只有你一人的新房间再添加测试玩家',TEST_ONLINE_ONLY:'测试玩家目前仅支持线上随机发牌',SETTINGS_CHANGED:'房主已更新设置，请查看后重新准备',HOST_ONLY:'只有房主可以执行此操作',HOST_NOT_SEATED:'房主必须入座参赛',ROOM_NOT_FULL:'请按本局人数全部入座',NOT_ALL_READY:'请等待所有玩家准备',
  PHASE_LOCKED:'当前阶段不允许此操作',NOT_SEATED:'请先选择座位',IDENTITY_UNAVAILABLE:'身份尚未分配',IDENTITY_INCOMPLETE:'请等待所有玩家确认身份',
@@ -70,3 +70,11 @@ Object.assign(messages,{STALE_DISPLAY:'大屏链接已更新，请重新读取�
 Object.assign(messages,{STALE_DRAFT:'选人已更新，请重新查看后操作',REQUEST_CONFLICT:'此请求已用于其他操作，请刷新后重试',JUDGE_MASQUERADE_REQUIRED:'请先补录实际共舞、查验或面具结果，不能随机补造过去事实'});
 
 Object.assign(messages,{JUDGE_MASQUERADE_KNIFE_REQUIRED:'狼票平票，请先补录现场实际刀口，不能重新随机',LEGAL_TARGETS_REMAIN:'尚有合法目标，不能跳过此技能'});
+
+
+
+Object.assign(messages,{TREASURE_PHYSICAL_UNSUPPORTED:'盗宝大师暂只支持线上随机发牌，实体底牌录入尚未接入',TREASURE_DEAL_REQUIRED:'盗宝大师需要完整留底发牌',TREASURE_REPEAT_CARD:'不能连续两夜选择同一张底牌',FIRST_NIGHT_NO_KNIFE:'首夜只能交流战术，不能刀人'});
+
+Object.assign(messages,{TREASURE_MASK_ORDERED_REQUIRED:'本日有蒙面人延迟死亡，请选择逐人发言，以便发言结束后结算'});
+
+Object.assign(messages,{JUDGE_TREASURE_ACTION_REQUIRED:'请先补录摄梦或盗宝选牌行动，不能随机猜测线下操作'});

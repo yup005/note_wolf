@@ -1,3 +1,4 @@
+import {systemPresetIdSchema} from '../packages/contracts/board.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
@@ -10,7 +11,7 @@ test('board HTTP and sockets expose counts only; saved templates remain owner-sc
  let socket:Socket|undefined;try{
   const h=await session(),g=await session();const view=await (await request(h,'/api/rooms',{nickname:'Host',requestId:randomUUID()})).json();const path='/api/rooms/'+view.room.id;
   await request(g,'/api/rooms/join',{code:view.room.code,nickname:'Guest'});
-  const library=await (await request(h,'/api/boards')).json();assert.equal(library.presets.length,5);
+  const library=await (await request(h,'/api/boards')).json();assert.deepEqual(library.presets.map((p:{id:string})=>p.id).sort(),[...systemPresetIdSchema.options].sort());
   const input={name:'My armor',id:null,revision:0,composition:{seatCount:2,roles:{mechanicalWolf:1,armoredWolf:1}}};const saved=await (await request(h,'/api/boards',input)).json();
   assert.deepEqual((await (await request(g,'/api/boards')).json()).custom,[]);
   assert.equal((await request(g,path+'/board',{selection:{kind:'custom',id:saved.id},settingsRevision:0})).status,403);
