@@ -1,6 +1,6 @@
 # 唯邻是从·傀儡（Issue #15）
 
-来源：[Owner 已确认规则及三轮修正](https://github.com/yup005/note_wolf/issues/15)，2026-11-01；本轮 Owner 要求直接按 Issue 开发，仅在尚有未回答规则时再询问。独立规则集 `puppet`、官方模板 `puppet-12`，实现与执行证据见 [测试报告](TEST_REPORT.md)；不代表已合并、部署或真实设备验收。
+来源：[Owner 已确认规则及三轮修正](https://github.com/yup005/note_wolf/issues/15)，2026-11-01；本轮 Owner 要求直接按 Issue 开发，仅在尚有未回答规则时再询问。独立规则集 `puppet`、官方模板 `puppet-12`，实现与执行证据见 [测试报告](TEST_REPORT.md)；已按后续明确授权合并main；未部署、未真实设备验收。
 
 ## 已确认规则与实现边界
 
